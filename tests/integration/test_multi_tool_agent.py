@@ -1,0 +1,40 @@
+"""Integration tests for multi-tool agent with real model."""
+
+import pytest
+from effgen import Agent
+from effgen.core.agent import AgentConfig
+from effgen.tools.builtin import Calculator, DateTimeTool, TextProcessingTool
+
+
+@pytest.mark.gpu
+class TestMultiToolAgent:
+    """Test agent with multiple tools."""
+
+    def test_calculator_with_multiple_tools(self, real_model):
+        agent = Agent(config=AgentConfig(
+            name="multi_test",
+            model=real_model,
+            tools=[Calculator(), DateTimeTool(), TextProcessingTool()],
+            max_iterations=5,
+            enable_memory=False,
+            enable_sub_agents=False,
+        ))
+        result = agent.run("What is 17 * 23? Use the calculator tool.")
+        assert result.success
+        # Check that the tool was called and produced the right answer
+        # The answer may be in output or in the execution trace
+        trace_str = str(result.execution_trace)
+        assert "391" in result.output or "391" in trace_str
+
+    def test_datetime_tool(self, real_model):
+        agent = Agent(config=AgentConfig(
+            name="dt_test",
+            model=real_model,
+            tools=[DateTimeTool()],
+            max_iterations=5,
+            enable_memory=False,
+            enable_sub_agents=False,
+        ))
+        result = agent.run("What is the current date and time in UTC?")
+        assert result.success
+        assert "202" in result.output  # Year starts with 202x

@@ -1439,6 +1439,9 @@ Examples:
     examples_run = examples_subparsers.add_parser('run', help='Run an example')
     examples_run.add_argument('name', help='Example name')
 
+    # Health check command
+    subparsers.add_parser('health', help='Check effGen infrastructure health')
+
     return parser
 
 
@@ -1469,6 +1472,11 @@ def main():
             exit_code = cli.models_commands(args)
         elif args.command == 'examples':
             exit_code = cli.examples_commands(args)
+        elif args.command == 'health':
+            from effgen.utils.health import HealthChecker
+            checker = HealthChecker()
+            all_passed = checker.print_results()
+            exit_code = 0 if all_passed else 1
         elif args.command is None:
             # No command - launch interactive wizard
             # Create a namespace with default values for run command
