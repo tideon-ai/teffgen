@@ -30,6 +30,8 @@ from .optimizer import (
     create_optimizer_for_model,
 )
 
+from .tool_prompt_generator import ToolPromptGenerator
+
 __all__ = [
     # Template Manager
     'PromptTemplate',
@@ -45,6 +47,9 @@ __all__ = [
     'PromptChain',
     'ChainManager',
     'create_default_chain_manager',
+
+    # Tool Prompt Generator
+    'ToolPromptGenerator',
 
     # Optimizer
     'ModelSize',

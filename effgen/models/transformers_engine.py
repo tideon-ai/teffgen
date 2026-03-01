@@ -175,8 +175,12 @@ class TransformersEngine(BatchModel):
                 model_kwargs["quantization_config"] = quantization_config
                 # Don't set dtype when quantizing
             else:
-                # Use 'dtype' instead of deprecated 'torch_dtype'
-                model_kwargs["dtype"] = self.torch_dtype
+                # transformers v5+ uses 'dtype', v4.x uses 'torch_dtype'
+                import transformers
+                if hasattr(transformers, 'VERSION') or int(transformers.__version__.split('.')[0]) >= 5:
+                    model_kwargs["dtype"] = self.torch_dtype
+                else:
+                    model_kwargs["torch_dtype"] = self.torch_dtype
 
             # Add device map for multi-GPU or CPU offloading
             if self.device == "cuda":

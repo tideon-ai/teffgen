@@ -22,6 +22,9 @@ from enum import Enum
 from ..models.base import BaseModel, GenerationConfig, GenerationResult
 from ..models.model_loader import ModelLoader
 from ..tools.base_tool import BaseTool
+from ..prompts.tool_prompt_generator import ToolPromptGenerator
+from ..tools.fallback import ToolFallbackChain
+from ..utils.circuit_breaker import CircuitBreaker
 from .state import AgentState
 from .task import Task, TaskStatus, SubTask
 from .router import SubAgentRouter, RoutingDecision, RoutingStrategy
@@ -73,6 +76,10 @@ class AgentConfig:
     sub_agent_config: Dict[str, Any] = field(default_factory=dict)
     model_config: Optional[Dict[str, Any]] = None
     require_model: bool = False
+    system_prompt_template: Optional[str] = None
+    verbose_tools: Optional[bool] = None
+    fallback_chain: Optional[Dict[str, list]] = None
+    enable_fallback: bool = True
 
 
 @dataclass
@@ -198,6 +205,27 @@ Question: {task}
         # Tools
         self.tools = {tool.name: tool for tool in config.tools}
 
+        # Tool prompt generator for enhanced ReAct prompts
+        self._tool_prompt_generator = ToolPromptGenerator(
+            tools=config.tools,
+            model_name=self.model_name or "",
+        )
+
+        # Determine verbose_tools setting: auto-detect from model size if not set
+        if config.verbose_tools is not None:
+            self._verbose_tools = config.verbose_tools
+        else:
+            self._verbose_tools = self._auto_detect_verbose()
+
+        # Tool fallback chain
+        self._fallback_chain = ToolFallbackChain(
+            custom_chains=config.fallback_chain
+        )
+        self._enable_fallback = config.enable_fallback
+
+        # Circuit breaker for tool failures
+        self._circuit_breaker = CircuitBreaker()
+
         # State management
         self.state = AgentState(agent_id=self.name)
 
@@ -220,6 +248,25 @@ Question: {task}
         # Memory (placeholder for now)
         self.short_term_memory = []
         self.long_term_memory = None  # Would integrate vector store
+
+    def _auto_detect_verbose(self) -> bool:
+        """Auto-detect whether to use verbose tool descriptions based on model size."""
+        name = (self.model_name or "").lower()
+        # Check for known small models (< 3B) -> full verbose with examples
+        # Check for medium models (3B-7B) -> verbose without examples
+        # Check for large models (> 7B) or API models -> compact
+        for indicator in ["0.5b", "1b", "1.5b", "2b"]:
+            if indicator in name:
+                return True
+        for indicator in ["3b", "4b", "5b", "7b"]:
+            if indicator in name:
+                return True
+        # API models
+        for indicator in ["gpt", "claude", "gemini"]:
+            if indicator in name:
+                return False
+        # Default: verbose (safe for SLMs)
+        return True
 
     def run(self,
             task: str,
@@ -337,9 +384,6 @@ Question: {task}
         scratchpad = ""
         max_iterations = kwargs.get("max_iterations", self.config.max_iterations)
 
-        # Build tools description
-        tools_description = self._get_tools_description()
-
         # Format conversation history
         conversation_history = self._format_conversation_history()
 
@@ -347,13 +391,25 @@ Question: {task}
         while iterations < max_iterations:
             iterations += 1
 
-            # Build prompt
-            prompt = self.REACT_PROMPT_TEMPLATE.format(
-                tools_description=tools_description,
-                conversation_history=conversation_history,
-                task=task,
-                scratchpad=scratchpad
-            )
+            # Build prompt using ToolPromptGenerator or custom template
+            if self.config.system_prompt_template:
+                # User-provided custom template
+                tools_description = self._get_tools_description()
+                prompt = self.config.system_prompt_template.format(
+                    tools_description=tools_description,
+                    conversation_history=conversation_history,
+                    task=task,
+                    scratchpad=scratchpad
+                )
+            else:
+                # Use enhanced ToolPromptGenerator
+                prompt = self._tool_prompt_generator.generate_react_prompt(
+                    task=task,
+                    scratchpad=scratchpad,
+                    conversation_history=conversation_history,
+                    system_prompt=self.config.system_prompt,
+                    verbose=self._verbose_tools,
+                )
 
             # Debug: log first iteration prompt to see if history is included
             if iterations == 1 and conversation_history:
@@ -441,7 +497,20 @@ Question: {task}
                 # No action specified, prompt to continue
                 scratchpad += "\nAction: (continue reasoning)"
 
-        # Max iterations reached
+        # Max iterations reached — try to extract partial answer from scratchpad
+        partial_answer = self._extract_partial_answer(scratchpad)
+        if partial_answer:
+            logger.info("Max iterations reached, returning partial answer from scratchpad")
+            return AgentResponse(
+                output=partial_answer,
+                success=True,
+                mode=AgentMode.SINGLE,
+                iterations=iterations,
+                tool_calls=tool_calls,
+                tokens_used=tokens_used,
+                metadata={"reason": "max_iterations_partial", "partial": True}
+            )
+
         return AgentResponse(
             output="Maximum iterations reached without final answer.",
             success=False,
@@ -451,6 +520,47 @@ Question: {task}
             tokens_used=tokens_used,
             metadata={"reason": "max_iterations_reached"}
         )
+
+    def _extract_partial_answer(self, scratchpad: str) -> Optional[str]:
+        """
+        Extract the best partial answer from the scratchpad when max iterations is reached.
+
+        Looks for patterns like "I now know the answer", recent observations with
+        answer-like content, or the last substantive thought.
+
+        Args:
+            scratchpad: The accumulated scratchpad text.
+
+        Returns:
+            A partial answer string, or None if nothing useful found.
+        """
+        if not scratchpad:
+            return None
+
+        # Pattern 1: "I now know" type thoughts
+        know_match = re.search(
+            r"Thought:\s*I (?:now )?know[^.]*\.\s*(.+?)(?=\nThought:|\nAction:|\Z)",
+            scratchpad, re.IGNORECASE | re.DOTALL
+        )
+        if know_match:
+            return know_match.group(1).strip()
+
+        # Pattern 2: Last observation with a clear result value
+        observations = re.findall(r"Observation:\s*(.+?)(?=\nThought:|\nAction:|\Z)", scratchpad, re.DOTALL)
+        if observations:
+            last_obs = observations[-1].strip()
+            # If last observation looks like a useful result (not an error)
+            if last_obs and not last_obs.lower().startswith("error"):
+                return last_obs
+
+        # Pattern 3: Last substantive thought
+        thoughts = re.findall(r"Thought:\s*(.+?)(?=\nAction:|\nObservation:|\Z)", scratchpad, re.DOTALL)
+        if thoughts:
+            last_thought = thoughts[-1].strip()
+            if len(last_thought) > 20:
+                return last_thought
+
+        return None
 
     def _run_with_sub_agents(self,
                             task: str,
@@ -527,7 +637,10 @@ Question: {task}
 
     def _generate(self, prompt: str, **kwargs) -> Dict[str, Any]:
         """
-        Generate response from model.
+        Generate response from model with retry logic for empty responses.
+
+        Retries up to 3 times on empty responses with exponential backoff
+        and slightly increasing temperature.
 
         Args:
             prompt: Input prompt
@@ -545,51 +658,79 @@ Question: {task}
                 "Provide a model in AgentConfig or use a mock for testing."
             )
 
-        try:
-            # Create generation config from kwargs
-            # Use smart stop sequences to prevent the model from hallucinating observations
-            # IMPORTANT: Stop AFTER the model generates Action Input, so we can execute the tool
-            # and provide the real observation
-            default_stop_sequences = [
-                "\nObservation:",  # Stop before model hallucinates observation
-                "\nQuestion:",     # Model starting a new question (runaway)
-                "\nHuman:",        # Model simulating conversation
-                "\nUser:",         # Model simulating conversation
-                "\n\n\n"           # Multiple blank lines (hallucination signal)
-            ]
+        max_retries = 3
+        backoff_delays = [0.5, 1.0, 2.0]
+        base_temperature = kwargs.get('temperature', self.config.temperature)
 
-            gen_config = GenerationConfig(
-                temperature=kwargs.get('temperature', self.config.temperature),
-                max_tokens=kwargs.get('max_tokens', 512),  # Enough for thought + action + input + some buffer
-                top_p=kwargs.get('top_p', 0.9),
-                stop_sequences=kwargs.get('stop_sequences', default_stop_sequences)
-            )
+        default_stop_sequences = [
+            "\nObservation:",
+            "\nQuestion:",
+            "\nHuman:",
+            "\nUser:",
+            "\n\n\n"
+        ]
 
-            # Generate response
-            result = self.model.generate(prompt, config=gen_config)
+        last_error = None
+        total_tokens = 0
 
-            # Robust response validation
-            response_text = result.text if result and result.text else ""
-            tokens_used = result.tokens_used if result and hasattr(result, 'tokens_used') else 0
-            finish_reason = result.finish_reason if result and hasattr(result, 'finish_reason') else "unknown"
+        for attempt in range(max_retries):
+            try:
+                # Slightly increase temperature on retries to get different output
+                retry_temperature = min(base_temperature + (attempt * 0.1), 1.0)
 
-            return {
-                "text": response_text,
-                "tokens_used": tokens_used,
-                "finish_reason": finish_reason,
-                "metadata": result.metadata if result and hasattr(result, 'metadata') else {}
-            }
+                gen_config = GenerationConfig(
+                    temperature=retry_temperature,
+                    max_tokens=kwargs.get('max_tokens', 512),
+                    top_p=kwargs.get('top_p', 0.9),
+                    stop_sequences=kwargs.get('stop_sequences', default_stop_sequences)
+                )
 
-        except Exception as e:
-            logger.error(f"Generation failed in agent '{self.name}': {e}")
-            # Return empty response instead of crashing - more resilient
-            logger.warning(f"Returning empty response due to generation failure")
-            return {
-                "text": "",
-                "tokens_used": 0,
-                "finish_reason": "error",
-                "metadata": {"error": str(e)}
-            }
+                result = self.model.generate(prompt, config=gen_config)
+
+                response_text = result.text if result and result.text else ""
+                tokens_used = result.tokens_used if result and hasattr(result, 'tokens_used') else 0
+                finish_reason = result.finish_reason if result and hasattr(result, 'finish_reason') else "unknown"
+                total_tokens += tokens_used
+
+                # If we got a non-empty response, return it
+                if response_text.strip():
+                    return {
+                        "text": response_text,
+                        "tokens_used": total_tokens,
+                        "finish_reason": finish_reason,
+                        "metadata": result.metadata if result and hasattr(result, 'metadata') else {}
+                    }
+
+                # Empty response — retry
+                if attempt < max_retries - 1:
+                    logger.info(
+                        f"Empty response on attempt {attempt + 1}/{max_retries}, "
+                        f"retrying in {backoff_delays[attempt]}s with temperature={retry_temperature:.2f}"
+                    )
+                    time.sleep(backoff_delays[attempt])
+                else:
+                    logger.warning(f"Empty response after {max_retries} attempts")
+
+            except Exception as e:
+                last_error = e
+                if attempt < max_retries - 1:
+                    logger.warning(
+                        f"Generation error on attempt {attempt + 1}/{max_retries}: {e}, "
+                        f"retrying in {backoff_delays[attempt]}s"
+                    )
+                    time.sleep(backoff_delays[attempt])
+                else:
+                    logger.error(f"Generation failed after {max_retries} attempts: {e}")
+
+        # All retries exhausted
+        if last_error:
+            logger.warning(f"Returning empty response due to generation failure: {last_error}")
+        return {
+            "text": "",
+            "tokens_used": total_tokens,
+            "finish_reason": "error",
+            "metadata": {"error": str(last_error) if last_error else "empty_response"}
+        }
 
     def _parse_react_response(self, text: str) -> Dict[str, Any]:
         """
@@ -734,9 +875,49 @@ Question: {task}
 
         return parsed
 
+    @staticmethod
+    def _run_coroutine_sync(coro):
+        """
+        Run an async coroutine from synchronous code.
+
+        Uses a simple strategy: try asyncio.run() first. If an event loop
+        is already running, fall back to a thread-based approach.
+        """
+        try:
+            # No running loop — simplest path
+            return asyncio.run(coro)
+        except RuntimeError:
+            # Event loop already running — run in a new thread
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(asyncio.run, coro)
+                return future.result(timeout=60)
+
+    @staticmethod
+    def _sanitize_tool_input(tool_input: str, max_length: int = 10000) -> str:
+        """
+        Sanitize tool input by stripping control characters and limiting length.
+
+        Args:
+            tool_input: Raw input string.
+            max_length: Maximum allowed input length.
+
+        Returns:
+            Sanitized input string.
+        """
+        if not tool_input:
+            return tool_input
+        # Strip control characters except newline and tab
+        sanitized = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', tool_input)
+        # Limit length
+        if len(sanitized) > max_length:
+            logger.warning(f"Tool input truncated from {len(sanitized)} to {max_length} chars")
+            sanitized = sanitized[:max_length]
+        return sanitized
+
     def _execute_tool(self, tool_name: str, tool_input: str) -> str:
         """
-        Execute a tool with robust error handling.
+        Execute a tool with circuit breaker, fallback support, and input sanitization.
 
         Args:
             tool_name: Name of tool to execute
@@ -744,12 +925,52 @@ Question: {task}
 
         Returns:
             Tool output as string
+        """
+        # Sanitize input
+        tool_input = self._sanitize_tool_input(tool_input)
 
-        Notes:
-            - Handles both sync and async tool execution
-            - Parses JSON or plain text input
-            - Provides detailed error messages
-            - Tracks execution for debugging
+        # Circuit breaker check
+        if not self._circuit_breaker.is_available(tool_name):
+            logger.info(f"Circuit breaker OPEN for '{tool_name}', skipping execution")
+            return f"Error executing tool '{tool_name}': tool temporarily disabled due to repeated failures"
+
+        result_str = self._execute_tool_once(tool_name, tool_input)
+
+        # Update circuit breaker
+        if result_str.startswith("Error executing tool"):
+            self._circuit_breaker.record_failure(tool_name)
+        else:
+            self._circuit_breaker.record_success(tool_name)
+
+        # Check if primary tool failed and fallback is enabled
+        if (
+            self._enable_fallback
+            and result_str.startswith("Error executing tool")
+            and self._fallback_chain.has_fallbacks(tool_name)
+        ):
+            fallbacks = self._fallback_chain.get_fallbacks(tool_name)
+            for fb_name in fallbacks:
+                if fb_name not in self.tools:
+                    continue
+                logger.info(f"Tool '{tool_name}' failed, trying fallback: {fb_name}")
+                fb_result = self._execute_tool_once(fb_name, tool_input)
+                if not fb_result.startswith("Error executing tool"):
+                    logger.info(f"Fallback '{fb_name}' succeeded for '{tool_name}'")
+                    return f"[Fallback: used {fb_name} instead of {tool_name}] {fb_result}"
+            logger.info(f"All fallbacks exhausted for '{tool_name}'")
+
+        return result_str
+
+    def _execute_tool_once(self, tool_name: str, tool_input: str) -> str:
+        """
+        Execute a single tool with robust error handling (no fallback).
+
+        Args:
+            tool_name: Name of tool to execute
+            tool_input: Input for the tool (JSON string or plain text)
+
+        Returns:
+            Tool output as string
         """
         # Track tool call start
         self.execution_tracker.track_event(ExecutionEvent(
@@ -795,43 +1016,11 @@ Question: {task}
             try:
                 result = tool.execute(**input_dict)
 
-                # Handle async results if necessary
+                # Handle async results (coroutines) cleanly
                 if asyncio.iscoroutine(result):
-                    logger.debug(f"Tool '{tool_name}' returned coroutine, handling async execution")
-                    try:
-                        # Try to get the current event loop
-                        try:
-                            loop = asyncio.get_running_loop()
-                            # Loop is running - we're in async context
-                            # We need to run the coroutine synchronously
-                            # Use asyncio.run_coroutine_threadsafe or nest_asyncio
-                            logger.debug("Running loop detected, using synchronous execution pattern")
-
-                            # Import nest_asyncio for nested async support
-                            try:
-                                import nest_asyncio
-                                nest_asyncio.apply()
-                                result = asyncio.run(result)
-                            except ImportError:
-                                # Fallback: run in new thread
-                                import concurrent.futures
-                                with concurrent.futures.ThreadPoolExecutor() as executor:
-                                    future = executor.submit(asyncio.run, result)
-                                    result = future.result(timeout=30)
-                        except RuntimeError:
-                            # No running loop - we can use run_until_complete
-                            loop = asyncio.new_event_loop()
-                            asyncio.set_event_loop(loop)
-                            try:
-                                result = loop.run_until_complete(result)
-                            finally:
-                                loop.close()
-                    except Exception as e:
-                        logger.error(f"Error executing async tool: {e}", exc_info=True)
-                        result = f"Error executing async tool: {str(e)}"
+                    result = self._run_coroutine_sync(result)
 
             except TypeError as e:
-                # Handle parameter mismatch
                 logger.error(f"Tool parameter error: {e}")
                 raise ValueError(
                     f"Tool '{tool_name}' parameter error: {str(e)}. "
@@ -844,22 +1033,22 @@ Question: {task}
             elif hasattr(result, 'output'):
                 # ToolResult object - extract output
                 if hasattr(result, 'success') and not result.success:
-                    # Tool failed - include error message
                     error_msg = getattr(result, 'error', 'Unknown error')
                     result_str = f"Tool execution failed: {error_msg}"
                 else:
-                    # Tool succeeded - extract output
                     output = result.output
                     if isinstance(output, dict):
-                        # For dict outputs, try to get the main result
                         result_str = str(output.get('result', output.get('output', output)))
                     else:
                         result_str = str(output)
             elif hasattr(result, 'result'):
-                # Legacy format
                 result_str = str(result.result)
             else:
                 result_str = str(result)
+
+            # Check if result indicates a tool-level failure
+            if result_str.startswith("Tool execution failed:"):
+                raise ValueError(result_str)
 
             # Track success
             self.execution_tracker.track_event(ExecutionEvent(
@@ -873,7 +1062,6 @@ Question: {task}
             return result_str
 
         except ValueError as e:
-            # ValueError is expected for hallucinated/invalid tool names - log cleanly
             error_msg = str(e)
             logger.debug(f"Tool '{tool_name}' execution failed: {error_msg}")
 
@@ -884,11 +1072,9 @@ Question: {task}
                 data={"tool_name": tool_name, "error": error_msg, "input": tool_input}
             ))
 
-            # Return informative error message
             return f"Error executing tool '{tool_name}': {error_msg}"
 
         except Exception as e:
-            # Unexpected errors - log with traceback for debugging
             error_msg = f"{type(e).__name__}: {str(e)}"
             logger.error(f"Tool '{tool_name}' execution failed: {error_msg}", exc_info=True)
 
@@ -899,7 +1085,6 @@ Question: {task}
                 data={"tool_name": tool_name, "error": error_msg, "input": tool_input}
             ))
 
-            # Return informative error message
             return f"Error executing tool '{tool_name}': {error_msg}"
 
     def _map_input_to_parameters(self, tool, input_value):
@@ -1082,17 +1267,21 @@ Question: {task}
                 metadata={"error": str(e)}
             )
 
-    def _get_tools_description(self) -> str:
-        """Get formatted description of available tools."""
+    def _get_tools_description(self, verbose: Optional[bool] = None) -> str:
+        """
+        Get formatted description of available tools.
+
+        Args:
+            verbose: Override verbosity. If None, uses self._verbose_tools.
+
+        Returns:
+            Formatted tools description string.
+        """
         if not self.tools:
             return "No tools available."
 
-        descriptions = []
-        for tool_name, tool in self.tools.items():
-            desc = f"- {tool_name}: {tool.description}"
-            descriptions.append(desc)
-
-        return "\n".join(descriptions)
+        use_verbose = verbose if verbose is not None else self._verbose_tools
+        return self._tool_prompt_generator.generate_tools_section(verbose=use_verbose)
 
     def _format_conversation_history(self, max_turns: int = 5) -> str:
         """
@@ -1202,7 +1391,11 @@ Provide a well-structured, comprehensive response that integrates all findings."
                        context: Optional[Dict[str, Any]] = None,
                        **kwargs) -> AgentResponse:
         """
-        Asynchronous version of run().
+        Truly asynchronous version of run().
+
+        Runs the synchronous run() method in a thread executor so it
+        doesn't block the event loop, while remaining compatible with
+        async callers.
 
         Args:
             task: Task description
@@ -1213,16 +1406,21 @@ Provide a well-structured, comprehensive response that integrates all findings."
         Returns:
             AgentResponse
         """
-        # Run in executor
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None,
-            self.run,
-            task,
-            mode,
-            context,
-            **kwargs
-        )
+        import functools
+        loop = asyncio.get_running_loop()
+        func = functools.partial(self.run, task, mode, context, **kwargs)
+        return await loop.run_in_executor(None, func)
+
+    async def __aenter__(self):
+        """Async context manager entry."""
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit — clean up resources."""
+        # Reset circuit breaker
+        self._circuit_breaker.reset_all()
+        # Clear short-term memory if desired
+        return False
 
     def stream(self,
                task: str,
