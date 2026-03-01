@@ -773,6 +773,115 @@ class ACPServer:
         except Exception as e:
             raise RuntimeError(f"BeeAI unregistration failed: {e}")
 
+    def create_app(self):
+        """
+        Create a FastAPI application exposing ACP endpoints.
+
+        Endpoints:
+            GET  /manifest        — Agent manifest
+            GET  /health          — Health check
+            POST /execute         — Execute capability (sync or async)
+            GET  /tasks/{task_id} — Get task status
+            DELETE /tasks/{task_id} — Cancel task
+
+        Returns:
+            FastAPI application instance
+
+        Raises:
+            ImportError: If fastapi/uvicorn not installed
+        """
+        try:
+            from fastapi import FastAPI, HTTPException, Request
+            from fastapi.responses import JSONResponse
+            from fastapi.middleware.cors import CORSMiddleware
+        except ImportError:
+            raise ImportError(
+                "FastAPI is required for ACP server mode. "
+                "Install with: pip install fastapi uvicorn\n"
+                "⚠️  FastAPI server mode requires fastapi (free, open source)."
+            )
+
+        app = FastAPI(
+            title=f"ACP Agent: {self.name}",
+            version=self.version,
+            description=self.description,
+        )
+
+        # CORS
+        if self.config.enable_cors:
+            app.add_middleware(
+                CORSMiddleware,
+                allow_origins=self.config.cors_origins,
+                allow_methods=["*"],
+                allow_headers=["*"],
+            )
+
+        server = self  # capture for closures
+
+        @app.get("/manifest")
+        async def get_manifest():
+            return server.get_manifest().to_dict()
+
+        @app.get("/health")
+        async def health_check():
+            return {
+                "status": "healthy",
+                "agent": server.name,
+                "version": server.version,
+                "capabilities": len(server.registry.list_capabilities()),
+            }
+
+        @app.post("/execute")
+        async def execute(request: Request):
+            body = await request.json()
+            try:
+                acp_request = ACPRequest.from_dict(body)
+            except (KeyError, ValueError) as e:
+                raise HTTPException(status_code=400, detail=f"Invalid request: {e}")
+
+            token_id = request.headers.get("X-Capability-Token")
+            response = await server.handle_request(acp_request, token_id=token_id)
+            return response.to_dict()
+
+        @app.get("/tasks/{task_id}")
+        async def get_task(task_id: str):
+            task = server.get_task_status(task_id)
+            if not task:
+                raise HTTPException(status_code=404, detail=f"Task not found: {task_id}")
+            return task.to_dict()
+
+        @app.delete("/tasks/{task_id}")
+        async def cancel_task(task_id: str):
+            cancelled = await server.cancel_task(task_id)
+            if not cancelled:
+                raise HTTPException(status_code=404, detail=f"Task not found: {task_id}")
+            return {"status": "cancelled", "taskId": task_id}
+
+        return app
+
+    def run(self, **kwargs):
+        """
+        Run the ACP server using uvicorn.
+
+        Args:
+            **kwargs: Additional uvicorn.run() arguments
+        """
+        try:
+            import uvicorn
+        except ImportError:
+            raise ImportError(
+                "uvicorn is required to run the ACP server. "
+                "Install with: pip install uvicorn"
+            )
+
+        app = self.create_app()
+        uvicorn.run(
+            app,
+            host=kwargs.pop("host", self.config.host),
+            port=kwargs.pop("port", self.config.port),
+            **kwargs,
+        )
+
     def __repr__(self) -> str:
         """String representation."""
         return f"<ACPServer(name='{self.name}', version='{self.version}', capabilities={len(self.registry.list_capabilities())})>"

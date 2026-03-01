@@ -27,6 +27,8 @@ from .client import (
     StdioTransport,
     HTTPTransport,
     SSETransport,
+    MCPToolBridge,
+    ConnectionState,
 )
 
 from .server import (
@@ -58,6 +60,8 @@ __all__ = [
     "StdioTransport",
     "HTTPTransport",
     "SSETransport",
+    "MCPToolBridge",
+    "ConnectionState",
     # Server
     "MCPServer",
     "create_server",

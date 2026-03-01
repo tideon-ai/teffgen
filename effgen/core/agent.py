@@ -26,6 +26,11 @@ from ..prompts.tool_prompt_generator import ToolPromptGenerator
 from ..prompts.agent_system_prompt import AgentSystemPromptBuilder
 from ..tools.fallback import ToolFallbackChain
 from ..utils.circuit_breaker import CircuitBreaker
+from ..memory.short_term import ShortTermMemory, MessageRole
+from ..memory.long_term import (
+    LongTermMemory, MemoryType, ImportanceLevel,
+    JSONStorageBackend, SQLiteStorageBackend,
+)
 from .state import AgentState
 from .task import Task, TaskStatus, SubTask
 from .router import SubAgentRouter, RoutingDecision, RoutingStrategy
@@ -81,6 +86,13 @@ class AgentConfig:
     verbose_tools: Optional[bool] = None
     fallback_chain: Optional[Dict[str, list]] = None
     enable_fallback: bool = True
+    memory_config: Dict[str, Any] = field(default_factory=lambda: {
+        "short_term_max_tokens": 4096,
+        "short_term_max_messages": 100,
+        "long_term_backend": "sqlite",
+        "long_term_persist_path": None,
+        "auto_summarize": True,
+    })
 
 
 @dataclass
@@ -253,9 +265,31 @@ Question: {task}
         # Execution tracker
         self.execution_tracker = ExecutionTracker()
 
-        # Memory (placeholder for now)
-        self.short_term_memory = []
-        self.long_term_memory = None  # Would integrate vector store
+        # Memory system
+        mem_cfg = config.memory_config or {}
+        self.short_term_memory = ShortTermMemory(
+            max_tokens=mem_cfg.get("short_term_max_tokens", 4096),
+            max_messages=mem_cfg.get("short_term_max_messages", 100),
+        )
+
+        # Long-term memory (optional, requires persist path)
+        self.long_term_memory: Optional[LongTermMemory] = None
+        if config.enable_memory:
+            persist_path = mem_cfg.get("long_term_persist_path")
+            if persist_path:
+                import os
+                persist_path = os.path.expanduser(persist_path)
+                backend_type = mem_cfg.get("long_term_backend", "sqlite")
+                if backend_type == "sqlite":
+                    backend = SQLiteStorageBackend(
+                        os.path.join(persist_path, "long_term.db")
+                    )
+                else:
+                    backend = JSONStorageBackend(
+                        os.path.join(persist_path, "long_term.json")
+                    )
+                self.long_term_memory = LongTermMemory(backend=backend)
+                self.long_term_memory.start_session(name=self.name)
 
     def _build_system_prompt(self) -> str:
         """Build a dynamic system prompt based on agent configuration and tools."""
@@ -351,12 +385,21 @@ Question: {task}
 
             # Store conversation in short-term memory for context retention
             if response.success and response.output:
-                self.short_term_memory.append({
-                    'user': task,
-                    'assistant': response.output,
-                    'timestamp': time.time()
-                })
-                logger.debug(f"Stored conversation turn in memory (total turns: {len(self.short_term_memory)})")
+                self.short_term_memory.add_user_message(task)
+                self.short_term_memory.add_assistant_message(response.output)
+                logger.debug(
+                    f"Stored conversation turn in memory "
+                    f"(total: {self.short_term_memory.total_messages_added} messages)"
+                )
+
+                # Persist important facts to long-term memory if available
+                if self.long_term_memory and response.tool_calls > 0:
+                    self.long_term_memory.add_memory(
+                        content=f"Q: {task}\nA: {response.output}",
+                        memory_type=MemoryType.CONVERSATION,
+                        importance=ImportanceLevel.MEDIUM,
+                        tags=["conversation"],
+                    )
 
             return response
 
@@ -431,7 +474,7 @@ Question: {task}
 
             # Debug: log first iteration prompt to see if history is included
             if iterations == 1 and conversation_history:
-                logger.info(f"[Memory] Including conversation history ({len(self.short_term_memory)} turns)")
+                logger.info(f"[Memory] Including conversation history ({len(self.short_term_memory.messages)} messages)")
 
             # Track reasoning step
             self.execution_tracker.track_event(ExecutionEvent(
@@ -1305,29 +1348,38 @@ Question: {task}
         """
         Format conversation history for inclusion in prompt.
 
+        Uses ShortTermMemory to retrieve recent messages.
+
         Args:
-            max_turns: Maximum number of previous turns to include
+            max_turns: Maximum number of previous turns (user+assistant pairs)
 
         Returns:
             Formatted conversation history string
         """
-        if not self.short_term_memory:
-            return ""
-
-        # Get last N turns
-        recent_turns = self.short_term_memory[-max_turns:]
-
-        if not recent_turns:
+        messages = self.short_term_memory.get_recent_messages(n=max_turns * 2)
+        if not messages:
             return ""
 
         history = "\n\n=== Previous Conversation Context ===\n"
-        for i, turn in enumerate(recent_turns, 1):
-            history += f"[Turn {i}]\n"
-            history += f"User: {turn['user']}\n"
-            history += f"Assistant: {turn['assistant']}\n\n"
-        history += "=== End of Previous Context ===\n"
+        turn_num = 0
+        i = 0
+        while i < len(messages):
+            msg = messages[i]
+            if msg.role == MessageRole.USER:
+                turn_num += 1
+                history += f"[Turn {turn_num}]\n"
+                history += f"User: {msg.content}\n"
+                # Check if next message is assistant
+                if i + 1 < len(messages) and messages[i + 1].role == MessageRole.ASSISTANT:
+                    history += f"Assistant: {messages[i + 1].content}\n\n"
+                    i += 2
+                    continue
+                else:
+                    history += "\n"
+            i += 1
 
-        return history
+        history += "=== End of Previous Context ===\n"
+        return history if turn_num > 0 else ""
 
     def add_tool(self, tool: BaseTool):
         """
@@ -1351,7 +1403,10 @@ Question: {task}
     def reset_memory(self):
         """Clear conversation and tool history."""
         self.state.clear_history()
-        self.short_term_memory = []
+        self.short_term_memory.clear()
+        if self.long_term_memory:
+            self.long_term_memory.end_session()
+            self.long_term_memory.start_session(name=self.name)
 
     def save_state(self, filepath: str, format: str = "json"):
         """
@@ -1444,25 +1499,160 @@ Provide a well-structured, comprehensive response that integrates all findings."
                task: str,
                mode: AgentMode = AgentMode.AUTO,
                context: Optional[Dict[str, Any]] = None,
+               on_thought: Optional[Callable[[str], None]] = None,
+               on_tool_call: Optional[Callable[[str, str], None]] = None,
+               on_observation: Optional[Callable[[str], None]] = None,
+               on_answer: Optional[Callable[[str], None]] = None,
                **kwargs) -> Iterator[str]:
         """
-        Stream response token by token.
+        Stream response token by token using real model streaming.
+
+        Streams the ReAct loop in real-time:
+        - Yields thought tokens as they generate
+        - Pauses streaming during tool execution
+        - Yields observation text after tool calls
+        - Yields final answer tokens
 
         Args:
             task: Task description
             mode: Execution mode
             context: Optional context
+            on_thought: Callback for thought tokens
+            on_tool_call: Callback(tool_name, tool_input) when a tool is called
+            on_observation: Callback for tool observation text
+            on_answer: Callback for final answer tokens
             **kwargs: Additional arguments
 
         Yields:
-            Response tokens
+            Response tokens (str)
         """
-        # Placeholder for streaming
-        # Would integrate with model streaming
-        response = self.run(task, mode, context, **kwargs)
-        for char in response.output:
-            yield char
-            time.sleep(0.01)  # Simulate streaming delay
+        if self.model is None:
+            raise RuntimeError(
+                f"Agent '{self.name}' has no model loaded. "
+                "Provide a model in AgentConfig or use a mock for testing."
+            )
+
+        context = context or {}
+        max_iterations = self.config.max_iterations
+        scratchpad = ""
+        iterations = 0
+        tool_calls = 0
+
+        # Build conversation history
+        conversation_history = self._format_conversation_history()
+
+        default_stop_sequences = [
+            "\nObservation:",
+            "\nQuestion:",
+            "\nHuman:",
+            "\nUser:",
+            "\n\n\n",
+        ]
+
+        gen_config = GenerationConfig(
+            temperature=kwargs.get("temperature", self.config.temperature),
+            max_tokens=kwargs.get("max_tokens", 512),
+            top_p=kwargs.get("top_p", 0.9),
+            stop_sequences=kwargs.get("stop_sequences", default_stop_sequences),
+        )
+
+        while iterations < max_iterations:
+            iterations += 1
+
+            # Build prompt
+            tools_desc = self._get_tools_description()
+            if self.config.system_prompt_template:
+                prompt = self.config.system_prompt_template.format(
+                    tools_description=tools_desc,
+                    task=task,
+                    scratchpad=scratchpad,
+                    conversation_history=conversation_history,
+                )
+            else:
+                prompt = self._tool_prompt_generator.generate_react_prompt(
+                    task=task,
+                    scratchpad=scratchpad,
+                    conversation_history=conversation_history,
+                    system_prompt=self.config.system_prompt,
+                    verbose=self._verbose_tools,
+                )
+
+            # Stream tokens from model
+            accumulated = ""
+            try:
+                for token in self.model.generate_stream(prompt, config=gen_config):
+                    accumulated += token
+
+                    # Check for stop sequences
+                    hit_stop = False
+                    for stop_seq in default_stop_sequences:
+                        if stop_seq in accumulated:
+                            # Trim at stop sequence
+                            idx = accumulated.index(stop_seq)
+                            accumulated = accumulated[:idx]
+                            hit_stop = True
+                            break
+
+                    yield token
+
+                    if hit_stop:
+                        break
+
+            except Exception as e:
+                logger.error(f"Streaming generation failed: {e}")
+                yield f"\n[Error: {e}]"
+                return
+
+            # Parse the accumulated response
+            parsed = self._parse_react_response(accumulated)
+            thought = parsed.get("thought", "")
+            scratchpad += f"\nThought: {thought}"
+
+            if on_thought and thought:
+                on_thought(thought)
+
+            # Check for final answer
+            if parsed.get("final_answer"):
+                answer = parsed["final_answer"]
+                if on_answer:
+                    on_answer(answer)
+                # Store in memory
+                if answer:
+                    self.short_term_memory.add_user_message(task)
+                    self.short_term_memory.add_assistant_message(answer)
+                return
+
+            # Execute tool if present
+            if parsed.get("action") and parsed.get("action_input"):
+                action = parsed["action"]
+                action_input = parsed["action_input"]
+
+                if on_tool_call:
+                    on_tool_call(action, action_input)
+
+                if action in self.tools:
+                    tool_result = self._execute_tool(action, action_input)
+                    tool_calls += 1
+
+                    scratchpad += f"\nAction: {action}"
+                    scratchpad += f"\nAction Input: {action_input}"
+                    scratchpad += f"\nObservation: {tool_result}"
+
+                    # Yield observation
+                    obs_text = f"\nObservation: {tool_result}\n"
+                    yield obs_text
+                    if on_observation:
+                        on_observation(str(tool_result))
+                else:
+                    no_tool_msg = f"\nObservation: Tool '{action}' not found. Use 'Final Answer:' to respond directly.\n"
+                    scratchpad += f"\nAction: {action}"
+                    scratchpad += f"\nAction Input: {action_input}"
+                    scratchpad += f"\nObservation: Tool '{action}' not found."
+                    yield no_tool_msg
+            else:
+                scratchpad += "\nAction: (continue reasoning)"
+
+        yield "\n[Max iterations reached]"
 
     def get_execution_summary(self) -> Dict[str, Any]:
         """

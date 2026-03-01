@@ -253,6 +253,70 @@ class SSETransport(MCPTransport):
             raise ValueError(f"Expected response, got {type(message)}")
 
 
+class ConnectionState:
+    """MCP connection state tracking."""
+    DISCONNECTED = "disconnected"
+    CONNECTING = "connecting"
+    CONNECTED = "connected"
+    RECONNECTING = "reconnecting"
+    DEGRADED = "degraded"  # Server unreachable but client alive
+
+
+class MCPToolBridge(BaseTool):
+    """
+    Bridge that wraps an MCP tool as an effGen BaseTool.
+
+    Allows MCP-discovered tools to be used transparently in the agent's tool set.
+    """
+
+    def __init__(self, mcp_tool: MCPTool, client: "MCPClient"):
+        """
+        Initialize MCP tool bridge.
+
+        Args:
+            mcp_tool: MCP tool definition
+            client: MCPClient instance for execution
+        """
+        # Convert MCP tool schema to effGen ParameterSpec list
+        params = []
+        input_schema = mcp_tool.inputSchema or {}
+        properties = input_schema.get("properties", {})
+        required = input_schema.get("required", [])
+
+        type_map = {
+            "string": ParameterType.STRING,
+            "integer": ParameterType.INTEGER,
+            "number": ParameterType.FLOAT,
+            "boolean": ParameterType.BOOLEAN,
+            "array": ParameterType.LIST,
+            "object": ParameterType.DICT,
+        }
+
+        for prop_name, prop_schema in properties.items():
+            json_type = prop_schema.get("type", "string")
+            params.append(ParameterSpec(
+                name=prop_name,
+                type=type_map.get(json_type, ParameterType.STRING),
+                description=prop_schema.get("description", ""),
+                required=prop_name in required,
+                default=prop_schema.get("default"),
+            ))
+
+        metadata = ToolMetadata(
+            name=f"mcp_{mcp_tool.name}",
+            description=mcp_tool.description or f"MCP tool: {mcp_tool.name}",
+            category=ToolCategory.UTILITY,
+            parameters=params,
+        )
+        super().__init__(metadata=metadata)
+        self._mcp_tool = mcp_tool
+        self._client = client
+
+    async def _execute(self, **kwargs) -> Any:
+        """Execute the MCP tool via the client."""
+        return await self._client.call_tool(self._mcp_tool.name, kwargs)
+
+
 class MCPClient:
     """
     Client for connecting to MCP servers.
@@ -262,16 +326,27 @@ class MCPClient:
     - Server discovery and capability negotiation
     - Tool listing and execution
     - Resource management
-    - Automatic reconnection
-    - Error handling and retry logic
+    - Automatic reconnection with exponential backoff
+    - MCP tool → effGen tool bridge
+    - MCP resource → context bridge
+    - Connection health monitoring
     """
 
-    def __init__(self, config: MCPServerConfig):
+    def __init__(
+        self,
+        config: MCPServerConfig,
+        max_reconnect_attempts: int = 5,
+        reconnect_base_delay: float = 1.0,
+        health_check_interval: float = 30.0,
+    ):
         """
         Initialize MCP client.
 
         Args:
             config: Server configuration
+            max_reconnect_attempts: Max reconnection attempts (0 = disabled)
+            reconnect_base_delay: Base delay for exponential backoff (seconds)
+            health_check_interval: Interval for health checks (seconds, 0 = disabled)
         """
         self.config = config
         self.transport: Optional[MCPTransport] = None
@@ -282,8 +357,37 @@ class MCPClient:
         self._connected = False
         self._pending_requests: Dict[Union[str, int], asyncio.Future] = {}
 
+        # Reconnection settings
+        self._max_reconnect_attempts = max_reconnect_attempts
+        self._reconnect_base_delay = reconnect_base_delay
+        self._reconnect_count = 0
+
+        # Health monitoring
+        self._health_check_interval = health_check_interval
+        self._health_task: Optional[asyncio.Task] = None
+        self._state = ConnectionState.DISCONNECTED
+        self._last_healthy: Optional[float] = None
+
+        # Tool bridge cache
+        self._bridged_tools: Dict[str, MCPToolBridge] = {}
+
+        # Resource context cache
+        self._resource_context: Dict[str, Any] = {}
+
+    @property
+    def state(self) -> str:
+        """Current connection state."""
+        return self._state
+
+    @property
+    def is_healthy(self) -> bool:
+        """Whether the connection is healthy."""
+        return self._state == ConnectionState.CONNECTED
+
     async def connect(self) -> None:
         """Connect to MCP server and perform initialization."""
+        self._state = ConnectionState.CONNECTING
+
         # Create transport
         if self.config.transport == TransportType.STDIO:
             if not self.config.command:
@@ -311,18 +415,110 @@ class MCPClient:
         await self._initialize()
 
         self._connected = True
+        self._state = ConnectionState.CONNECTED
+        self._reconnect_count = 0
+        self._last_healthy = asyncio.get_event_loop().time()
         logger.info(f"Connected to MCP server: {self.config.name}")
+
+        # Start health monitoring
+        if self._health_check_interval > 0:
+            self._health_task = asyncio.create_task(self._health_monitor())
 
     async def disconnect(self) -> None:
         """Disconnect from MCP server."""
+        # Stop health monitor
+        if self._health_task and not self._health_task.done():
+            self._health_task.cancel()
+            try:
+                await self._health_task
+            except asyncio.CancelledError:
+                pass
+
         if self.transport:
             await self.transport.disconnect()
         self._connected = False
+        self._state = ConnectionState.DISCONNECTED
         logger.info(f"Disconnected from MCP server: {self.config.name}")
+
+    async def _reconnect(self) -> bool:
+        """
+        Attempt to reconnect with exponential backoff.
+
+        Returns:
+            True if reconnection succeeded
+        """
+        if self._max_reconnect_attempts <= 0:
+            return False
+
+        self._state = ConnectionState.RECONNECTING
+
+        for attempt in range(self._max_reconnect_attempts):
+            delay = self._reconnect_base_delay * (2 ** attempt)
+            delay = min(delay, 60.0)  # Cap at 60s
+            logger.info(
+                f"Reconnecting to {self.config.name} "
+                f"(attempt {attempt + 1}/{self._max_reconnect_attempts}, "
+                f"delay {delay:.1f}s)"
+            )
+            await asyncio.sleep(delay)
+
+            try:
+                # Disconnect old transport
+                if self.transport:
+                    try:
+                        await self.transport.disconnect()
+                    except Exception:
+                        pass
+
+                # Reconnect
+                await self.connect()
+                logger.info(f"Reconnected to {self.config.name}")
+                self._reconnect_count += 1
+                return True
+
+            except Exception as e:
+                logger.warning(f"Reconnect attempt {attempt + 1} failed: {e}")
+
+        self._state = ConnectionState.DEGRADED
+        logger.error(
+            f"Failed to reconnect to {self.config.name} "
+            f"after {self._max_reconnect_attempts} attempts"
+        )
+        return False
+
+    async def _health_monitor(self) -> None:
+        """Background task that monitors connection health via periodic pings."""
+        while True:
+            try:
+                await asyncio.sleep(self._health_check_interval)
+                if not self._connected:
+                    continue
+
+                # Send a lightweight request to check connectivity
+                try:
+                    request = self.protocol.create_tools_list_request()
+                    await asyncio.wait_for(
+                        self._send_request(request),
+                        timeout=self.config.timeout,
+                    )
+                    self._last_healthy = asyncio.get_event_loop().time()
+                    if self._state == ConnectionState.DEGRADED:
+                        self._state = ConnectionState.CONNECTED
+                        logger.info(f"Connection to {self.config.name} recovered")
+
+                except (ConnectionError, RuntimeError, asyncio.TimeoutError) as e:
+                    logger.warning(f"Health check failed for {self.config.name}: {e}")
+                    self._state = ConnectionState.DEGRADED
+                    # Try reconnection
+                    await self._reconnect()
+
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"Health monitor error: {e}")
 
     async def _initialize(self) -> None:
         """Perform MCP initialization handshake."""
-        # Send initialize request
         request = self.protocol.create_initialize_request(
             protocol_version="1.0",
             capabilities=MCPCapabilities(
@@ -340,7 +536,6 @@ class MCPClient:
         if response.error:
             raise RuntimeError(f"Initialization failed: {response.error.message}")
 
-        # Parse server capabilities
         result = response.result or {}
         self.capabilities = MCPCapabilities.from_dict(
             result.get("capabilities", {})
@@ -348,17 +543,15 @@ class MCPClient:
 
         logger.info(f"Server capabilities: {self.capabilities.to_dict()}")
 
-        # List tools if supported
         if self.capabilities.tools:
             await self._list_tools()
-
-        # List resources if supported
         if self.capabilities.resources:
             await self._list_resources()
 
     async def _send_request(self, request: MCPRequest) -> MCPResponse:
         """
         Send request and wait for response.
+        Attempts auto-reconnection on connection failure.
 
         Args:
             request: Request to send
@@ -369,13 +562,18 @@ class MCPClient:
         if not self.transport:
             raise RuntimeError("Not connected")
 
-        # Send request
-        await self.transport.send(request)
-
-        # Wait for response
-        response = await self.transport.receive()
-
-        return response
+        try:
+            await self.transport.send(request)
+            response = await self.transport.receive()
+            return response
+        except (ConnectionError, RuntimeError) as e:
+            if self._max_reconnect_attempts > 0:
+                logger.warning(f"Connection lost, attempting reconnect: {e}")
+                if await self._reconnect():
+                    # Retry after reconnection
+                    await self.transport.send(request)
+                    return await self.transport.receive()
+            raise
 
     async def _list_tools(self) -> None:
         """List available tools from server."""
@@ -389,6 +587,8 @@ class MCPClient:
         tools_data = response.result or {}
         tools_list = tools_data.get("tools", [])
 
+        self.tools.clear()
+        self._bridged_tools.clear()
         for tool_data in tools_list:
             tool = MCPTool.from_dict(tool_data)
             self.tools[tool.name] = tool
@@ -407,6 +607,7 @@ class MCPClient:
         resources_data = response.result or {}
         resources_list = resources_data.get("resources", [])
 
+        self.resources.clear()
         for resource_data in resources_list:
             resource = MCPResource.from_dict(resource_data)
             self.resources[resource.uri] = resource
@@ -457,12 +658,93 @@ class MCPClient:
         return response.result
 
     def get_tools(self) -> List[MCPTool]:
-        """Get list of available tools."""
+        """Get list of available MCP tools."""
         return list(self.tools.values())
 
     def get_resources(self) -> List[MCPResource]:
         """Get list of available resources."""
         return list(self.resources.values())
+
+    # --- MCP Tool → effGen Tool Bridge (3.2.2) ---
+
+    def get_effgen_tools(self) -> List[BaseTool]:
+        """
+        Get MCP tools as effGen BaseTool instances.
+
+        Auto-converts each discovered MCP tool into an MCPToolBridge that
+        can be registered in an agent's tool set and called transparently.
+
+        Returns:
+            List of BaseTool instances wrapping MCP tools
+        """
+        bridged = []
+        for mcp_tool in self.tools.values():
+            if mcp_tool.name not in self._bridged_tools:
+                self._bridged_tools[mcp_tool.name] = MCPToolBridge(mcp_tool, self)
+            bridged.append(self._bridged_tools[mcp_tool.name])
+        return bridged
+
+    # --- MCP Resource → Context Bridge (3.2.3) ---
+
+    async def load_resources_as_context(self) -> Dict[str, Any]:
+        """
+        Load all MCP resources into a context dictionary.
+
+        Returns:
+            Dict mapping resource URIs to their content
+        """
+        context = {}
+        for uri in self.resources:
+            try:
+                content = await self.read_resource(uri)
+                context[uri] = content
+                self._resource_context[uri] = content
+            except Exception as e:
+                logger.warning(f"Failed to load resource {uri}: {e}")
+        return context
+
+    async def subscribe_resource(
+        self, uri: str, callback=None
+    ) -> None:
+        """
+        Subscribe to resource updates (polls for changes).
+
+        Args:
+            uri: Resource URI
+            callback: Optional callback(uri, new_content) on change
+        """
+        if uri not in self.resources:
+            raise ValueError(f"Resource not found: {uri}")
+
+        # Read initial value
+        current = await self.read_resource(uri)
+        self._resource_context[uri] = current
+
+        if callback:
+            callback(uri, current)
+
+    def get_resource_context(self) -> Dict[str, Any]:
+        """Get cached resource context."""
+        return dict(self._resource_context)
+
+    # --- Health info ---
+
+    def get_health_info(self) -> Dict[str, Any]:
+        """
+        Get connection health information.
+
+        Returns:
+            Dict with state, last_healthy, reconnect_count
+        """
+        return {
+            "state": self._state,
+            "connected": self._connected,
+            "server": self.config.name,
+            "last_healthy": self._last_healthy,
+            "reconnect_count": self._reconnect_count,
+            "tools_count": len(self.tools),
+            "resources_count": len(self.resources),
+        }
 
     async def __aenter__(self):
         """Async context manager entry."""

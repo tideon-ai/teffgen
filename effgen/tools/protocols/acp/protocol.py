@@ -14,6 +14,12 @@ from datetime import datetime
 import json
 import uuid
 
+try:
+    import jsonschema
+    JSONSCHEMA_AVAILABLE = True
+except ImportError:
+    JSONSCHEMA_AVAILABLE = False
+
 
 logger = logging.getLogger(__name__)
 
@@ -676,7 +682,11 @@ class ACPProtocolHandler:
 
     def validate_request(self, request: ACPRequest) -> tuple[bool, Optional[str]]:
         """
-        Validate an ACP request.
+        Validate an ACP request against capability schema.
+
+        Uses jsonschema for full JSON Schema validation including types,
+        patterns, enums, min/max values. Falls back to basic required-field
+        checks if jsonschema is not available.
 
         Args:
             request: Request to validate
@@ -689,14 +699,59 @@ class ACPProtocolHandler:
         if not capability:
             return False, f"Capability not found: {request.capability}"
 
-        # Validate input against schema
-        # TODO: Implement JSON schema validation
-        required = capability.inputSchema.required
-        for field in required:
-            if field not in request.input:
-                return False, f"Missing required field: {field}"
+        # Build JSON Schema dict from SchemaDefinition
+        schema = capability.inputSchema.to_dict()
 
-        return True, None
+        if JSONSCHEMA_AVAILABLE:
+            try:
+                jsonschema.validate(instance=request.input, schema=schema)
+                return True, None
+            except jsonschema.ValidationError as e:
+                # Build a human-readable error with path info
+                path = ".".join(str(p) for p in e.absolute_path) if e.absolute_path else "(root)"
+                return False, f"Validation error at {path}: {e.message}"
+            except jsonschema.SchemaError as e:
+                return False, f"Invalid schema: {e.message}"
+        else:
+            # Fallback: basic required-field checks
+            logger.warning(
+                "jsonschema not installed — using basic validation only. "
+                "Install with: pip install jsonschema"
+            )
+            required = capability.inputSchema.required
+            for req_field in required:
+                if req_field not in request.input:
+                    return False, f"Missing required field: {req_field}"
+
+            # Basic type checking from schema properties
+            properties = capability.inputSchema.properties
+            for prop_name, prop_schema in properties.items():
+                if prop_name in request.input:
+                    expected_type = prop_schema.get("type")
+                    value = request.input[prop_name]
+                    if expected_type and not self._check_basic_type(value, expected_type):
+                        return False, (
+                            f"Field '{prop_name}' expected type '{expected_type}', "
+                            f"got '{type(value).__name__}'"
+                        )
+
+            return True, None
+
+    @staticmethod
+    def _check_basic_type(value: Any, expected_type: str) -> bool:
+        """Basic JSON Schema type check (fallback when jsonschema unavailable)."""
+        type_map = {
+            "string": str,
+            "integer": int,
+            "number": (int, float),
+            "boolean": bool,
+            "array": list,
+            "object": dict,
+        }
+        expected = type_map.get(expected_type)
+        if expected is None:
+            return True  # Unknown type, accept
+        return isinstance(value, expected)
 
     def create_error(
         self,

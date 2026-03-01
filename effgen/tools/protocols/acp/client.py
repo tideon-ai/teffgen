@@ -544,6 +544,64 @@ class ACPClient:
                     data = json.loads(line[6:])
                     yield TaskInfo.from_dict(data)
 
+    async def poll_task(
+        self,
+        task_id: str,
+        poll_interval: float = 1.0,
+        timeout: Optional[float] = None,
+        on_progress: Optional[Callable[[TaskInfo], None]] = None,
+    ) -> TaskInfo:
+        """
+        Poll an async task until completion with progress callbacks.
+
+        Uses exponential backoff: starts at poll_interval, doubles up to 30s.
+
+        Args:
+            task_id: Task identifier
+            poll_interval: Initial polling interval in seconds
+            timeout: Timeout in seconds (None = no timeout)
+            on_progress: Callback invoked on each poll with current TaskInfo
+
+        Returns:
+            Completed TaskInfo
+
+        Raises:
+            TimeoutError: If task doesn't complete within timeout
+            RuntimeError: If task fails
+        """
+        start_time = asyncio.get_event_loop().time()
+        current_interval = poll_interval
+        max_interval = 30.0
+
+        while True:
+            task = await self.get_task_status(task_id)
+
+            # Notify progress
+            if on_progress:
+                on_progress(task)
+
+            # Terminal states
+            if task.status == TaskStatus.COMPLETED:
+                logger.info(f"Task {task_id} completed (progress={task.progress})")
+                return task
+            if task.status in (TaskStatus.FAILED, TaskStatus.CANCELLED):
+                error_msg = task.error.message if task.error else "Unknown error"
+                raise RuntimeError(
+                    f"Task {task_id} {task.status.value}: {error_msg}"
+                )
+
+            # Timeout check
+            if timeout is not None:
+                elapsed = asyncio.get_event_loop().time() - start_time
+                if elapsed >= timeout:
+                    raise TimeoutError(
+                        f"Task {task_id} timed out after {timeout}s "
+                        f"(status={task.status.value}, progress={task.progress})"
+                    )
+
+            await asyncio.sleep(current_interval)
+            current_interval = min(current_interval * 1.5, max_interval)
+
     async def cancel_task(self, task_id: str) -> bool:
         """
         Cancel a running task.
