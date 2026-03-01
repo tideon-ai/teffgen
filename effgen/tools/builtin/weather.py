@@ -13,6 +13,14 @@ from urllib.request import urlopen, Request
 from urllib.parse import urlencode, quote_plus
 from urllib.error import URLError
 
+
+def _get_user_agent() -> str:
+    try:
+        from effgen import __version__
+    except ImportError:
+        __version__ = "dev"
+    return f"effGen/{__version__}"
+
 from ..base_tool import (
     BaseTool,
     ToolCategory,
@@ -149,7 +157,7 @@ class WeatherTool(BaseTool):
 
     def _fetch_url(self, url: str) -> Dict:
         """Fetch JSON from a URL."""
-        req = Request(url, headers={"User-Agent": "effGen/0.0.2"})
+        req = Request(url, headers={"User-Agent": _get_user_agent()})
         try:
             with urlopen(req, timeout=10) as resp:
                 return json.loads(resp.read().decode("utf-8"))

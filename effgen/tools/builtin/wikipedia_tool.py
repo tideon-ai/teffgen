@@ -13,6 +13,16 @@ from urllib.request import urlopen, Request
 from urllib.parse import urlencode, quote
 from urllib.error import URLError
 
+
+def _get_user_agent(tool_name: str = "") -> str:
+    """Build User-Agent string with current effGen version."""
+    try:
+        from effgen import __version__
+    except ImportError:
+        __version__ = "dev"
+    suffix = f" ({tool_name})" if tool_name else ""
+    return f"effGen/{__version__}{suffix}"
+
 from ..base_tool import (
     BaseTool,
     ToolCategory,
@@ -121,7 +131,7 @@ class WikipediaTool(BaseTool):
         """Make a request to the Wikipedia API."""
         params["format"] = "json"
         url = f"{self._api_url}?{urlencode(params)}"
-        req = Request(url, headers={"User-Agent": "effGen/0.0.2 (Wikipedia Tool)"})
+        req = Request(url, headers={"User-Agent": _get_user_agent("Wikipedia Tool")})
         try:
             with urlopen(req, timeout=10) as resp:
                 return json.loads(resp.read().decode("utf-8"))

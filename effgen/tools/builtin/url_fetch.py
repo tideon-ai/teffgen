@@ -10,6 +10,14 @@ import re
 from typing import Any, Dict, List, Optional, Set
 from html.parser import HTMLParser
 
+
+def _get_user_agent() -> str:
+    try:
+        from effgen import __version__
+    except ImportError:
+        __version__ = "dev"
+    return f"effGen/{__version__} (URL Fetch Tool)"
+
 from ..base_tool import (
     BaseTool,
     ToolCategory,
@@ -210,13 +218,13 @@ class URLFetchTool(BaseTool):
             resp = requests.get(
                 url,
                 timeout=self.timeout,
-                headers={"User-Agent": "effGen/0.0.2 (URL Fetch Tool)"},
+                headers={"User-Agent": _get_user_agent()},
             )
             resp.raise_for_status()
             html = resp.text
         except ImportError:
             from urllib.request import urlopen, Request
-            req = Request(url, headers={"User-Agent": "effGen/0.0.2 (URL Fetch Tool)"})
+            req = Request(url, headers={"User-Agent": _get_user_agent()})
             with urlopen(req, timeout=self.timeout) as resp:
                 html = resp.read().decode("utf-8", errors="replace")
 
