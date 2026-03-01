@@ -5,13 +5,77 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+---
 
-### Planned
-- Streaming response support for real-time token generation
-- Enhanced sub-agent execution with true multi-agent coordination
-- Semantic similarity for improved response selection
-- Advanced caching strategies and performance optimization
+## [0.1.0] - 2026-03-01
+
+### Added
+
+#### Foundation Hardening
+- **ToolPromptGenerator**: Dynamic system prompts with exact tool usage examples for SLMs
+- **Model-Specific Prompts**: Optimized prompt formatting for Qwen, Llama, and Phi model families
+- **Tool Fallback Chains**: Automatic fallback when tools fail (e.g., calculator → python_repl → code_executor)
+- **CircuitBreaker**: Tracks tool failure rates and temporarily disables failing tools
+- **Enhanced Tool Descriptions**: Structured format with parameter types, defaults, and usage examples
+- **Retry Logic**: Exponential backoff for empty model responses with temperature adjustment
+- **Partial Answer Extraction**: Extracts best answer from scratchpad when max iterations reached
+- **Input Sanitization**: Validates and sanitizes all tool inputs before execution
+- **Async Context Manager**: `async with Agent(config) as agent:` support
+- **True Async**: `run_async()` is now natively async (not executor-wrapped)
+
+#### Tool Ecosystem (7 New Tools — 14 Total)
+- **BashTool**: Shell command execution with security controls (command whitelist/blacklist)
+- **WeatherTool**: Weather data via Open-Meteo API (free, no API key required)
+- **JSONTool**: Parse, query (JSONPath), transform, and validate JSON
+- **DateTimeTool**: Current time, timezone conversion, date arithmetic
+- **TextProcessingTool**: Word count, regex operations, text comparison
+- **URLFetchTool**: Fetch and extract text from web pages
+- **WikipediaTool**: Search and retrieve Wikipedia articles (free API)
+- **Enhanced Retrieval**: Document loaders (txt, md, pdf, csv, json), chunking strategies, hybrid search (vector + BM25)
+- **Enhanced AgenticSearch**: ripgrep backend, multi-query, file-type awareness, summarization
+- **AgentSystemPromptBuilder**: Auto-generates tool-aware system prompts per agent configuration
+
+#### Protocols & Streaming
+- **ACP Protocol Complete**: Full JSON Schema validation, server/client modes, async task polling
+- **MCP Client Enhanced**: Auto-reconnection, MCP→effGen tool bridge, resource→context bridge, health monitoring
+- **Real Streaming**: True token streaming via generate_stream() (replaces placeholder)
+- **Streaming Callbacks**: on_thought, on_tool_call, on_observation, on_answer
+- **SSE Streaming**: Server-Sent Events endpoint for real-time API streaming
+- **Memory Integration**: ShortTermMemory, LongTermMemory, VectorMemoryStore connected to Agent
+- **Memory Configuration**: Configurable backends, persistence paths, auto-summarization
+
+#### Infrastructure
+- **CI/CD Pipelines**: GitHub Actions for CI, releases, docs, nightly tests, health checks, PR gates
+- **Health Monitoring**: Website, DNS, SSL checks for effgen.org and docs.effgen.org
+- **Test Suite**: 67 unit tests, 8 benchmarks, integration and e2e tests with MockModel and fixtures
+- **Observability**: OpenTelemetry tracing (no-op fallback), Prometheus metrics
+- **`effgen health` Command**: CLI health checker for all infrastructure
+- **Code Quality**: Pre-commit hooks (black, isort, flake8, mypy, bandit), CONTRIBUTING.md
+
+#### Developer Experience
+- **Plugin System**: ToolPlugin base class with entry point and directory discovery
+- **Agent Presets**: Ready-to-use configs — math, research, coding, general, minimal
+- **`create_agent()` Factory**: One-line agent creation from presets
+- **CLI Enhancements**: Rich progress, verbose/explain modes, tab completion (bash/zsh/fish), session persistence
+- **API Server**: WebSocket streaming, API key authentication, rate limiting, OpenAPI docs, /health, /metrics
+- **Documentation**: API reference, 6 tutorials, architecture guide, configuration reference, FAQ, migration guide
+- **Packaging**: py.typed (PEP 561), Dockerfile, conda-forge recipe, optional dependency groups
+
+### Changed
+- `_get_tools_description()` now outputs structured format with parameter details
+- `stream()` now uses real token streaming (previously character-by-character placeholder)
+- `run_async()` is now truly async (previously wrapped sync in executor)
+- Memory system uses proper ShortTermMemory/LongTermMemory classes (previously plain list)
+- ACP `validate_request()` now does full JSON Schema validation (previously only checked required fields)
+- User-Agent strings now use dynamic version from `effgen.__version__`
+- Development status upgraded from Alpha to Beta
+
+### Fixed
+- All `NotImplementedError` paths in retrieval tool
+- ACP TODO for JSON schema validation
+- Streaming placeholder (`time.sleep(0.01)`)
+- Memory as plain list (`self.short_term_memory = []`)
+- Direct inference path now includes conversation history for multi-turn context retention
 
 ---
 
@@ -190,6 +254,7 @@ Thank you to all contributors who helped make effGen possible!
 
 ---
 
-[Unreleased]: https://github.com/ctrl-gaurav/effGen/compare/v0.0.2...HEAD
+[Unreleased]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/ctrl-gaurav/effGen/compare/v0.0.2...v0.1.0
 [0.0.2]: https://github.com/ctrl-gaurav/effGen/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/ctrl-gaurav/effGen/releases/tag/v0.0.1

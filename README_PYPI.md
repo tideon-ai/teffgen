@@ -1,9 +1,13 @@
 <div align="center">
 
-<!-- Animated Header -->
-<img src="assets/header.svg" alt="effGen" width="100%"/>
+<!-- Static Header Banner for PyPI -->
+<img src="https://img.shields.io/badge/effGen-Agentic_AI_for_Small_Language_Models-6C63FF?style=for-the-badge&labelColor=1a1a2e&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSIjNkM2M0ZGIj48cGF0aCBkPSJNMTIgMkM2LjQ4IDIgMiA2LjQ4IDIgMTJzNC40OCAxMCAxMCAxMCAxMC00LjQ4IDEwLTEwUzE3LjUyIDIgMTIgMnptMCAxOGMtNC40MSAwLTgtMy41OS04LThzMy41OS04IDgtOCA4IDMuNTkgOCA4LTMuNTkgOC04IDh6bS0xLTEzaDJ2NmgtMnptMCA4aDJ2MmgtMnoiLz48L3N2Zz4=" alt="effGen"/>
 
 <br/>
+
+<h1>effGen</h1>
+<h3>Build AI Agents with Small Language Models</h3>
+<p><em>Fast &bull; Efficient &bull; Powerful</em></p>
 
 <br/>
 
@@ -24,9 +28,6 @@
 <a href="https://effgen.org/docs/"><img src="https://img.shields.io/badge/📚_Documentation-45B7D1?style=for-the-badge" alt="Docs"/></a>
 <a href="https://pypi.org/project/effgen/"><img src="https://img.shields.io/badge/📦_PyPI-96CEB4?style=for-the-badge" alt="PyPI"/></a>
 
-<!-- Typing Animation -->
-<img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=22&pause=1000&color=6C63FF&center=true&vCenter=true&multiline=true&repeat=true&width=600&height=80&lines=Build+AI+Agents+with+Small+Language+Models;Fast+%E2%80%A2+Efficient+%E2%80%A2+Powerful" alt="Typing SVG" />
-
 </div>
 
 ---
@@ -35,7 +36,7 @@
 
 | | Date | Update |
 |:---:|:---|:---|
-| 🎉 | **1 Mar 2026** | **v0.1.0 Released**: Major feature release — 14 built-in tools, agent presets, plugin system, real streaming, memory integration, ACP/MCP protocols, CI/CD, and comprehensive test suite. [See changelog](CHANGELOG.md#010---2026-03-01) |
+| 🎉 | **1 Mar 2026** | **v0.1.0 Released**: Major feature release — 14 built-in tools, agent presets, plugin system, real streaming, memory integration, ACP/MCP protocols, CI/CD, and comprehensive test suite. [See changelog](https://github.com/ctrl-gaurav/effGen/blob/main/CHANGELOG.md#010---2026-03-01) |
 | 🔧 | **3 Feb 2026** | **v0.0.2 Released**: vLLM backend fixes with automatic chat template support, GPU memory control, improved OOM error handling, and multi-model family compatibility |
 | 📄 | **2 Feb 2026** | Preprint available: [EffGen: Enabling Small Language Models as Capable Autonomous Agents](https://arxiv.org/abs/2602.00887) |
 | 🚀 | **31 Jan 2026** | Initial release of effGen framework **(v0.0.1)** |
@@ -462,7 +463,7 @@ Rate Limiting<br/>
 
 </div>
 
-> 📋 For security policies and vulnerability reporting, see [SECURITY.md](SECURITY.md)
+> 📋 For security policies and vulnerability reporting, see [SECURITY.md](https://github.com/ctrl-gaurav/effGen/blob/main/SECURITY.md)
 
 ---
 
@@ -500,20 +501,17 @@ If you use **effGen** in your research, please cite our paper:
 
 ## 📄 License
 
-Apache License 2.0 — see [LICENSE](LICENSE) for details.
+Apache License 2.0 — see [LICENSE](https://github.com/ctrl-gaurav/effGen/blob/main/LICENSE) for details.
 
 ---
 
 <div align="center">
 
 <a href="https://effgen.org/docs/"><img src="https://img.shields.io/badge/🚀_Get_Started-FF6B6B?style=for-the-badge" alt="Get Started"/></a>
-<a href="examples/"><img src="https://img.shields.io/badge/📚_Examples-4ECDC4?style=for-the-badge" alt="Examples"/></a>
+<a href="https://github.com/ctrl-gaurav/effGen/tree/main/examples"><img src="https://img.shields.io/badge/📚_Examples-4ECDC4?style=for-the-badge" alt="Examples"/></a>
 <a href="https://arxiv.org/abs/2602.00887"><img src="https://img.shields.io/badge/📄_Paper-45B7D1?style=for-the-badge" alt="Paper"/></a>
 <a href="https://github.com/ctrl-gaurav/effGen"><img src="https://img.shields.io/badge/⭐_Star_on_GitHub-yellow?style=for-the-badge" alt="GitHub"/></a>
 
 **Made with ❤️ for the AI community**
-
-<!-- Footer Wave -->
-<img src="assets/footer.svg" alt="effGen footer" width="100%"/>
 
 </div>

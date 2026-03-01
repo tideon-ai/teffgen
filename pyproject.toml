@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "effgen"
 dynamic = ["version"]
 description = "A comprehensive framework for building agents with Small Language Models"
-readme = "README.md"
+readme = "README_PYPI.md"
 requires-python = ">=3.10"
 license = "MIT"
 authors = [
@@ -21,7 +21,7 @@ keywords = [
     "agent-framework", "transformers", "vllm", "openai", "anthropic", "gemini",
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Education",
