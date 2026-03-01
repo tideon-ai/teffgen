@@ -79,7 +79,7 @@ setup(
         "tool-use", "function-calling", "prompt-engineering", "multi-agent",
         "agent-framework", "transformers", "vllm", "openai", "anthropic", "gemini",
     ],
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     install_requires=install_requires,
     extras_require={
         "dev": dev_requires,
