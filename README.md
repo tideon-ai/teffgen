@@ -12,7 +12,7 @@
 <a href="https://arxiv.org/abs/2602.00887"><img src="https://img.shields.io/badge/arXiv-2602.00887-b31b1b.svg?style=for-the-badge&logo=arxiv&logoColor=white" alt="arXiv"/></a>
 <a href="https://pypi.org/project/effgen/"><img src="https://img.shields.io/pypi/v/effgen.svg?style=for-the-badge&logo=pypi&logoColor=white&color=3775A9" alt="PyPI"/></a>
 <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10+-blue.svg?style=for-the-badge&logo=python&logoColor=white" alt="Python"/></a>
-<a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License"/></a>
+<a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-green.svg?style=for-the-badge" alt="License"/></a>
 
 <a href="https://pypi.org/project/effgen/"><img src="https://img.shields.io/pypi/dm/effgen.svg?style=for-the-badge&logo=pypi&logoColor=white&color=orange" alt="Downloads"/></a>
 <a href="https://github.com/ctrl-gaurav/effGen"><img src="https://img.shields.io/github/stars/ctrl-gaurav/effGen?style=for-the-badge&logo=github&color=yellow" alt="Stars"/></a>
@@ -401,7 +401,7 @@ If you use **effGen** in your research, please cite our paper:
 
 ## 📄 License
 
-MIT License — see [LICENSE](LICENSE) for details.
+Apache License 2.0 — see [LICENSE](LICENSE) for details.
 
 ---
 

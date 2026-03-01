@@ -137,7 +137,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Package Metadata
 - **License**: MIT License
-- **Python Support**: 3.8, 3.9, 3.10, 3.11, 3.12
+- **Python Support**: 3.10, 3.11, 3.12, 3.13
 - **Development Status**: Alpha
 - **Keywords**: ai, agents, llm, slm, language-models, tool-use, multi-agent
 
