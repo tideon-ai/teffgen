@@ -494,49 +494,67 @@ class CLIInterface:
                     self.print_error(f"Configuration file not found: {config_path}")
                     return 1
 
-            # Initialize tools
-            tools = []
-            if args.tools:
-                self.print(f"Loading tools: {', '.join(args.tools)}")
-                for tool_name in args.tools:
-                    try:
-                        tool = asyncio.run(self.tool_registry.get_tool(tool_name))
-                        tools.append(tool)
-                        self.print_success(f"Loaded tool: {tool_name}")
-                    except KeyError:
-                        self.print_error(f"Tool not found: {tool_name}")
-                        return 1
+            # Use preset if specified
+            if getattr(args, 'preset', None):
+                from effgen.presets import create_agent as _create_preset_agent
+                model_id = args.model or "Qwen/Qwen2.5-3B-Instruct"
+                self.print(f"Using preset: {args.preset}")
+                agent = _create_preset_agent(
+                    args.preset,
+                    model_id,
+                    agent_name=args.name,
+                    system_prompt=args.system_prompt or config.get("system_prompt"),
+                    max_iterations=args.max_iterations,
+                    temperature=args.temperature,
+                    enable_streaming=args.stream,
+                )
+                self.print_success(f"Created {args.preset} preset agent")
+                self.print(f"Model: {model_id}")
+                tools = agent.config.tools if hasattr(agent, 'config') else []
             else:
-                # Load all builtin tools by default
-                self.tool_registry.discover_builtin_tools()
-                tool_names = self.tool_registry.list_tools()
-                for name in tool_names[:5]:  # Limit to first 5 tools
-                    try:
-                        tool = asyncio.run(self.tool_registry.get_tool(name))
-                        tools.append(tool)
-                    except Exception as e:
-                        logging.debug(f"Failed to load tool {name}: {e}")
+                # Initialize tools
+                tools = []
+                if args.tools:
+                    self.print(f"Loading tools: {', '.join(args.tools)}")
+                    for tool_name in args.tools:
+                        try:
+                            tool = asyncio.run(self.tool_registry.get_tool(tool_name))
+                            tools.append(tool)
+                            self.print_success(f"Loaded tool: {tool_name}")
+                        except KeyError:
+                            self.print_error(f"Tool not found: {tool_name}")
+                            return 1
+                else:
+                    # Load all builtin tools by default
+                    self.tool_registry.discover_builtin_tools()
+                    tool_names = self.tool_registry.list_tools()
+                    for name in tool_names[:5]:  # Limit to first 5 tools
+                        try:
+                            tool = asyncio.run(self.tool_registry.get_tool(name))
+                            tools.append(tool)
+                        except Exception as e:
+                            logging.debug(f"Failed to load tool {name}: {e}")
 
-            # Create agent configuration
-            agent_config = AgentConfig(
-                name=args.name or "cli-agent",
-                model=args.model or "Qwen/Qwen2.5-3B-Instruct",
-                tools=tools,
-                system_prompt=args.system_prompt or config.get("system_prompt",
-                    "You are a helpful AI assistant."),
-                temperature=args.temperature or config.get("temperature", 0.7),
-                max_iterations=args.max_iterations or config.get("max_iterations", 10),
-                enable_sub_agents=not args.no_sub_agents,
-                enable_streaming=args.stream
-            )
+                # Create agent configuration
+                agent_config = AgentConfig(
+                    name=args.name or "cli-agent",
+                    model=args.model or "Qwen/Qwen2.5-3B-Instruct",
+                    tools=tools,
+                    system_prompt=args.system_prompt or config.get("system_prompt",
+                        "You are a helpful AI assistant."),
+                    temperature=args.temperature or config.get("temperature", 0.7),
+                    max_iterations=args.max_iterations or config.get("max_iterations", 10),
+                    enable_sub_agents=not args.no_sub_agents,
+                    enable_streaming=args.stream
+                )
 
-            # Create agent
-            self.print(f"\nInitializing agent: {agent_config.name}")
-            self.print(f"Model: {agent_config.model}")
-            self.print(f"Tools: {len(tools)} available")
-            self.print(f"Sub-agents: {'enabled' if agent_config.enable_sub_agents else 'disabled'}")
+                # Create agent
+                self.print(f"\nInitializing agent: {agent_config.name}")
+                self.print(f"Model: {agent_config.model}")
+                self.print(f"Tools: {len(tools)} available")
+                self.print(f"Sub-agents: {'enabled' if agent_config.enable_sub_agents else 'disabled'}")
 
-            agent = Agent(agent_config)
+                agent = Agent(agent_config)
 
             # Determine execution mode
             mode = AgentMode.AUTO
@@ -583,8 +601,32 @@ class CLIInterface:
                 else:
                     print(response.output)
 
+                # Display explain trace (tool reasoning)
+                if getattr(args, 'explain', False) and response.execution_trace:
+                    self.print_header("Execution Trace (Explain Mode)")
+                    for i, step in enumerate(response.execution_trace, 1):
+                        thought = step.get("thought", step.get("input", ""))
+                        action = step.get("action", step.get("tool", ""))
+                        observation = step.get("observation", step.get("output", ""))
+                        if self.console:
+                            self.console.print(f"[bold cyan]Step {i}[/bold cyan]")
+                            if thought:
+                                self.console.print(f"  [yellow]Thought:[/yellow] {str(thought)[:300]}")
+                            if action:
+                                self.console.print(f"  [green]Action:[/green] {action}")
+                            if observation:
+                                self.console.print(f"  [blue]Result:[/blue] {str(observation)[:200]}")
+                        else:
+                            print(f"Step {i}")
+                            if thought:
+                                print(f"  Thought: {str(thought)[:300]}")
+                            if action:
+                                print(f"  Action: {action}")
+                            if observation:
+                                print(f"  Result: {str(observation)[:200]}")
+
                 # Display execution statistics
-                if args.verbose:
+                if getattr(args, 'verbose', False) or getattr(args, 'explain', False):
                     self.print_header("Execution Statistics")
                     stats_table = self._create_stats_table({
                         "Mode": response.mode.value,
@@ -600,6 +642,15 @@ class CLIInterface:
                     else:
                         for key, value in stats_table.items():
                             print(f"{key}: {value}")
+
+                    # Full verbose trace
+                    if getattr(args, 'verbose', False) and response.execution_trace:
+                        self.print_header("Full ReAct Trace")
+                        trace_json = json.dumps(response.execution_trace, indent=2, default=str)
+                        if self.console:
+                            self.console.print(Syntax(trace_json, "json", line_numbers=True))
+                        else:
+                            print(trace_json)
 
                 # Save response if output file specified
                 if args.output:
@@ -693,6 +744,14 @@ class CLIInterface:
                     elif user_input.lower() == 'save':
                         self._save_conversation(conversation_history)
                         continue
+                    elif user_input.lower() == 'history':
+                        self._list_conversations()
+                        continue
+                    elif user_input.lower() == 'load':
+                        loaded = self._load_conversation()
+                        if loaded:
+                            conversation_history = loaded
+                        continue
 
                     # Add to history
                     conversation_history.append({
@@ -785,25 +844,75 @@ class CLIInterface:
         - exit, quit: Exit chat mode
         - clear: Clear conversation history
         - save: Save conversation to file
+        - load: Load a previous conversation
+        - history: List saved conversations
         - help: Show this help message
         """ if self.console else """
         Available Commands:
         - exit, quit: Exit chat mode
         - clear: Clear conversation history
         - save: Save conversation to file
+        - load: Load a previous conversation
+        - history: List saved conversations
         - help: Show this help message
         """
         self.print(help_text)
 
+    @staticmethod
+    def _history_dir() -> Path:
+        """Return the chat history directory, creating it if needed."""
+        d = Path.home() / ".effgen" / "history"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
     def _save_conversation(self, history: List[Dict]):
-        """Save conversation history."""
+        """Save conversation history to ~/.effgen/history/."""
+        hist_dir = self._history_dir()
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"conversation_{timestamp}.json"
+        filename = hist_dir / f"conversation_{timestamp}.json"
 
         with open(filename, 'w') as f:
             json.dump(history, f, indent=2)
 
         self.print_success(f"Conversation saved to {filename}")
+
+    def _list_conversations(self):
+        """List saved conversation files."""
+        hist_dir = self._history_dir()
+        files = sorted(hist_dir.glob("conversation_*.json"), reverse=True)
+        if not files:
+            self.print("No saved conversations found.")
+            return
+        self.print("Saved conversations:")
+        for i, f in enumerate(files[:20], 1):
+            size = f.stat().st_size
+            self.print(f"  {i}. {f.name}  ({size} bytes)")
+
+    def _load_conversation(self) -> Optional[List[Dict]]:
+        """Load a previous conversation by index."""
+        hist_dir = self._history_dir()
+        files = sorted(hist_dir.glob("conversation_*.json"), reverse=True)
+        if not files:
+            self.print("No saved conversations found.")
+            return None
+        self._list_conversations()
+        try:
+            choice = input("Enter number to load (or 'cancel'): ").strip()
+            if choice.lower() == "cancel":
+                return None
+            idx = int(choice) - 1
+            if 0 <= idx < len(files):
+                with open(files[idx]) as f:
+                    history = json.load(f)
+                self.print_success(f"Loaded {files[idx].name} ({len(history)} messages)")
+                for msg in history:
+                    role = msg.get("role", "?")
+                    content = msg.get("content", "")[:100]
+                    self.print(f"  [{role}] {content}...")
+                return history
+        except (ValueError, IndexError):
+            self.print_error("Invalid selection.")
+        return None
 
     def serve_api(self, args):
         """
@@ -816,11 +925,13 @@ class CLIInterface:
 
         try:
             from contextlib import asynccontextmanager
-            from fastapi import FastAPI, HTTPException
+            from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends
             from fastapi.middleware.cors import CORSMiddleware
             from fastapi.responses import JSONResponse
+            from fastapi.security import APIKeyHeader
             from pydantic import BaseModel as PydanticBaseModel, ConfigDict
             import uvicorn
+            import time as _time
         except ImportError:
             self.print_error("FastAPI and uvicorn are required for server mode.")
             self.print("Install with: pip install fastapi uvicorn")
@@ -834,6 +945,7 @@ class CLIInterface:
                 task: str
                 model: Optional[str] = "Qwen/Qwen2.5-3B-Instruct"
                 tools: Optional[List[str]] = None
+                preset: Optional[str] = None
                 temperature: Optional[float] = 0.7
                 max_iterations: Optional[int] = 10
                 stream: bool = False
@@ -848,19 +960,50 @@ class CLIInterface:
             # Store reference to self for use in lifespan
             cli_instance = self
 
+            # --- Rate limiter (simple in-memory token bucket) ---
+            _rate_buckets: Dict[str, list] = {}
+            _rate_limit = int(os.environ.get("EFFGEN_RATE_LIMIT", "60"))  # requests/min
+
+            def _check_rate(client_ip: str) -> bool:
+                now = _time.time()
+                bucket = _rate_buckets.setdefault(client_ip, [])
+                # Remove entries older than 60s
+                _rate_buckets[client_ip] = bucket = [t for t in bucket if now - t < 60]
+                if len(bucket) >= _rate_limit:
+                    return False
+                bucket.append(now)
+                return True
+
+            # --- API key auth (optional) ---
+            api_key_name = "X-API-Key"
+            api_key_header = APIKeyHeader(name=api_key_name, auto_error=False)
+            expected_key = os.environ.get("EFFGEN_API_KEY")  # None = auth disabled
+
+            async def verify_api_key(key: Optional[str] = Depends(api_key_header)):
+                if expected_key and key != expected_key:
+                    raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
+            # --- Metrics state ---
+            _metrics = {"requests": 0, "errors": 0, "total_time": 0.0}
+
             @asynccontextmanager
             async def lifespan(app: FastAPI):
                 """Lifespan context manager for startup/shutdown."""
                 cli_instance.print_success("Server starting up...")
                 cli_instance.tool_registry.discover_builtin_tools()
                 cli_instance.print_success(f"Discovered {len(cli_instance.tool_registry.list_tools())} tools")
+                if expected_key:
+                    cli_instance.print(f"API key auth enabled (set via EFFGEN_API_KEY)")
+                cli_instance.print(f"Rate limit: {_rate_limit} req/min (set via EFFGEN_RATE_LIMIT)")
                 yield
                 cli_instance.print("Server shutting down...")
 
             # Create FastAPI app with lifespan
             app = FastAPI(
                 title="effGen API",
-                description="API server for effGen framework",
+                description="API server for effGen framework. "
+                            "Set EFFGEN_API_KEY to enable authentication. "
+                            "Set EFFGEN_RATE_LIMIT to configure rate limiting (default 60 req/min).",
                 version=__version__,
                 lifespan=lifespan
             )
@@ -874,31 +1017,68 @@ class CLIInterface:
                 allow_headers=["*"],
             )
 
+            # --- Request logging & rate limiting middleware ---
+            @app.middleware("http")
+            async def request_middleware(request: Request, call_next):
+                start = _time.time()
+                client_ip = request.client.host if request.client else "unknown"
+
+                if not _check_rate(client_ip):
+                    return JSONResponse(
+                        status_code=429,
+                        content={"detail": "Rate limit exceeded. Try again later."}
+                    )
+
+                _metrics["requests"] += 1
+                logging.info("API %s %s from %s", request.method, request.url.path, client_ip)
+
+                try:
+                    response = await call_next(request)
+                except Exception:
+                    _metrics["errors"] += 1
+                    raise
+                finally:
+                    elapsed = _time.time() - start
+                    _metrics["total_time"] += elapsed
+                    logging.info("API %s %s completed in %.3fs", request.method, request.url.path, elapsed)
+
+                return response
+
             # Store state in app
             app.state.cli = cli_instance
 
-            @app.post("/run")
+            @app.post("/run", dependencies=[Depends(verify_api_key)])
             async def run_task(request: TaskRequest):
                 """Run a task with an agent."""
                 try:
-                    # Create agent for each request to handle different models
-                    tools = []
-                    tool_names = app.state.cli.tool_registry.list_tools()[:5]
-                    for name in tool_names:
-                        try:
-                            tool = await app.state.cli.tool_registry.get_tool(name)
-                            tools.append(tool)
-                        except Exception as tool_err:
-                            logging.debug(f"Failed to load tool {name}: {tool_err}")
+                    # Use preset if specified
+                    if request.preset:
+                        from effgen.presets import create_agent as _create_preset_agent
+                        agent_instance = _create_preset_agent(
+                            request.preset,
+                            request.model,
+                            temperature=request.temperature,
+                            max_iterations=request.max_iterations,
+                        )
+                    else:
+                        # Create agent for each request to handle different models
+                        tools = []
+                        tool_names = app.state.cli.tool_registry.list_tools()[:5]
+                        for name in tool_names:
+                            try:
+                                tool = await app.state.cli.tool_registry.get_tool(name)
+                                tools.append(tool)
+                            except Exception as tool_err:
+                                logging.debug(f"Failed to load tool {name}: {tool_err}")
 
-                    agent_config = AgentConfig(
-                        name="api-agent",
-                        model=request.model,
-                        tools=tools,
-                        temperature=request.temperature,
-                        max_iterations=request.max_iterations
-                    )
-                    agent_instance = Agent(agent_config)
+                        agent_config = AgentConfig(
+                            name="api-agent",
+                            model=request.model,
+                            tools=tools,
+                            temperature=request.temperature,
+                            max_iterations=request.max_iterations
+                        )
+                        agent_instance = Agent(agent_config)
 
                     # Run task
                     response = agent_instance.run(request.task)
@@ -915,13 +1095,64 @@ class CLIInterface:
                     })
 
                 except Exception as e:
+                    _metrics["errors"] += 1
                     logging.exception("Error running task")
                     raise HTTPException(status_code=500, detail=str(e))
+
+            @app.websocket("/ws")
+            async def websocket_stream(ws: WebSocket):
+                """WebSocket endpoint for streaming agent responses."""
+                await ws.accept()
+                try:
+                    while True:
+                        data = await ws.receive_json()
+                        task = data.get("task", "")
+                        model_id = data.get("model", "Qwen/Qwen2.5-3B-Instruct")
+                        preset_name = data.get("preset")
+
+                        if preset_name:
+                            from effgen.presets import create_agent as _create_preset_agent
+                            agent_instance = _create_preset_agent(preset_name, model_id)
+                        else:
+                            tools = []
+                            for name in app.state.cli.tool_registry.list_tools()[:5]:
+                                try:
+                                    tool = await app.state.cli.tool_registry.get_tool(name)
+                                    tools.append(tool)
+                                except Exception:
+                                    pass
+                            agent_instance = Agent(AgentConfig(
+                                name="ws-agent", model=model_id, tools=tools,
+                                enable_streaming=True,
+                            ))
+
+                        await ws.send_json({"type": "start", "task": task})
+
+                        try:
+                            for token in agent_instance.stream(task):
+                                await ws.send_json({"type": "token", "content": token})
+                            await ws.send_json({"type": "done"})
+                        except Exception as e:
+                            await ws.send_json({"type": "error", "detail": str(e)})
+
+                except WebSocketDisconnect:
+                    logging.info("WebSocket client disconnected")
 
             @app.get("/health")
             async def health():
                 """Health check endpoint."""
                 return {"status": "healthy", "version": __version__}
+
+            @app.get("/metrics", dependencies=[Depends(verify_api_key)])
+            async def metrics():
+                """Prometheus-style metrics endpoint."""
+                avg_time = (_metrics["total_time"] / _metrics["requests"]
+                            if _metrics["requests"] > 0 else 0)
+                return {
+                    "requests_total": _metrics["requests"],
+                    "errors_total": _metrics["errors"],
+                    "avg_response_time_seconds": round(avg_time, 4),
+                }
 
             @app.get("/tools")
             async def list_tools_endpoint():
@@ -948,7 +1179,9 @@ class CLIInterface:
                     "version": __version__,
                     "endpoints": {
                         "POST /run": "Run a task with an agent",
+                        "WS /ws": "WebSocket streaming",
                         "GET /health": "Health check",
+                        "GET /metrics": "Server metrics",
                         "GET /tools": "List available tools",
                         "GET /docs": "OpenAPI documentation"
                     }
@@ -1365,6 +1598,8 @@ Examples:
     parser.add_argument('--version', action='version', version=f'effGen {__version__}')
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose output')
     parser.add_argument('--log-file', help='Log file path')
+    parser.add_argument('--completion', choices=['bash', 'zsh', 'fish'],
+                        help='Print shell completion script and exit')
 
     subparsers = parser.add_subparsers(dest='command', help='Command to run')
 
@@ -1382,6 +1617,10 @@ Examples:
     run_parser.add_argument('--no-sub-agents', action='store_true', help='Disable sub-agents')
     run_parser.add_argument('--stream', action='store_true', help='Stream output')
     run_parser.add_argument('-o', '--output', help='Output file for response')
+    run_parser.add_argument('--preset', choices=['math', 'research', 'coding', 'general', 'minimal'],
+                            help='Use a preset agent configuration')
+    run_parser.add_argument('--explain', action='store_true',
+                            help='Show why the agent chose each tool')
 
     # Chat command
     chat_parser = subparsers.add_parser('chat', help='Interactive chat mode')
@@ -1442,13 +1681,124 @@ Examples:
     # Health check command
     subparsers.add_parser('health', help='Check effGen infrastructure health')
 
+    # Plugin commands
+    plugin_parser = subparsers.add_parser('create-plugin', help='Generate a plugin project scaffold')
+    plugin_parser.add_argument('plugin_name', help='Plugin name (e.g. my_tools)')
+    plugin_parser.add_argument('-o', '--output-dir', default='.', help='Output directory')
+
+    # Presets command
+    presets_parser = subparsers.add_parser('presets', help='List available agent presets')
+
     return parser
+
+
+def _create_plugin_scaffold(plugin_name: str, output_dir: str = ".") -> int:
+    """Generate a plugin project scaffold."""
+    base = Path(output_dir) / f"effgen-plugin-{plugin_name}"
+    pkg = base / plugin_name
+    try:
+        pkg.mkdir(parents=True, exist_ok=False)
+    except FileExistsError:
+        print(f"Error: Directory {base} already exists.")
+        return 1
+
+    (pkg / "__init__.py").write_text(
+        f'"""effGen plugin: {plugin_name}"""\n'
+    )
+
+    (pkg / "tools.py").write_text(
+        f'''"""Custom tools for the {plugin_name} plugin."""
+
+from effgen.tools.base_tool import (
+    BaseTool, ToolMetadata, ToolCategory, ParameterSpec, ParameterType,
+)
+
+
+class ExampleTool(BaseTool):
+    """An example custom tool — replace with your implementation."""
+
+    @property
+    def metadata(self) -> ToolMetadata:
+        return ToolMetadata(
+            name="example_tool",
+            description="An example tool that echoes input.",
+            category=ToolCategory.DATA_PROCESSING,
+            parameters=[
+                ParameterSpec(
+                    name="text",
+                    type=ParameterType.STRING,
+                    description="Text to echo",
+                    required=True,
+                ),
+            ],
+            returns={{"type": "object", "properties": {{"echo": {{"type": "string"}}}}}},
+        )
+
+    async def _execute(self, **kwargs):
+        text = kwargs.get("text", "")
+        return {{"echo": text}}
+'''
+    )
+
+    (pkg / "plugin.py").write_text(
+        f'''"""Plugin registration for {plugin_name}."""
+
+from effgen.tools.plugin import ToolPlugin
+from {plugin_name}.tools import ExampleTool
+
+
+class {plugin_name.title().replace("_", "")}Plugin(ToolPlugin):
+    name = "{plugin_name}"
+    version = "0.1.0"
+    description = "A custom effGen tool plugin."
+    tools = [ExampleTool]
+'''
+    )
+
+    (base / "pyproject.toml").write_text(
+        f'''[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "effgen-plugin-{plugin_name}"
+version = "0.1.0"
+description = "An effGen tool plugin"
+requires-python = ">=3.9"
+dependencies = ["effgen"]
+
+[project.entry-points."effgen.plugins"]
+{plugin_name} = "{plugin_name}.plugin:{plugin_name.title().replace("_", "")}Plugin"
+'''
+    )
+
+    (base / "README.md").write_text(
+        f"# effgen-plugin-{plugin_name}\\n\\n"
+        f"An effGen tool plugin.\\n\\n"
+        "## Install\\n\\n"
+        "```bash\\n"
+        f"pip install -e .\\n"
+        "```\\n\\n"
+        "The plugin will be auto-discovered by effGen via entry points.\\n"
+    )
+
+    print(f"Created plugin scaffold at {base}/")
+    print(f"  {pkg / 'tools.py':}       — add your custom tools here")
+    print(f"  {pkg / 'plugin.py'}     — register tools in the plugin class")
+    print(f"  {base / 'pyproject.toml'} — package metadata & entry point")
+    return 0
 
 
 def main():
     """Main entry point for CLI."""
     parser = create_parser()
     args = parser.parse_args()
+
+    # Handle completion script generation
+    if getattr(args, 'completion', None):
+        from effgen.completion import get_completion
+        print(get_completion(args.completion))
+        sys.exit(0)
 
     # Setup logging
     setup_logging(getattr(args, 'verbose', False), getattr(args, 'log_file', None))
@@ -1477,6 +1827,15 @@ def main():
             checker = HealthChecker()
             all_passed = checker.print_results()
             exit_code = 0 if all_passed else 1
+        elif args.command == 'create-plugin':
+            exit_code = _create_plugin_scaffold(args.plugin_name, args.output_dir)
+        elif args.command == 'presets':
+            from effgen.presets import list_presets as _list_presets
+            cli.print_header("Available Agent Presets")
+            for name, desc in _list_presets().items():
+                cli.print(f"  {name:12s} — {desc}")
+            cli.print(f"\nUsage: effgen run --preset <name> \"your task\"")
+            exit_code = 0
         elif args.command is None:
             # No command - launch interactive wizard
             # Create a namespace with default values for run command

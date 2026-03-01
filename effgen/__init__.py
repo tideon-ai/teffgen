@@ -74,6 +74,9 @@ from effgen.memory import (
     SQLiteStorageBackend
 )
 
+# Preset imports
+from effgen.presets import create_agent, list_presets
+
 # Execution imports
 from effgen.execution import (
     CodeExecutor,
@@ -138,6 +141,10 @@ __all__ = [
     "ImportanceLevel",
     "JSONStorageBackend",
     "SQLiteStorageBackend",
+
+    # Presets
+    "create_agent",
+    "list_presets",
 
     # Execution
     "CodeExecutor",
