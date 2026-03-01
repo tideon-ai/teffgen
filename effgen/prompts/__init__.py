@@ -31,6 +31,7 @@ from .optimizer import (
 )
 
 from .tool_prompt_generator import ToolPromptGenerator
+from .agent_system_prompt import AgentSystemPromptBuilder
 
 __all__ = [
     # Template Manager
@@ -50,6 +51,9 @@ __all__ = [
 
     # Tool Prompt Generator
     'ToolPromptGenerator',
+
+    # Agent System Prompt Builder
+    'AgentSystemPromptBuilder',
 
     # Optimizer
     'ModelSize',

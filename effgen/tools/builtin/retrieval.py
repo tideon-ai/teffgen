@@ -3,13 +3,24 @@ Standard Retrieval (RAG) tool with embedding-based search.
 
 This module provides a retrieval tool that uses embeddings to search
 through a knowledge base and return relevant documents/chunks.
+
+Features:
+- Multiple embedding providers (Sentence Transformers, TF-IDF fallback)
+- Document loaders: txt, md, pdf, csv, tsv, json, jsonl
+- Chunking strategies: fixed-size, sentence-based, paragraph-based, recursive
+- Hybrid search: vector similarity + BM25 keyword matching
+- Persistent index storage
 """
 
+import csv
+import math
 import os
 import json
 import pickle
 import logging
 import hashlib
+import re
+from collections import Counter
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
@@ -44,6 +55,10 @@ class RetrievalResult:
     rank: int
 
 
+# ---------------------------------------------------------------------------
+# Embedding Providers
+# ---------------------------------------------------------------------------
+
 class EmbeddingProvider:
     """Base class for embedding providers."""
 
@@ -60,17 +75,10 @@ class SentenceTransformerEmbedding(EmbeddingProvider):
     """Sentence Transformers embedding provider."""
 
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
-        """
-        Initialize with a sentence transformer model.
-
-        Args:
-            model_name: Name of the sentence transformer model
-        """
         self.model_name = model_name
         self._model = None
 
     def _load_model(self):
-        """Lazy load the model."""
         if self._model is None:
             try:
                 from sentence_transformers import SentenceTransformer
@@ -84,7 +92,6 @@ class SentenceTransformerEmbedding(EmbeddingProvider):
         return self._model
 
     def embed(self, texts: List[str]) -> np.ndarray:
-        """Embed a list of texts."""
         model = self._load_model()
         embeddings = model.encode(texts, convert_to_numpy=True)
         return embeddings
@@ -94,12 +101,10 @@ class SimpleEmbedding(EmbeddingProvider):
     """Simple TF-IDF based embedding for environments without sentence-transformers."""
 
     def __init__(self):
-        """Initialize the simple embedding provider."""
         self._vectorizer = None
         self._fitted = False
 
     def _get_vectorizer(self):
-        """Get or create the vectorizer."""
         if self._vectorizer is None:
             try:
                 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -116,22 +121,419 @@ class SimpleEmbedding(EmbeddingProvider):
         return self._vectorizer
 
     def fit(self, texts: List[str]):
-        """Fit the vectorizer on texts."""
         vectorizer = self._get_vectorizer()
         vectorizer.fit(texts)
         self._fitted = True
 
     def embed(self, texts: List[str]) -> np.ndarray:
-        """Embed texts using TF-IDF."""
         vectorizer = self._get_vectorizer()
         if not self._fitted:
-            # Fit on the provided texts if not already fitted
             embeddings = vectorizer.fit_transform(texts).toarray()
             self._fitted = True
         else:
             embeddings = vectorizer.transform(texts).toarray()
         return embeddings
 
+
+# ---------------------------------------------------------------------------
+# Chunking Strategies
+# ---------------------------------------------------------------------------
+
+class ChunkingStrategy:
+    """Base chunking strategy."""
+
+    def chunk(self, text: str, doc_id: str) -> List[Document]:
+        raise NotImplementedError
+
+
+class FixedSizeChunker(ChunkingStrategy):
+    """Fixed-size chunks with overlap."""
+
+    def __init__(self, chunk_size: int = 500, overlap: int = 100):
+        self.chunk_size = chunk_size
+        self.overlap = overlap
+
+    def chunk(self, text: str, doc_id: str) -> List[Document]:
+        chunks = []
+        start = 0
+        chunk_num = 0
+
+        while start < len(text):
+            end = start + self.chunk_size
+            chunk_text = text[start:end]
+
+            # Try to break at sentence boundary
+            if end < len(text):
+                for sep in ['. ', '! ', '? ', '\n\n', '\n']:
+                    last_sep = chunk_text.rfind(sep)
+                    if last_sep > self.chunk_size // 2:
+                        chunk_text = chunk_text[:last_sep + len(sep)]
+                        end = start + len(chunk_text)
+                        break
+
+            chunks.append(Document(
+                id=f"{doc_id}_chunk_{chunk_num}",
+                content=chunk_text.strip(),
+                metadata={
+                    "parent_doc_id": doc_id,
+                    "chunk_index": chunk_num,
+                    "start_char": start,
+                    "end_char": end,
+                    "chunking": "fixed_size",
+                }
+            ))
+
+            chunk_num += 1
+            start = end - self.overlap
+            if start >= end:
+                break
+
+        return chunks
+
+
+class SentenceChunker(ChunkingStrategy):
+    """Sentence-based chunking: groups sentences up to max_chunk_size."""
+
+    def __init__(self, max_chunk_size: int = 500, overlap_sentences: int = 1):
+        self.max_chunk_size = max_chunk_size
+        self.overlap_sentences = overlap_sentences
+
+    def _split_sentences(self, text: str) -> List[str]:
+        return re.split(r'(?<=[.!?])\s+', text.strip())
+
+    def chunk(self, text: str, doc_id: str) -> List[Document]:
+        sentences = self._split_sentences(text)
+        if not sentences:
+            return [Document(id=f"{doc_id}_chunk_0", content=text, metadata={"parent_doc_id": doc_id, "chunking": "sentence"})]
+
+        chunks = []
+        current_sents: List[str] = []
+        current_len = 0
+        chunk_num = 0
+
+        for sent in sentences:
+            sent = sent.strip()
+            if not sent:
+                continue
+
+            if current_len + len(sent) > self.max_chunk_size and current_sents:
+                chunk_text = " ".join(current_sents)
+                chunks.append(Document(
+                    id=f"{doc_id}_chunk_{chunk_num}",
+                    content=chunk_text,
+                    metadata={"parent_doc_id": doc_id, "chunk_index": chunk_num, "chunking": "sentence"},
+                ))
+                chunk_num += 1
+                # Keep overlap
+                overlap = current_sents[-self.overlap_sentences:] if self.overlap_sentences else []
+                current_sents = overlap
+                current_len = sum(len(s) for s in current_sents)
+
+            current_sents.append(sent)
+            current_len += len(sent)
+
+        if current_sents:
+            chunks.append(Document(
+                id=f"{doc_id}_chunk_{chunk_num}",
+                content=" ".join(current_sents),
+                metadata={"parent_doc_id": doc_id, "chunk_index": chunk_num, "chunking": "sentence"},
+            ))
+
+        return chunks
+
+
+class ParagraphChunker(ChunkingStrategy):
+    """Paragraph-based chunking: splits on double newlines."""
+
+    def __init__(self, max_chunk_size: int = 1000):
+        self.max_chunk_size = max_chunk_size
+
+    def chunk(self, text: str, doc_id: str) -> List[Document]:
+        paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
+        if not paragraphs:
+            return [Document(id=f"{doc_id}_chunk_0", content=text, metadata={"parent_doc_id": doc_id, "chunking": "paragraph"})]
+
+        chunks = []
+        current_paras: List[str] = []
+        current_len = 0
+        chunk_num = 0
+
+        for para in paragraphs:
+            if current_len + len(para) > self.max_chunk_size and current_paras:
+                chunks.append(Document(
+                    id=f"{doc_id}_chunk_{chunk_num}",
+                    content="\n\n".join(current_paras),
+                    metadata={"parent_doc_id": doc_id, "chunk_index": chunk_num, "chunking": "paragraph"},
+                ))
+                chunk_num += 1
+                current_paras = []
+                current_len = 0
+
+            current_paras.append(para)
+            current_len += len(para)
+
+        if current_paras:
+            chunks.append(Document(
+                id=f"{doc_id}_chunk_{chunk_num}",
+                content="\n\n".join(current_paras),
+                metadata={"parent_doc_id": doc_id, "chunk_index": chunk_num, "chunking": "paragraph"},
+            ))
+
+        return chunks
+
+
+class RecursiveChunker(ChunkingStrategy):
+    """Recursive character text splitter: tries multiple separators in order."""
+
+    def __init__(self, chunk_size: int = 500, overlap: int = 100,
+                 separators: Optional[List[str]] = None):
+        self.chunk_size = chunk_size
+        self.overlap = overlap
+        self.separators = separators or ["\n\n", "\n", ". ", " ", ""]
+
+    def _split(self, text: str, separators: List[str]) -> List[str]:
+        if not text:
+            return []
+
+        if not separators:
+            return [text]
+
+        sep = separators[0]
+        rest = separators[1:]
+
+        if not sep:
+            # Character-level split
+            parts = [text[i:i + self.chunk_size] for i in range(0, len(text), self.chunk_size - self.overlap)]
+            return parts
+
+        splits = text.split(sep)
+        result = []
+        current = ""
+
+        for piece in splits:
+            candidate = (current + sep + piece) if current else piece
+            if len(candidate) <= self.chunk_size:
+                current = candidate
+            else:
+                if current:
+                    result.append(current)
+                if len(piece) > self.chunk_size:
+                    result.extend(self._split(piece, rest))
+                    current = ""
+                else:
+                    current = piece
+
+        if current:
+            result.append(current)
+
+        return result
+
+    def chunk(self, text: str, doc_id: str) -> List[Document]:
+        pieces = self._split(text, self.separators)
+        chunks = []
+        for i, piece in enumerate(pieces):
+            chunks.append(Document(
+                id=f"{doc_id}_chunk_{i}",
+                content=piece.strip(),
+                metadata={"parent_doc_id": doc_id, "chunk_index": i, "chunking": "recursive"},
+            ))
+        return [c for c in chunks if c.content]
+
+
+# ---------------------------------------------------------------------------
+# Document Loaders
+# ---------------------------------------------------------------------------
+
+def load_txt(path: Path) -> List[Dict[str, Any]]:
+    """Load plain text file."""
+    content = path.read_text(encoding="utf-8")
+    return [{"content": content, "id": path.stem, "metadata": {"source": str(path), "type": "txt"}}]
+
+
+def load_markdown(path: Path) -> List[Dict[str, Any]]:
+    """Load markdown file, preserving structure."""
+    content = path.read_text(encoding="utf-8")
+    return [{"content": content, "id": path.stem, "metadata": {"source": str(path), "type": "markdown"}}]
+
+
+def load_csv(path: Path, text_columns: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+    """Load CSV/TSV file, treating each row as a document."""
+    delimiter = '\t' if path.suffix.lower() in ('.tsv',) else ','
+    documents = []
+    with open(path, "r", encoding="utf-8", newline="") as f:
+        reader = csv.DictReader(f, delimiter=delimiter)
+        for i, row in enumerate(reader):
+            if text_columns:
+                content = " ".join(str(row.get(col, "")) for col in text_columns if row.get(col))
+            else:
+                content = " ".join(str(v) for v in row.values() if v)
+            if content.strip():
+                documents.append({
+                    "content": content,
+                    "id": f"{path.stem}_row_{i}",
+                    "metadata": {"source": str(path), "type": "csv", "row": i, **row},
+                })
+    return documents
+
+
+def load_json_file(path: Path) -> List[Dict[str, Any]]:
+    """Load JSON file."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    documents = []
+    if isinstance(data, list):
+        for i, item in enumerate(data):
+            if isinstance(item, dict):
+                content = item.get("content") or item.get("text") or json.dumps(item)
+                doc = {
+                    "content": content,
+                    "id": item.get("id") or f"{path.stem}_{i}",
+                    "metadata": {k: v for k, v in item.items() if k not in ("content", "text", "id")},
+                }
+            else:
+                doc = {"content": str(item), "id": f"{path.stem}_{i}", "metadata": {}}
+            doc["metadata"]["source"] = str(path)
+            doc["metadata"]["type"] = "json"
+            documents.append(doc)
+    elif isinstance(data, dict):
+        documents.append({
+            "content": data.get("content") or data.get("text") or json.dumps(data),
+            "id": data.get("id") or path.stem,
+            "metadata": {"source": str(path), "type": "json"},
+        })
+    return documents
+
+
+def load_jsonl(path: Path) -> List[Dict[str, Any]]:
+    """Load JSONL file."""
+    documents = []
+    with open(path, "r", encoding="utf-8") as f:
+        for i, line in enumerate(f):
+            line = line.strip()
+            if not line:
+                continue
+            item = json.loads(line)
+            content = item.get("content") or item.get("text") or item.get("question") or json.dumps(item)
+            doc = {
+                "content": content,
+                "id": item.get("id") or f"{path.stem}_{i}",
+                "metadata": {k: v for k, v in item.items() if k not in ("content", "text", "id")},
+            }
+            doc["metadata"]["source"] = str(path)
+            doc["metadata"]["type"] = "jsonl"
+            documents.append(doc)
+    return documents
+
+
+def load_pdf(path: Path) -> List[Dict[str, Any]]:
+    """
+    Load PDF file. Tries pymupdf (fitz), then pdfplumber, then falls back gracefully.
+    """
+    text_pages: List[str] = []
+
+    # Try pymupdf first
+    try:
+        import fitz  # pymupdf
+        doc = fitz.open(str(path))
+        for page in doc:
+            text_pages.append(page.get_text())
+        doc.close()
+    except ImportError:
+        # Try pdfplumber
+        try:
+            import pdfplumber
+            with pdfplumber.open(str(path)) as pdf:
+                for page in pdf.pages:
+                    t = page.extract_text()
+                    if t:
+                        text_pages.append(t)
+        except ImportError:
+            raise ImportError(
+                "No PDF library available. Install one of:\n"
+                "  pip install pymupdf    (recommended)\n"
+                "  pip install pdfplumber"
+            )
+
+    content = "\n\n".join(text_pages)
+    if not content.strip():
+        return []
+
+    return [{
+        "content": content,
+        "id": path.stem,
+        "metadata": {"source": str(path), "type": "pdf", "pages": len(text_pages)},
+    }]
+
+
+# Map file extensions to loaders
+DOCUMENT_LOADERS = {
+    ".txt": load_txt,
+    ".md": load_markdown,
+    ".markdown": load_markdown,
+    ".csv": load_csv,
+    ".tsv": load_csv,
+    ".json": load_json_file,
+    ".jsonl": load_jsonl,
+    ".pdf": load_pdf,
+}
+
+
+# ---------------------------------------------------------------------------
+# BM25 (keyword-based scoring)
+# ---------------------------------------------------------------------------
+
+class SimpleBM25:
+    """Simple BM25 scoring for hybrid search. No external dependencies."""
+
+    def __init__(self, k1: float = 1.5, b: float = 0.75):
+        self.k1 = k1
+        self.b = b
+        self._doc_freqs: Dict[str, int] = Counter()
+        self._doc_lens: List[int] = []
+        self._avg_dl: float = 0
+        self._n_docs: int = 0
+        self._tokenized_docs: List[List[str]] = []
+
+    @staticmethod
+    def _tokenize(text: str) -> List[str]:
+        return re.findall(r'\b\w+\b', text.lower())
+
+    def index(self, documents: List[str]):
+        """Index a list of document strings."""
+        self._tokenized_docs = [self._tokenize(d) for d in documents]
+        self._n_docs = len(documents)
+        self._doc_lens = [len(d) for d in self._tokenized_docs]
+        self._avg_dl = sum(self._doc_lens) / max(self._n_docs, 1)
+
+        self._doc_freqs = Counter()
+        for tokens in self._tokenized_docs:
+            seen = set(tokens)
+            for t in seen:
+                self._doc_freqs[t] += 1
+
+    def score(self, query: str) -> np.ndarray:
+        """Score all documents against a query. Returns array of scores."""
+        query_tokens = self._tokenize(query)
+        scores = np.zeros(self._n_docs)
+
+        for token in query_tokens:
+            df = self._doc_freqs.get(token, 0)
+            if df == 0:
+                continue
+            idf = math.log((self._n_docs - df + 0.5) / (df + 0.5) + 1.0)
+
+            for i, doc_tokens in enumerate(self._tokenized_docs):
+                tf = doc_tokens.count(token)
+                dl = self._doc_lens[i]
+                numerator = tf * (self.k1 + 1)
+                denominator = tf + self.k1 * (1 - self.b + self.b * dl / max(self._avg_dl, 1))
+                scores[i] += idf * numerator / denominator
+
+        return scores
+
+
+# ---------------------------------------------------------------------------
+# Retrieval Tool
+# ---------------------------------------------------------------------------
 
 class Retrieval(BaseTool):
     """
@@ -140,28 +542,36 @@ class Retrieval(BaseTool):
     Features:
     - Embedding-based semantic search
     - Multiple embedding providers (Sentence Transformers, TF-IDF fallback)
-    - Document chunking with configurable sizes
+    - Document loaders: txt, md, pdf, csv, tsv, json, jsonl
+    - Chunking strategies: fixed-size, sentence, paragraph, recursive
+    - Hybrid search: vector similarity + BM25 keyword matching
     - Persistent index storage
     - Metadata filtering
     - Score thresholds
 
     Usage:
         retrieval = Retrieval()
-        # Index documents
-        await retrieval.add_documents([
-            {"content": "...", "id": "doc1", "metadata": {...}},
-            ...
-        ])
-        # Search
+        retrieval.add_documents([{"content": "...", "id": "doc1"}])
         result = await retrieval.execute(query="your question", top_k=5)
     """
+
+    CHUNKING_STRATEGIES = {
+        "fixed": FixedSizeChunker,
+        "sentence": SentenceChunker,
+        "paragraph": ParagraphChunker,
+        "recursive": RecursiveChunker,
+    }
 
     def __init__(
         self,
         embedding_provider: Optional[EmbeddingProvider] = None,
         chunk_size: int = 500,
         chunk_overlap: int = 100,
+        chunking_strategy: str = "fixed",
         index_path: Optional[str] = None,
+        knowledge_base_path: Optional[str] = None,
+        enable_hybrid_search: bool = True,
+        hybrid_alpha: float = 0.7,
     ):
         """
         Initialize the retrieval tool.
@@ -170,7 +580,11 @@ class Retrieval(BaseTool):
             embedding_provider: Provider for text embeddings
             chunk_size: Size of document chunks in characters
             chunk_overlap: Overlap between chunks in characters
+            chunking_strategy: One of 'fixed', 'sentence', 'paragraph', 'recursive'
             index_path: Path to persist the index
+            knowledge_base_path: Path to a directory to auto-load documents from
+            enable_hybrid_search: Combine vector + BM25 search (default True)
+            hybrid_alpha: Weight for vector score in hybrid (0=BM25 only, 1=vector only)
         """
         super().__init__(
             metadata=ToolMetadata(
@@ -256,22 +670,36 @@ class Retrieval(BaseTool):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.index_path = index_path
+        self.enable_hybrid_search = enable_hybrid_search
+        self.hybrid_alpha = hybrid_alpha
+
+        # Initialize chunker
+        if chunking_strategy in self.CHUNKING_STRATEGIES:
+            if chunking_strategy == "fixed":
+                self._chunker = FixedSizeChunker(chunk_size, chunk_overlap)
+            elif chunking_strategy == "sentence":
+                self._chunker = SentenceChunker(chunk_size)
+            elif chunking_strategy == "paragraph":
+                self._chunker = ParagraphChunker(chunk_size)
+            elif chunking_strategy == "recursive":
+                self._chunker = RecursiveChunker(chunk_size, chunk_overlap)
+        else:
+            self._chunker = FixedSizeChunker(chunk_size, chunk_overlap)
 
         # Initialize embedding provider
         if embedding_provider is not None:
             self.embedding_provider = embedding_provider
         else:
-            # Try to use sentence transformers, fall back to TF-IDF
             try:
-                # Check if sentence_transformers is available before trying to use it
                 import importlib.util
                 if importlib.util.find_spec("sentence_transformers") is not None:
                     self.embedding_provider = SentenceTransformerEmbedding()
                 else:
                     raise ImportError("sentence_transformers not found")
-            except (ImportError, Exception) as e:
+            except (ImportError, Exception):
                 logger.warning(
-                    f"Sentence Transformers not available ({e}), using TF-IDF fallback"
+                    "\u26a0\ufe0f  sentence-transformers not installed. Using simple TF-IDF embeddings.\n"
+                    "    For better results: pip install sentence-transformers"
                 )
                 self.embedding_provider = SimpleEmbedding()
 
@@ -280,9 +708,31 @@ class Retrieval(BaseTool):
         self.embeddings_matrix: Optional[np.ndarray] = None
         self.doc_ids: List[str] = []
 
+        # BM25 index for hybrid search
+        self._bm25: Optional[SimpleBM25] = None
+
         # Load existing index if available
         if index_path and os.path.exists(index_path):
             self._load_index(index_path)
+
+        # Auto-load knowledge base directory
+        if knowledge_base_path and os.path.isdir(knowledge_base_path):
+            self._load_directory(knowledge_base_path)
+
+    def _load_directory(self, dir_path: str):
+        """Load all supported files from a directory."""
+        loaded = 0
+        p = Path(dir_path)
+        for ext, loader_fn in DOCUMENT_LOADERS.items():
+            for file_path in p.glob(f"*{ext}"):
+                try:
+                    docs = loader_fn(file_path)
+                    if docs:
+                        loaded += self.add_documents(docs)
+                except Exception as e:
+                    logger.warning(f"Failed to load {file_path}: {e}")
+        if loaded:
+            logger.info(f"Loaded {loaded} documents/chunks from {dir_path}")
 
     async def initialize(self) -> None:
         """Initialize the retrieval tool."""
@@ -290,54 +740,8 @@ class Retrieval(BaseTool):
         logger.info("Retrieval tool initialized")
 
     def _chunk_text(self, text: str, doc_id: str) -> List[Document]:
-        """
-        Split text into overlapping chunks.
-
-        Args:
-            text: Text to chunk
-            doc_id: Base document ID
-
-        Returns:
-            List of Document chunks
-        """
-        chunks = []
-        start = 0
-        chunk_num = 0
-
-        while start < len(text):
-            end = start + self.chunk_size
-            chunk_text = text[start:end]
-
-            # Try to break at sentence boundary
-            if end < len(text):
-                # Look for sentence endings
-                for sep in ['. ', '! ', '? ', '\n\n', '\n']:
-                    last_sep = chunk_text.rfind(sep)
-                    if last_sep > self.chunk_size // 2:
-                        chunk_text = chunk_text[:last_sep + len(sep)]
-                        end = start + len(chunk_text)
-                        break
-
-            chunk_id = f"{doc_id}_chunk_{chunk_num}"
-            chunks.append(Document(
-                id=chunk_id,
-                content=chunk_text.strip(),
-                metadata={
-                    "parent_doc_id": doc_id,
-                    "chunk_index": chunk_num,
-                    "start_char": start,
-                    "end_char": end,
-                }
-            ))
-
-            chunk_num += 1
-            start = end - self.chunk_overlap
-
-            # Avoid infinite loop
-            if start >= end:
-                break
-
-        return chunks
+        """Split text into chunks using the configured strategy."""
+        return self._chunker.chunk(text, doc_id)
 
     def add_documents(
         self,
@@ -365,13 +769,11 @@ class Retrieval(BaseTool):
             metadata = doc.get("metadata", {})
 
             if chunk and len(content) > self.chunk_size:
-                # Create chunks
                 chunks = self._chunk_text(content, doc_id)
                 for c in chunks:
                     c.metadata.update(metadata)
                 all_chunks.extend(chunks)
             else:
-                # Store as single document
                 all_chunks.append(Document(
                     id=doc_id,
                     content=content,
@@ -384,22 +786,19 @@ class Retrieval(BaseTool):
         # Generate embeddings
         texts = [c.content for c in all_chunks]
 
-        # For SimpleEmbedding, we need to fit on all texts
         if isinstance(self.embedding_provider, SimpleEmbedding):
-            # Collect all existing texts and new texts
             all_texts = [d.content for d in self.documents.values()] + texts
             self.embedding_provider.fit(all_texts)
 
         embeddings = self.embedding_provider.embed(texts)
 
-        # Store documents and embeddings
         for i, chunk in enumerate(all_chunks):
             chunk.embedding = embeddings[i]
             self.documents[chunk.id] = chunk
             self.doc_ids.append(chunk.id)
 
-        # Rebuild embedding matrix
         self._rebuild_embedding_matrix()
+        self._rebuild_bm25_index()
 
         logger.info(f"Added {len(all_chunks)} documents/chunks to index")
         return len(all_chunks)
@@ -413,79 +812,31 @@ class Retrieval(BaseTool):
         """
         Add documents from a file.
 
+        Supports: txt, md, pdf, csv, tsv, json, jsonl
+
         Args:
             file_path: Path to the file
-            file_type: File type (auto, txt, json, jsonl)
+            file_type: File type (auto-detected from extension by default)
             chunk: Whether to chunk documents
 
         Returns:
             Number of documents added
         """
         path = Path(file_path)
-
         if not path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
 
         # Auto-detect file type
-        if file_type == "auto":
-            suffix = path.suffix.lower()
-            if suffix == ".json":
-                file_type = "json"
-            elif suffix == ".jsonl":
-                file_type = "jsonl"
-            else:
-                file_type = "txt"
+        ext = path.suffix.lower()
+        if file_type != "auto":
+            ext = f".{file_type}" if not file_type.startswith(".") else file_type
 
-        documents = []
+        loader_fn = DOCUMENT_LOADERS.get(ext)
+        if loader_fn is None:
+            # Fallback to plain text
+            loader_fn = load_txt
 
-        if file_type == "txt":
-            content = path.read_text(encoding="utf-8")
-            documents.append({
-                "content": content,
-                "id": path.stem,
-                "metadata": {"source": str(path)},
-            })
-
-        elif file_type == "json":
-            data = json.loads(path.read_text(encoding="utf-8"))
-            if isinstance(data, list):
-                for i, item in enumerate(data):
-                    if isinstance(item, dict):
-                        doc = {
-                            "content": item.get("content") or item.get("text") or str(item),
-                            "id": item.get("id") or f"{path.stem}_{i}",
-                            "metadata": {k: v for k, v in item.items() if k not in ["content", "text", "id"]},
-                        }
-                        doc["metadata"]["source"] = str(path)
-                        documents.append(doc)
-                    else:
-                        documents.append({
-                            "content": str(item),
-                            "id": f"{path.stem}_{i}",
-                            "metadata": {"source": str(path)},
-                        })
-            elif isinstance(data, dict):
-                documents.append({
-                    "content": data.get("content") or data.get("text") or str(data),
-                    "id": data.get("id") or path.stem,
-                    "metadata": {"source": str(path)},
-                })
-
-        elif file_type == "jsonl":
-            with open(path, "r", encoding="utf-8") as f:
-                for i, line in enumerate(f):
-                    line = line.strip()
-                    if not line:
-                        continue
-                    item = json.loads(line)
-                    doc = {
-                        "content": item.get("content") or item.get("text") or item.get("question") or str(item),
-                        "id": item.get("id") or f"{path.stem}_{i}",
-                        "metadata": {k: v for k, v in item.items() if k not in ["content", "text", "id"]},
-                    }
-                    doc["metadata"]["source"] = str(path)
-                    documents.append(doc)
-
+        documents = loader_fn(path)
         return self.add_documents(documents, chunk=chunk)
 
     def _rebuild_embedding_matrix(self):
@@ -499,18 +850,24 @@ class Retrieval(BaseTool):
         embeddings = [self.documents[doc_id].embedding for doc_id in self.doc_ids]
         self.embeddings_matrix = np.vstack(embeddings)
 
+    def _rebuild_bm25_index(self):
+        """Rebuild the BM25 index for hybrid search."""
+        if not self.enable_hybrid_search or not self.documents:
+            self._bm25 = None
+            return
+        self._bm25 = SimpleBM25()
+        texts = [self.documents[doc_id].content for doc_id in self.doc_ids]
+        self._bm25.index(texts)
+
     def _cosine_similarity(self, query_embedding: np.ndarray) -> np.ndarray:
         """Compute cosine similarity between query and all documents."""
         if self.embeddings_matrix is None:
             return np.array([])
 
-        # Normalize
         query_norm = query_embedding / (np.linalg.norm(query_embedding) + 1e-8)
         doc_norms = self.embeddings_matrix / (
             np.linalg.norm(self.embeddings_matrix, axis=1, keepdims=True) + 1e-8
         )
-
-        # Compute similarities
         similarities = np.dot(doc_norms, query_norm)
         return similarities
 
@@ -525,14 +882,7 @@ class Retrieval(BaseTool):
         """
         Execute retrieval query.
 
-        Args:
-            query: Search query
-            top_k: Number of results to return
-            score_threshold: Minimum similarity score
-            filter_metadata: Filter by metadata fields
-
-        Returns:
-            Dict with results and metadata
+        Uses hybrid search (vector + BM25) by default if enabled.
         """
         if not self.documents:
             return {
@@ -544,13 +894,24 @@ class Retrieval(BaseTool):
         # Get query embedding
         query_embedding = self.embedding_provider.embed_query(query)
 
-        # Compute similarities
-        similarities = self._cosine_similarity(query_embedding)
+        # Vector similarity scores
+        vector_scores = self._cosine_similarity(query_embedding)
 
-        # Get top-k indices
-        top_indices = np.argsort(similarities)[::-1]
+        # Hybrid: combine with BM25
+        if self.enable_hybrid_search and self._bm25 is not None:
+            bm25_scores = self._bm25.score(query)
+            # Normalize BM25 scores to [0, 1]
+            bm25_max = bm25_scores.max() if bm25_scores.max() > 0 else 1.0
+            bm25_norm = bm25_scores / bm25_max
+            # Normalize vector scores to [0, 1]
+            vec_max = vector_scores.max() if vector_scores.max() > 0 else 1.0
+            vec_norm = vector_scores / vec_max
+            combined_scores = self.hybrid_alpha * vec_norm + (1 - self.hybrid_alpha) * bm25_norm
+        else:
+            combined_scores = vector_scores
 
-        # Build results
+        top_indices = np.argsort(combined_scores)[::-1]
+
         results = []
         for idx in top_indices:
             if len(results) >= top_k:
@@ -558,13 +919,11 @@ class Retrieval(BaseTool):
 
             doc_id = self.doc_ids[idx]
             doc = self.documents[doc_id]
-            score = float(similarities[idx])
+            score = float(combined_scores[idx])
 
-            # Apply score threshold
             if score < score_threshold:
                 continue
 
-            # Apply metadata filter
             if filter_metadata:
                 match = True
                 for key, value in filter_metadata.items():
@@ -589,12 +948,7 @@ class Retrieval(BaseTool):
         }
 
     def save_index(self, path: Optional[str] = None):
-        """
-        Save the index to disk.
-
-        Args:
-            path: Path to save to (uses self.index_path if not provided)
-        """
+        """Save the index to disk."""
         path = path or self.index_path
         if not path:
             raise ValueError("No index path specified")
@@ -620,12 +974,7 @@ class Retrieval(BaseTool):
         logger.info(f"Saved index to {path}")
 
     def _load_index(self, path: str):
-        """
-        Load the index from disk.
-
-        Args:
-            path: Path to load from
-        """
+        """Load the index from disk."""
         with open(path, "rb") as f:
             data = pickle.load(f)
 
@@ -643,6 +992,7 @@ class Retrieval(BaseTool):
         self.chunk_overlap = data.get("chunk_overlap", self.chunk_overlap)
 
         self._rebuild_embedding_matrix()
+        self._rebuild_bm25_index()
         logger.info(f"Loaded index from {path} with {len(self.documents)} documents")
 
     def clear(self):
@@ -650,6 +1000,7 @@ class Retrieval(BaseTool):
         self.documents = {}
         self.embeddings_matrix = None
         self.doc_ids = []
+        self._bm25 = None
         logger.info("Cleared retrieval index")
 
     @property

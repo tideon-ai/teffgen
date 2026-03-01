@@ -13,6 +13,13 @@ __all__ = [
     "Calculator",
     "Retrieval",
     "AgenticSearch",
+    "BashTool",
+    "WeatherTool",
+    "JSONTool",
+    "DateTimeTool",
+    "TextProcessingTool",
+    "URLFetchTool",
+    "WikipediaTool",
 ]
 
 
@@ -39,5 +46,26 @@ def __getattr__(name):
     elif name == "AgenticSearch":
         from .agentic_search import AgenticSearch
         return AgenticSearch
+    elif name == "BashTool":
+        from .bash_tool import BashTool
+        return BashTool
+    elif name == "WeatherTool":
+        from .weather import WeatherTool
+        return WeatherTool
+    elif name == "JSONTool":
+        from .json_tool import JSONTool
+        return JSONTool
+    elif name == "DateTimeTool":
+        from .datetime_tool import DateTimeTool
+        return DateTimeTool
+    elif name == "TextProcessingTool":
+        from .text_processing import TextProcessingTool
+        return TextProcessingTool
+    elif name == "URLFetchTool":
+        from .url_fetch import URLFetchTool
+        return URLFetchTool
+    elif name == "WikipediaTool":
+        from .wikipedia_tool import WikipediaTool
+        return WikipediaTool
     else:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

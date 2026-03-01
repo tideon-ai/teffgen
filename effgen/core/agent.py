@@ -23,6 +23,7 @@ from ..models.base import BaseModel, GenerationConfig, GenerationResult
 from ..models.model_loader import ModelLoader
 from ..tools.base_tool import BaseTool
 from ..prompts.tool_prompt_generator import ToolPromptGenerator
+from ..prompts.agent_system_prompt import AgentSystemPromptBuilder
 from ..tools.fallback import ToolFallbackChain
 from ..utils.circuit_breaker import CircuitBreaker
 from .state import AgentState
@@ -226,6 +227,13 @@ Question: {task}
         # Circuit breaker for tool failures
         self._circuit_breaker = CircuitBreaker()
 
+        # Auto-generate system prompt if tools are present and using default prompt
+        self._system_prompt_builder = AgentSystemPromptBuilder(
+            model_name=self.model_name or "",
+        )
+        if config.tools and config.system_prompt == "You are a helpful AI assistant.":
+            self.config.system_prompt = self._build_system_prompt()
+
         # State management
         self.state = AgentState(agent_id=self.name)
 
@@ -248,6 +256,16 @@ Question: {task}
         # Memory (placeholder for now)
         self.short_term_memory = []
         self.long_term_memory = None  # Would integrate vector store
+
+    def _build_system_prompt(self) -> str:
+        """Build a dynamic system prompt based on agent configuration and tools."""
+        return self._system_prompt_builder.build(
+            tools=self.config.tools,
+            agent_name=self.name,
+            base_system_prompt=None,  # Will generate default role
+            enable_fallback=self._enable_fallback,
+            verbose=self._verbose_tools,
+        )
 
     def _auto_detect_verbose(self) -> bool:
         """Auto-detect whether to use verbose tool descriptions based on model size."""
