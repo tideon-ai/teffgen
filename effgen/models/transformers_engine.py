@@ -105,9 +105,11 @@ class TransformersEngine(BatchModel):
         # Filter out parameters that shouldn't be passed to model loading
         # These are vLLM-specific or other incompatible parameters
         self.additional_kwargs = {k: v for k, v in kwargs.items()
-                                  if k not in ['quantization', 'engine', 'use_tqdm', 'tensor_parallel_size',
-                                               'apply_chat_template', 'system_prompt', 'gpu_memory_utilization',
-                                               'max_num_seqs', 'max_num_batched_tokens']}
+                                  if k not in ['quantization', 'engine', 'backend', 'device',
+                                               'use_tqdm', 'tensor_parallel_size',
+                                               'apply_chat_template', 'system_prompt',
+                                               'gpu_memory_utilization', 'max_num_seqs',
+                                               'max_num_batched_tokens']}
 
         self.model = None
         self.tokenizer = None
