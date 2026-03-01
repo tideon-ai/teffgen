@@ -1299,8 +1299,16 @@ Question: {task}
         Returns:
             AgentResponse
         """
-        # Simple direct prompt
-        prompt = f"Answer this question directly and concisely:\n\n{task}\n\nAnswer:"
+        # Include conversation history from short-term memory for multi-turn context
+        conversation_history = self._format_conversation_history()
+        if conversation_history:
+            prompt = (
+                f"{conversation_history}\n\n"
+                f"Based on the conversation above, answer this question directly and concisely:\n\n"
+                f"{task}\n\nAnswer:"
+            )
+        else:
+            prompt = f"Answer this question directly and concisely:\n\n{task}\n\nAnswer:"
 
         try:
             response = self._generate(prompt, **kwargs)
