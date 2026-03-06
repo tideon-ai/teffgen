@@ -6,7 +6,7 @@ utilization, temperature, power consumption, and active process tracking. It inc
 an alert system for threshold breaches and comprehensive metrics logging.
 
 Author: effGen Team
-License: MIT
+License: Apache-2.0
 """
 
 import logging
@@ -335,21 +335,24 @@ class GPUMonitor:
             temperature = float(pynvml.nvmlDeviceGetTemperature(
                 handle, pynvml.NVML_TEMPERATURE_GPU
             ))
-        except:
+        except (Exception,):
+            logger.debug(f"Could not read temperature for GPU {device_id}")
             temperature = None
 
         # Power
         try:
             power_usage = pynvml.nvmlDeviceGetPowerUsage(handle) / 1000.0  # mW to W
             power_limit = pynvml.nvmlDeviceGetPowerManagementLimit(handle) / 1000.0
-        except:
+        except (Exception,):
+            logger.debug(f"Could not read power info for GPU {device_id}")
             power_usage = None
             power_limit = None
 
         # Fan speed
         try:
             fan_speed = pynvml.nvmlDeviceGetFanSpeed(handle) / 100.0
-        except:
+        except (Exception,):
+            logger.debug(f"Could not read fan speed for GPU {device_id}")
             fan_speed = None
 
         # Processes
@@ -361,8 +364,8 @@ class GPUMonitor:
                     'pid': proc.pid,
                     'used_memory': proc.usedGpuMemory,
                 })
-        except:
-            pass
+        except (Exception,):
+            logger.debug(f"Could not read process info for GPU {device_id}")
 
         return GPUMetrics(
             device_id=device_id,
@@ -692,8 +695,8 @@ class GPUMonitor:
         if self._nvml_initialized:
             try:
                 pynvml.nvmlShutdown()
-            except:
-                pass
+            except (Exception,):
+                logger.debug("Failed to shutdown NVML during cleanup")
 
     def __repr__(self) -> str:
         """String representation"""

@@ -56,11 +56,10 @@ setup(
     },
     packages=find_packages(exclude=["tests", "tests.*", "examples", "docs", "scripts"]),
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "Intended Audience :: Science/Research",
         "Intended Audience :: Education",
-        "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.10",
@@ -94,7 +93,7 @@ setup(
             "qdrant-client>=1.7.0",
         ],
         "search": [
-            "duckduckgo-search>=3.9.0",
+            "duckduckgo-search>=8.1.0",
             "google-search-results>=2.4.2",
             "google-api-python-client>=2.108.0",
         ],
@@ -115,7 +114,7 @@ setup(
             "faiss-cpu>=1.7.4",
             "chromadb>=0.4.18",
             "qdrant-client>=1.7.0",
-            "duckduckgo-search>=3.9.0",
+            "duckduckgo-search>=8.1.0",
             "google-search-results>=2.4.2",
             "google-api-python-client>=2.108.0",
             "boto3>=1.28.0",
@@ -129,7 +128,7 @@ setup(
     entry_points={
         "console_scripts": [
             "effgen=effgen.cli:main",
-            "effgen-agent=effgen.cli:main",
+            "effgen-agent=effgen.cli:agent_main",
             "effgen-web=effgen.cli:web_agent_main",
         ],
     },

@@ -12,7 +12,7 @@ Components:
     - Utility functions: Memory estimation, device selection, etc.
 
 Author: effGen Team
-License: MIT
+License: Apache-2.0
 """
 
 from effgen.gpu.allocator import (

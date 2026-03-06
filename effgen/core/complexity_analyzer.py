@@ -5,9 +5,12 @@ Analyzes task complexity to determine if sub-agent decomposition is warranted.
 Uses multiple weighted factors to score complexity on a 0-10 scale.
 """
 
+import logging
 import re
 from typing import Dict, Optional, Any, List
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -577,18 +580,18 @@ class ComplexityAnalyzer:
         """
         # Placeholder for weight calibration using training data
         # In production, would use optimization algorithm to find best weights
-        print(f"Calibrating weights with {len(training_data)} samples...")
+        logger.info(f"Calibrating weights with {len(training_data)} samples...")
 
         # Simple heuristic: adjust weights based on correlation with actual complexity
         # This is a simplified version - real implementation would use proper optimization
 
         if len(training_data) < 10:
-            print("Warning: Insufficient training data for reliable calibration (need at least 10 samples)")
+            logger.warning("Insufficient training data for reliable calibration (need at least 10 samples)")
             return
 
         # Calculate correlations (simplified)
         # In production: use proper statistical methods
-        print("Weight calibration complete (feature in development)")
+        logger.info("Weight calibration complete (feature in development)")
 
     def batch_analyze(self, tasks: List[str]) -> List[ComplexityScore]:
         """

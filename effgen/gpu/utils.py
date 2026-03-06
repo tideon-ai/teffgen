@@ -5,7 +5,7 @@ This module provides utility functions for GPU operations including memory estim
 device selection, compatibility checks, and various helper functions for GPU management.
 
 Author: effGen Team
-License: MIT
+License: Apache-2.0
 """
 
 import logging
@@ -652,15 +652,15 @@ def print_device_info(device_id: Optional[int] = None) -> None:
         device_id: Specific device ID, or None for all devices
     """
     if not is_gpu_available():
-        print("No GPU devices available")
+        logger.info("No GPU devices available")
         return
 
     if device_id is not None:
-        print(get_device_info_string(device_id))
+        logger.info(get_device_info_string(device_id))
     else:
-        print(f"Found {get_device_count()} GPU device(s):")
+        logger.info(f"Found {get_device_count()} GPU device(s):")
         for i in range(get_device_count()):
-            print(f"  {get_device_info_string(i)}")
+            logger.info(f"  {get_device_info_string(i)}")
 
 
 def validate_device_id(device_id: int) -> bool:

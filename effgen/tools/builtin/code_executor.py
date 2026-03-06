@@ -275,8 +275,8 @@ class CodeExecutor(BaseTool):
                 try:
                     process.kill()
                     await process.wait()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Error killing timed-out process: {e}")
 
                 stdout = b""
                 stderr = b"Execution timed out"

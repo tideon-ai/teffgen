@@ -20,7 +20,11 @@ except ImportError:
     DOCKER_AVAILABLE = False
     docker = None
 
+import logging
+
 from .sandbox import BaseSandbox, ExecutionResult, ExecutionStatus, SandboxConfig
+
+logger = logging.getLogger(__name__)
 
 
 class DockerSandbox(BaseSandbox):
@@ -101,10 +105,10 @@ class DockerSandbox(BaseSandbox):
             except ImageNotFound:
                 # Image not found, try to pull it
                 try:
-                    print(f"Pulling Docker image: {image}")
+                    logger.info(f"Pulling Docker image: {image}")
                     self.docker_client.images.pull(image)
                 except Exception as e:
-                    print(f"Warning: Could not pull image {image}: {e}")
+                    logger.warning(f"Could not pull image {image}: {e}")
 
     def execute(self, code: str, language: str) -> ExecutionResult:
         """
@@ -212,8 +216,9 @@ class DockerSandbox(BaseSandbox):
                     exit_code = container.wait(timeout=self.config.timeout)
                     if isinstance(exit_code, dict):
                         exit_code = exit_code.get('StatusCode', 0)
-                except Exception:
+                except Exception as e:
                     # Timeout occurred
+                    logger.debug(f"Container wait error (likely timeout): {e}")
                     container.kill()
                     raise TimeoutError()
 
@@ -248,8 +253,8 @@ class DockerSandbox(BaseSandbox):
             if container:
                 try:
                     container.remove(force=True)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Failed to remove container: {e}")
 
     def _create_code_file(self, code: str, language: str, temp_dir: str) -> str:
         """
@@ -376,14 +381,14 @@ class DockerSandbox(BaseSandbox):
             for container in containers:
                 try:
                     container.remove()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Failed to remove container during cleanup: {e}")
 
             # Prune volumes
             self.docker_client.volumes.prune()
 
         except Exception as e:
-            print(f"Warning: Docker cleanup failed: {e}")
+            logger.warning(f"Docker cleanup failed: {e}")
 
     def __enter__(self):
         """Context manager entry."""
@@ -452,9 +457,9 @@ class DockerManager:
             image: Image name to pull
         """
         try:
-            print(f"Pulling Docker image: {image}")
+            logger.info(f"Pulling Docker image: {image}")
             self.client.images.pull(image)
-            print(f"Successfully pulled {image}")
+            logger.info(f"Successfully pulled {image}")
         except Exception as e:
             raise RuntimeError(f"Failed to pull image {image}: {e}")
 
@@ -469,7 +474,7 @@ class DockerManager:
             images = self.client.images.list()
             return [tag for img in images for tag in img.tags]
         except Exception as e:
-            print(f"Warning: Could not list images: {e}")
+            logger.warning(f"Could not list images: {e}")
             return []
 
     def remove_image(self, image: str, force: bool = False) -> None:
@@ -482,7 +487,7 @@ class DockerManager:
         """
         try:
             self.client.images.remove(image, force=force)
-            print(f"Removed image: {image}")
+            logger.info(f"Removed image: {image}")
         except Exception as e:
             raise RuntimeError(f"Failed to remove image {image}: {e}")
 
@@ -503,11 +508,11 @@ class DockerManager:
                 try:
                     container.remove()
                     count += 1
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Failed to remove container: {e}")
             return count
         except Exception as e:
-            print(f"Warning: Container cleanup failed: {e}")
+            logger.warning(f"Container cleanup failed: {e}")
             return 0
 
     def get_stats(self) -> Dict[str, Any]:
@@ -528,7 +533,7 @@ class DockerManager:
                 'cpus': info.get('NCPU', 0),
             }
         except Exception as e:
-            print(f"Warning: Could not get Docker stats: {e}")
+            logger.warning(f"Could not get Docker stats: {e}")
             return {}
 
     def __enter__(self):

@@ -6,11 +6,14 @@ task structure and chosen strategy.
 """
 
 import json
+import logging
 import re
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
 
 from .task import SubTask, TaskPriority, TaskStatus
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -294,7 +297,7 @@ Respond with ONLY the JSON, no additional text."""
 
         except Exception as e:
             # If LLM decomposition fails, fall back to rule-based
-            print(f"LLM decomposition failed: {e}. Using rule-based fallback.")
+            logger.warning(f"LLM decomposition failed: {e}. Using rule-based fallback.")
             return self._rule_based_decompose(task, strategy, structure)
 
     def _parse_decomposition(self, response: str) -> List[SubTask]:

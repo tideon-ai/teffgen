@@ -5,6 +5,7 @@ This module provides a secure sandbox environment for executing code
 with resource limits, security validation, and output capture.
 """
 
+import logging
 import os
 import time
 import signal
@@ -17,6 +18,8 @@ from enum import Enum
 from pathlib import Path
 
 from .validators import CodeValidator, ValidationResult
+
+logger = logging.getLogger(__name__)
 
 
 class ExecutionStatus(Enum):
@@ -317,8 +320,8 @@ class LocalSandbox(BaseSandbox):
             # Clean up temporary file
             try:
                 os.unlink(temp_file)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to clean up temp file: {e}")
 
     def _execute_javascript(self, code: str) -> ExecutionResult:
         """
@@ -380,8 +383,8 @@ class LocalSandbox(BaseSandbox):
         finally:
             try:
                 os.unlink(temp_file)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to clean up temp file: {e}")
 
     def _execute_bash(self, code: str) -> ExecutionResult:
         """

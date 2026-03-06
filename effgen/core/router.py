@@ -8,6 +8,7 @@ The router analyzes tasks and makes intelligent decisions about:
 - Optimal execution strategy (parallel/sequential/hierarchical/hybrid)
 """
 
+import logging
 import re
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
@@ -16,6 +17,8 @@ from enum import Enum
 from .complexity_analyzer import ComplexityAnalyzer, ComplexityScore
 from .decomposition_engine import DecompositionEngine, TaskStructure
 from .task import SubTask
+
+logger = logging.getLogger(__name__)
 
 
 class RoutingStrategy(Enum):
@@ -222,7 +225,7 @@ class SubAgentRouter:
             )
         except Exception as e:
             # If decomposition fails, fall back to single agent
-            print(f"Decomposition failed: {e}. Falling back to single agent.")
+            logger.warning(f"Decomposition failed: {e}. Falling back to single agent.")
             decision = RoutingDecision(
                 use_sub_agents=False,
                 strategy=RoutingStrategy.SINGLE_AGENT,

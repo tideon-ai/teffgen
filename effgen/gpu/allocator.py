@@ -6,7 +6,7 @@ multi-GPU deployments. It supports various allocation strategies, tensor/pipelin
 parallelism, and prevents resource overallocation.
 
 Author: effGen Team
-License: MIT
+License: Apache-2.0
 """
 
 import logging

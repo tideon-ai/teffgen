@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "A comprehensive framework for building agents with Small Language Models"
 readme = "README_PYPI.md"
 requires-python = ">=3.10"
-license = "MIT"
+license = "Apache-2.0"
 authors = [
     {name = "Gaurav Srivastava", email = "gks@vt.edu"}
 ]
@@ -33,6 +33,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Libraries :: Application Frameworks",
     "Framework :: AsyncIO",
     "Typing :: Typed",
 ]
@@ -127,12 +128,31 @@ search = [
     "google-search-results>=2.4.2",
     "google-api-python-client>=2.108.0",
 ]
+cloud-secrets = [
+    "boto3>=1.28.0",
+    "hvac>=1.2.0",
+    "azure-keyvault-secrets>=4.7.0",
+    "azure-identity>=1.14.0",
+]
+monitoring = [
+    "wandb>=0.16.0",
+    "tensorboard>=2.15.0",
+]
 all = [
     "vllm>=0.2.7",
     "flash-attn>=2.3.0",
     "faiss-cpu>=1.7.4",
     "chromadb>=0.4.18",
     "qdrant-client>=1.7.0",
+    "duckduckgo-search>=8.1.0",
+    "google-search-results>=2.4.2",
+    "google-api-python-client>=2.108.0",
+    "boto3>=1.28.0",
+    "hvac>=1.2.0",
+    "azure-keyvault-secrets>=4.7.0",
+    "azure-identity>=1.14.0",
+    "wandb>=0.16.0",
+    "tensorboard>=2.15.0",
 ]
 
 [tool.setuptools.dynamic]
