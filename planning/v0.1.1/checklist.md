@@ -28,3 +28,22 @@
 - [x] TEST: All modified modules import cleanly
 - [x] TEST: Calculator agent on GPU 0 — "What is 99 * 101?" → output contains 9999, success=True
 - [x] TEST: No print() output leaks to stdout from modified modules (stdout capture verified)
+
+## Phase 3: Examples & Developer Experience
+- [x] 3.1 — Created examples/preset_agents.py with math/research/coding presets using Qwen2.5-3B-Instruct 4bit
+- [x] 3.2 — Created examples/streaming_agent.py with agent.stream() real-time token output
+- [x] 3.3 — Created examples/memory_agent.py with multi-turn context recall (Alice/quantum computing)
+- [x] 3.4 — Created examples/multi_tool_agent.py with Calculator + BashTool + DateTimeTool
+- [x] 3.5 — Created examples/weather_agent.py with WeatherTool (free Open-Meteo API, no key needed)
+- [x] 3.6 — Created examples/plugin_example.py with custom GreetingTool plugin via ToolPlugin/PluginManager
+- [x] 3.7 — Updated examples/README.md with all 10 examples, usage instructions, and requirements
+- [x] 3.8 — Added ToolFallbackChain, CircuitBreaker, ToolPromptGenerator, AgentSystemPromptBuilder to effgen/__init__.py with try/except ImportError safety
+
+### Phase 3 Tests
+- [x] TEST: preset_agents.py — math (17*23=391), research (Paris), coding (Fibonacci) all correct on GPU 0
+- [x] TEST: streaming_agent.py — tokens streamed in real-time, calculator tool used, answer=4 on GPU 1
+- [x] TEST: memory_agent.py — recalled "Alice" and "quantum computing" on GPU 3
+- [x] TEST: multi_tool_agent.py — date + 365*24=8760 correct on GPU 4
+- [x] TEST: weather_agent.py — London weather (13.3C, partly cloudy) via Open-Meteo on GPU 5
+- [x] TEST: plugin_example.py — GreetingTool registered and used, "Hello, Alice!" on GPU 6
+- [x] TEST: New imports work: `from effgen import ToolFallbackChain, CircuitBreaker, ToolPromptGenerator, AgentSystemPromptBuilder`

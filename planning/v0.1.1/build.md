@@ -133,14 +133,14 @@ Zero bare `except:` in codebase. Zero `print()` calls used for logging/diagnosti
 Add practical, runnable example scripts for all major v0.1.0 features. Users should be able to `python examples/<feature>.py` and see each feature in action. Also add missing top-level exports.
 
 ### Tasks
-- [ ] **3.1** Create `examples/preset_agents.py` — demonstrates `create_agent("math", model)`, `create_agent("research", model)`, `create_agent("coding", model)` with actual queries
-- [ ] **3.2** Create `examples/streaming_agent.py` — demonstrates `agent.stream("What is 2+2?")` with real-time token output
-- [ ] **3.3** Create `examples/memory_agent.py` — demonstrates multi-turn memory: agent remembers context across calls
-- [ ] **3.4** Create `examples/multi_tool_agent.py` — demonstrates agent with Calculator + BashTool + DateTimeTool solving a multi-step task
-- [ ] **3.5** Create `examples/weather_agent.py` — demonstrates WeatherTool with Open-Meteo (free API, no key)
-- [ ] **3.6** Create `examples/plugin_example.py` — demonstrates creating and registering a simple custom tool plugin
-- [ ] **3.7** Update `examples/README.md` with descriptions and usage instructions for all examples (old + new)
-- [ ] **3.8** Add missing convenience imports to `effgen/__init__.py`:
+- [x] **3.1** Create `examples/preset_agents.py` — demonstrates `create_agent("math", model)`, `create_agent("research", model)`, `create_agent("coding", model)` with actual queries
+- [x] **3.2** Create `examples/streaming_agent.py` — demonstrates `agent.stream("What is 2+2?")` with real-time token output
+- [x] **3.3** Create `examples/memory_agent.py` — demonstrates multi-turn memory: agent remembers context across calls
+- [x] **3.4** Create `examples/multi_tool_agent.py` — demonstrates agent with Calculator + BashTool + DateTimeTool solving a multi-step task
+- [x] **3.5** Create `examples/weather_agent.py` — demonstrates WeatherTool with Open-Meteo (free API, no key)
+- [x] **3.6** Create `examples/plugin_example.py` — demonstrates creating and registering a simple custom tool plugin
+- [x] **3.7** Update `examples/README.md` with descriptions and usage instructions for all examples (old + new)
+- [x] **3.8** Add missing convenience imports to `effgen/__init__.py`:
   - `from effgen.tools.fallback import ToolFallbackChain`
   - `from effgen.utils.circuit_breaker import CircuitBreaker`
   - `from effgen.prompts.tool_prompt_generator import ToolPromptGenerator`
@@ -148,10 +148,10 @@ Add practical, runnable example scripts for all major v0.1.0 features. Users sho
   - Add these to `__all__` as well
 
 ### Tests
-- [ ] Test: Run `examples/preset_agents.py` on a free GPU with Qwen2.5-3B-Instruct — verify math preset produces correct answer
-- [ ] Test: Run `examples/streaming_agent.py` — verify tokens stream (not all at once)
-- [ ] Test: Run `examples/memory_agent.py` — verify agent recalls earlier context
-- [ ] Test: Verify new imports work: `from effgen import ToolFallbackChain, CircuitBreaker, ToolPromptGenerator, AgentSystemPromptBuilder`
+- [x] Test: Run `examples/preset_agents.py` on a free GPU with Qwen2.5-3B-Instruct — verify math preset produces correct answer
+- [x] Test: Run `examples/streaming_agent.py` — verify tokens stream (not all at once)
+- [x] Test: Run `examples/memory_agent.py` — verify agent recalls earlier context
+- [x] Test: Verify new imports work: `from effgen import ToolFallbackChain, CircuitBreaker, ToolPromptGenerator, AgentSystemPromptBuilder`
 
 ### Success Criteria
 Every major v0.1.0 feature has a working example. All examples run successfully with a real model. Top-level imports cover all public API classes.
@@ -254,18 +254,18 @@ README is accurate. CHANGELOG has v0.1.1 section. Linting passes. All tests pass
 - [x] P2-TEST: All modified modules import cleanly
 
 ### Phase 3: Examples & Developer Experience
-- [ ] P3-3.1: Create examples/preset_agents.py
-- [ ] P3-3.2: Create examples/streaming_agent.py
-- [ ] P3-3.3: Create examples/memory_agent.py
-- [ ] P3-3.4: Create examples/multi_tool_agent.py
-- [ ] P3-3.5: Create examples/weather_agent.py
-- [ ] P3-3.6: Create examples/plugin_example.py
-- [ ] P3-3.7: Update examples/README.md
-- [ ] P3-3.8: Add missing convenience imports to effgen/__init__.py
-- [ ] P3-TEST: preset_agents.py runs correctly on GPU
-- [ ] P3-TEST: streaming_agent.py streams tokens
-- [ ] P3-TEST: memory_agent.py recalls context
-- [ ] P3-TEST: New top-level imports work
+- [x] P3-3.1: Create examples/preset_agents.py
+- [x] P3-3.2: Create examples/streaming_agent.py
+- [x] P3-3.3: Create examples/memory_agent.py
+- [x] P3-3.4: Create examples/multi_tool_agent.py
+- [x] P3-3.5: Create examples/weather_agent.py
+- [x] P3-3.6: Create examples/plugin_example.py
+- [x] P3-3.7: Update examples/README.md
+- [x] P3-3.8: Add missing convenience imports to effgen/__init__.py
+- [x] P3-TEST: preset_agents.py runs correctly on GPU
+- [x] P3-TEST: streaming_agent.py streams tokens
+- [x] P3-TEST: memory_agent.py recalls context
+- [x] P3-TEST: New top-level imports work
 
 ### Phase 4: Test Suite Hardening
 - [ ] P4-4.1: Add CLI smoke tests

@@ -77,6 +77,27 @@ from effgen.memory import (
 # Preset imports
 from effgen.presets import create_agent, list_presets
 
+# Additional convenience imports
+try:
+    from effgen.tools.fallback import ToolFallbackChain
+except ImportError:
+    pass
+
+try:
+    from effgen.utils.circuit_breaker import CircuitBreaker
+except ImportError:
+    pass
+
+try:
+    from effgen.prompts.tool_prompt_generator import ToolPromptGenerator
+except ImportError:
+    pass
+
+try:
+    from effgen.prompts.agent_system_prompt import AgentSystemPromptBuilder
+except ImportError:
+    pass
+
 # Execution imports
 from effgen.execution import (
     CodeExecutor,
@@ -145,6 +166,12 @@ __all__ = [
     # Presets
     "create_agent",
     "list_presets",
+
+    # Additional convenience exports
+    "ToolFallbackChain",
+    "CircuitBreaker",
+    "ToolPromptGenerator",
+    "AgentSystemPromptBuilder",
 
     # Execution
     "CodeExecutor",
