@@ -11,17 +11,16 @@ This module provides integration with Google's Gemini API, supporting:
 """
 
 import logging
-from typing import Iterator, Optional, List, Dict, Any, Union
 import os
-from pathlib import Path
+from collections.abc import Iterator
+from typing import Any
 
 from effgen.models.base import (
-    BaseModel,
     FunctionCallingModel,
-    ModelType,
     GenerationConfig,
     GenerationResult,
-    TokenCount
+    ModelType,
+    TokenCount,
 )
 
 logger = logging.getLogger(__name__)
@@ -70,8 +69,8 @@ class GeminiAdapter(FunctionCallingModel):
     def __init__(
         self,
         model_name: str = "gemini-1.5-pro",
-        api_key: Optional[str] = None,
-        safety_settings: Optional[List[Dict[str, Any]]] = None,
+        api_key: str | None = None,
+        safety_settings: list[dict[str, Any]] | None = None,
         **kwargs
     ):
         """
@@ -185,8 +184,8 @@ class GeminiAdapter(FunctionCallingModel):
 
     def _prepare_content(
         self,
-        prompt: Union[str, List[Union[str, Dict[str, Any]]]]
-    ) -> Union[str, List]:
+        prompt: str | list[str | dict[str, Any]]
+    ) -> str | list:
         """
         Prepare content for Gemini API.
 
@@ -225,8 +224,8 @@ class GeminiAdapter(FunctionCallingModel):
 
     def _create_generation_config(
         self,
-        config: Optional[GenerationConfig] = None
-    ) -> Dict[str, Any]:
+        config: GenerationConfig | None = None
+    ) -> dict[str, Any]:
         """
         Create Gemini generation config.
 
@@ -253,8 +252,8 @@ class GeminiAdapter(FunctionCallingModel):
 
     def generate(
         self,
-        prompt: Union[str, List[Union[str, Dict[str, Any]]]],
-        config: Optional[GenerationConfig] = None,
+        prompt: str | list[str | dict[str, Any]],
+        config: GenerationConfig | None = None,
         **kwargs
     ) -> GenerationResult:
         """
@@ -342,8 +341,8 @@ class GeminiAdapter(FunctionCallingModel):
 
     def generate_stream(
         self,
-        prompt: Union[str, List[Union[str, Dict[str, Any]]]],
-        config: Optional[GenerationConfig] = None,
+        prompt: str | list[str | dict[str, Any]],
+        config: GenerationConfig | None = None,
         **kwargs
     ) -> Iterator[str]:
         """
@@ -390,8 +389,8 @@ class GeminiAdapter(FunctionCallingModel):
     def generate_with_tools(
         self,
         prompt: str,
-        tools: List[Dict[str, Any]],
-        config: Optional[GenerationConfig] = None,
+        tools: list[dict[str, Any]],
+        config: GenerationConfig | None = None,
         **kwargs
     ) -> GenerationResult:
         """

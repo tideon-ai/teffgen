@@ -8,15 +8,14 @@ Coordinates multiple agents using various patterns:
 - Competitive: Multiple agents solve same task, select best
 """
 
-import time
 import asyncio
-from typing import List, Dict, Optional, Any, Callable
+import time
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 
-from .agent import Agent, AgentResponse, AgentMode
-from .task import Task, TaskStatus
-from .execution_tracker import ExecutionTracker, ExecutionEvent, EventType
+from .agent import Agent, AgentMode
+from .execution_tracker import EventType, ExecutionEvent, ExecutionTracker
 
 
 class OrchestrationPattern(Enum):
@@ -46,12 +45,12 @@ class TeamConfig:
     """
     name: str
     pattern: OrchestrationPattern
-    agents: List[Agent] = field(default_factory=list)
-    manager_agent: Optional[Agent] = None
+    agents: list[Agent] = field(default_factory=list)
+    manager_agent: Agent | None = None
     voting_strategy: str = "majority"  # majority, unanimous, weighted
     timeout: int = 600
     max_rounds: int = 3
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -73,14 +72,14 @@ class TeamResponse:
     output: str
     success: bool = True
     pattern: OrchestrationPattern = OrchestrationPattern.SEQUENTIAL
-    agent_responses: List[Dict[str, Any]] = field(default_factory=list)
+    agent_responses: list[dict[str, Any]] = field(default_factory=list)
     execution_time: float = 0.0
     rounds: int = 1
-    selected_response: Optional[Dict[str, Any]] = None
+    selected_response: dict[str, Any] | None = None
     consensus_score: float = 0.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "output": self.output,
@@ -108,7 +107,7 @@ class MultiAgentOrchestrator:
     - Load balancing
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize orchestrator.
 
@@ -116,9 +115,9 @@ class MultiAgentOrchestrator:
             config: Optional configuration
         """
         self.config = config or {}
-        self.teams: Dict[str, TeamConfig] = {}
+        self.teams: dict[str, TeamConfig] = {}
         self.execution_tracker = ExecutionTracker()
-        self.agent_registry: Dict[str, Agent] = {}
+        self.agent_registry: dict[str, Agent] = {}
 
     def register_agent(self, agent: Agent):
         """
@@ -131,9 +130,9 @@ class MultiAgentOrchestrator:
 
     def create_team(self,
                    name: str,
-                   agents: List[Agent],
+                   agents: list[Agent],
                    pattern: OrchestrationPattern = OrchestrationPattern.SEQUENTIAL,
-                   manager_agent: Optional[Agent] = None,
+                   manager_agent: Agent | None = None,
                    **kwargs) -> TeamConfig:
         """
         Create a team of agents.
@@ -167,7 +166,7 @@ class MultiAgentOrchestrator:
     def assign_task(self,
                    task: str,
                    team: TeamConfig,
-                   context: Optional[Dict[str, Any]] = None) -> TeamResponse:
+                   context: dict[str, Any] | None = None) -> TeamResponse:
         """
         Assign task to team and coordinate execution.
 
@@ -243,7 +242,7 @@ class MultiAgentOrchestrator:
     def _execute_sequential(self,
                            task: str,
                            team: TeamConfig,
-                           context: Dict[str, Any]) -> TeamResponse:
+                           context: dict[str, Any]) -> TeamResponse:
         """
         Execute agents one after another.
 
@@ -295,7 +294,7 @@ class MultiAgentOrchestrator:
     def _execute_parallel(self,
                          task: str,
                          team: TeamConfig,
-                         context: Dict[str, Any]) -> TeamResponse:
+                         context: dict[str, Any]) -> TeamResponse:
         """
         Execute all agents in parallel on the same task.
 
@@ -316,15 +315,15 @@ class MultiAgentOrchestrator:
 
     async def _parallel_execution(self,
                                   task: str,
-                                  agents: List[Agent],
-                                  context: Dict[str, Any]) -> List[Dict[str, Any]]:
+                                  agents: list[Agent],
+                                  context: dict[str, Any]) -> list[dict[str, Any]]:
         """Execute agents in parallel."""
         async def run_agent(agent: Agent):
             # Track start
             self.execution_tracker.track_event(ExecutionEvent(
                 type=EventType.SUB_AGENT_START,
                 agent_id=agent.name,
-                message=f"Agent starting (parallel)"
+                message="Agent starting (parallel)"
             ))
 
             # Run agent
@@ -351,7 +350,7 @@ class MultiAgentOrchestrator:
     def _execute_hierarchical(self,
                              task: str,
                              team: TeamConfig,
-                             context: Dict[str, Any]) -> TeamResponse:
+                             context: dict[str, Any]) -> TeamResponse:
         """
         Manager agent coordinates worker agents.
 
@@ -414,7 +413,7 @@ Provide a comprehensive final answer."""
     def _execute_collaborative(self,
                               task: str,
                               team: TeamConfig,
-                              context: Dict[str, Any]) -> TeamResponse:
+                              context: dict[str, Any]) -> TeamResponse:
         """
         Agents discuss and reach consensus.
 
@@ -422,7 +421,6 @@ Provide a comprehensive final answer."""
         """
         max_rounds = team.max_rounds
         current_responses = []
-        consensus_reached = False
 
         for round_num in range(1, max_rounds + 1):
             round_responses = []
@@ -455,7 +453,6 @@ Consider the above viewpoints and provide your perspective or refined answer."""
             # Check for consensus
             consensus_score = self._calculate_consensus(round_responses)
             if consensus_score > 0.8:
-                consensus_reached = True
                 break
 
         # Synthesize final output
@@ -473,7 +470,7 @@ Consider the above viewpoints and provide your perspective or refined answer."""
     def _execute_competitive(self,
                             task: str,
                             team: TeamConfig,
-                            context: Dict[str, Any]) -> TeamResponse:
+                            context: dict[str, Any]) -> TeamResponse:
         """
         Multiple agents solve same task, select best solution.
 
@@ -497,7 +494,7 @@ Consider the above viewpoints and provide your perspective or refined answer."""
     def _execute_pipeline(self,
                          task: str,
                          team: TeamConfig,
-                         context: Dict[str, Any]) -> TeamResponse:
+                         context: dict[str, Any]) -> TeamResponse:
         """
         Pipeline processing with specialized stages.
 
@@ -508,7 +505,7 @@ Consider the above viewpoints and provide your perspective or refined answer."""
 
     def _synthesize_parallel_results(self,
                                     task: str,
-                                    responses: List[Dict[str, Any]]) -> str:
+                                    responses: list[dict[str, Any]]) -> str:
         """Synthesize results from parallel execution."""
         synthesis_parts = [f"Results from {len(responses)} agents:\n"]
 
@@ -521,7 +518,7 @@ Consider the above viewpoints and provide your perspective or refined answer."""
 
     def _synthesize_collaborative_results(self,
                                          task: str,
-                                         responses: List[Dict[str, Any]]) -> str:
+                                         responses: list[dict[str, Any]]) -> str:
         """Synthesize results from collaborative discussion."""
         # Use last round responses
         latest_round = max(r["round"] for r in responses)
@@ -534,7 +531,7 @@ Consider the above viewpoints and provide your perspective or refined answer."""
 
         return synthesis
 
-    def _calculate_consensus(self, responses: List[Dict[str, Any]]) -> float:
+    def _calculate_consensus(self, responses: list[dict[str, Any]]) -> float:
         """
         Calculate consensus score.
 
@@ -546,8 +543,8 @@ Consider the above viewpoints and provide your perspective or refined answer."""
 
     def _select_best_response(self,
                              task: str,
-                             responses: List[Dict[str, Any]],
-                             strategy: str) -> Dict[str, Any]:
+                             responses: list[dict[str, Any]],
+                             strategy: str) -> dict[str, Any]:
         """
         Select best response using voting strategy.
 
@@ -575,7 +572,7 @@ Consider the above viewpoints and provide your perspective or refined answer."""
             # Default to first response
             return responses[0] if responses else {}
 
-    def _parse_subtasks(self, text: str) -> List[str]:
+    def _parse_subtasks(self, text: str) -> list[str]:
         """Parse subtasks from numbered list."""
         import re
         # Find numbered items
@@ -583,7 +580,7 @@ Consider the above viewpoints and provide your perspective or refined answer."""
         matches = re.findall(pattern, text, re.DOTALL)
         return [m.strip() for m in matches] if matches else [text]
 
-    def _format_team_results(self, responses: List[Dict[str, Any]]) -> str:
+    def _format_team_results(self, responses: list[dict[str, Any]]) -> str:
         """Format team results for display."""
         formatted = []
         for i, response in enumerate(responses, 1):
@@ -592,11 +589,11 @@ Consider the above viewpoints and provide your perspective or refined answer."""
             formatted.append(f"   Result: {response['output']}")
         return "\n".join(formatted)
 
-    def get_team(self, name: str) -> Optional[TeamConfig]:
+    def get_team(self, name: str) -> TeamConfig | None:
         """Get team by name."""
         return self.teams.get(name)
 
-    def list_teams(self) -> List[str]:
+    def list_teams(self) -> list[str]:
         """List all team names."""
         return list(self.teams.keys())
 

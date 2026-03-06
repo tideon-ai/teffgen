@@ -7,23 +7,20 @@ resource limits, and comprehensive security measures.
 """
 
 import asyncio
-import tempfile
-import shutil
-from pathlib import Path
-from typing import Dict, Any, Optional, List
 import logging
-import subprocess
+import shutil
+import tempfile
 import time
-import json
+from pathlib import Path
+from typing import Any
 
 from ..base_tool import (
     BaseTool,
-    ToolMetadata,
-    ToolCategory,
     ParameterSpec,
     ParameterType,
+    ToolCategory,
+    ToolMetadata,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -187,10 +184,10 @@ class CodeExecutor(BaseTool):
         timeout: int = DEFAULT_TIMEOUT,
         memory_limit: str = DEFAULT_MEMORY_LIMIT,
         network_enabled: bool = False,
-        files: Optional[Dict[str, str]] = None,
-        env_vars: Optional[Dict[str, str]] = None,
+        files: dict[str, str] | None = None,
+        env_vars: dict[str, str] | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute code in a sandboxed environment.
 
@@ -222,9 +219,9 @@ class CodeExecutor(BaseTool):
         timeout: int,
         memory_limit: str,
         network_enabled: bool,
-        files: Optional[Dict[str, str]],
-        env_vars: Optional[Dict[str, str]],
-    ) -> Dict[str, Any]:
+        files: dict[str, str] | None,
+        env_vars: dict[str, str] | None,
+    ) -> dict[str, Any]:
         """Execute code using Docker."""
         start_time = time.time()
         temp_dir = None
@@ -310,8 +307,8 @@ class CodeExecutor(BaseTool):
         code: str,
         language: str,
         timeout: int,
-        env_vars: Optional[Dict[str, str]],
-    ) -> Dict[str, Any]:
+        env_vars: dict[str, str] | None,
+    ) -> dict[str, Any]:
         """
         Execute code using subprocess fallback (less secure).
 
@@ -372,8 +369,8 @@ class CodeExecutor(BaseTool):
         code_file: str,
         memory_limit: str,
         network_enabled: bool,
-        env_vars: Optional[Dict[str, str]],
-    ) -> List[str]:
+        env_vars: dict[str, str] | None,
+    ) -> list[str]:
         """Build Docker command for code execution."""
         cmd = [
             "docker",
@@ -409,7 +406,7 @@ class CodeExecutor(BaseTool):
 
         return cmd
 
-    def _get_execution_command(self, language: str, code_file: str) -> List[str]:
+    def _get_execution_command(self, language: str, code_file: str) -> list[str]:
         """Get the command to execute code in the container."""
         commands = {
             "python": ["python", code_file],

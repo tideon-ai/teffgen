@@ -10,32 +10,35 @@ The main Agent class with:
 - State persistence
 """
 
-import time
-import json
-import re
 import asyncio
+import json
 import logging
-from typing import List, Dict, Optional, Any, Iterator, Callable, Union
+import re
+import time
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 
-from ..models.base import BaseModel, GenerationConfig, GenerationResult
+from ..memory.long_term import (
+    ImportanceLevel,
+    JSONStorageBackend,
+    LongTermMemory,
+    MemoryType,
+    SQLiteStorageBackend,
+)
+from ..memory.short_term import MessageRole, ShortTermMemory
+from ..models.base import BaseModel, GenerationConfig
 from ..models.model_loader import ModelLoader
-from ..tools.base_tool import BaseTool
-from ..prompts.tool_prompt_generator import ToolPromptGenerator
 from ..prompts.agent_system_prompt import AgentSystemPromptBuilder
+from ..prompts.tool_prompt_generator import ToolPromptGenerator
+from ..tools.base_tool import BaseTool
 from ..tools.fallback import ToolFallbackChain
 from ..utils.circuit_breaker import CircuitBreaker
-from ..memory.short_term import ShortTermMemory, MessageRole
-from ..memory.long_term import (
-    LongTermMemory, MemoryType, ImportanceLevel,
-    JSONStorageBackend, SQLiteStorageBackend,
-)
+from .execution_tracker import EventType, ExecutionEvent, ExecutionTracker
+from .router import RoutingDecision, RoutingStrategy, SubAgentRouter
 from .state import AgentState
-from .task import Task, TaskStatus, SubTask
-from .router import SubAgentRouter, RoutingDecision, RoutingStrategy
 from .sub_agent_manager import SubAgentManager
-from .execution_tracker import ExecutionTracker, ExecutionEvent, EventType
 
 logger = logging.getLogger(__name__)
 
@@ -69,24 +72,24 @@ class AgentConfig:
         require_model: Whether model loading is required (raise error on failure)
     """
     name: str
-    model: Union[BaseModel, str]
-    tools: List[BaseTool] = field(default_factory=list)
+    model: BaseModel | str
+    tools: list[BaseTool] = field(default_factory=list)
     system_prompt: str = "You are a helpful AI assistant."
     max_iterations: int = 10
     temperature: float = 0.7
     enable_sub_agents: bool = True
     enable_memory: bool = True
     enable_streaming: bool = False
-    max_context_length: Optional[int] = None
-    router_config: Dict[str, Any] = field(default_factory=dict)
-    sub_agent_config: Dict[str, Any] = field(default_factory=dict)
-    model_config: Optional[Dict[str, Any]] = None
+    max_context_length: int | None = None
+    router_config: dict[str, Any] = field(default_factory=dict)
+    sub_agent_config: dict[str, Any] = field(default_factory=dict)
+    model_config: dict[str, Any] | None = None
     require_model: bool = False
-    system_prompt_template: Optional[str] = None
-    verbose_tools: Optional[bool] = None
-    fallback_chain: Optional[Dict[str, list]] = None
+    system_prompt_template: str | None = None
+    verbose_tools: bool | None = None
+    fallback_chain: dict[str, list] | None = None
     enable_fallback: bool = True
-    memory_config: Dict[str, Any] = field(default_factory=lambda: {
+    memory_config: dict[str, Any] = field(default_factory=lambda: {
         "short_term_max_tokens": 4096,
         "short_term_max_messages": 100,
         "long_term_backend": "sqlite",
@@ -120,12 +123,12 @@ class AgentResponse:
     tool_calls: int = 0
     tokens_used: int = 0
     execution_time: float = 0.0
-    execution_trace: List[Dict[str, Any]] = field(default_factory=list)
-    execution_tree: Dict[str, Any] = field(default_factory=dict)
-    routing_decision: Optional[RoutingDecision] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    execution_trace: list[dict[str, Any]] = field(default_factory=list)
+    execution_tree: dict[str, Any] = field(default_factory=dict)
+    routing_decision: RoutingDecision | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "output": self.output,
@@ -273,7 +276,7 @@ Question: {task}
         )
 
         # Long-term memory (optional, requires persist path)
-        self.long_term_memory: Optional[LongTermMemory] = None
+        self.long_term_memory: LongTermMemory | None = None
         if config.enable_memory:
             persist_path = mem_cfg.get("long_term_persist_path")
             if persist_path:
@@ -323,7 +326,7 @@ Question: {task}
     def run(self,
             task: str,
             mode: AgentMode = AgentMode.AUTO,
-            context: Optional[Dict[str, Any]] = None,
+            context: dict[str, Any] | None = None,
             **kwargs) -> AgentResponse:
         """
         Execute a task.
@@ -422,7 +425,7 @@ Question: {task}
 
     def _run_single_agent(self,
                          task: str,
-                         context: Dict[str, Any],
+                         context: dict[str, Any],
                          **kwargs) -> AgentResponse:
         """
         Execute task using single agent with ReAct loop or direct inference.
@@ -540,7 +543,7 @@ Question: {task}
                     # Guide it to provide direct answer
                     scratchpad += f"\nAction: {action}"
                     scratchpad += f"\nAction Input: {action_input}"
-                    scratchpad += f"\nObservation: No tools available. Please provide your answer directly using 'Final Answer:'."
+                    scratchpad += "\nObservation: No tools available. Please provide your answer directly using 'Final Answer:'."
                 else:
                     # Execute tool
                     tool_result = self._execute_tool(action, action_input)
@@ -582,7 +585,7 @@ Question: {task}
             metadata={"reason": "max_iterations_reached"}
         )
 
-    def _extract_partial_answer(self, scratchpad: str) -> Optional[str]:
+    def _extract_partial_answer(self, scratchpad: str) -> str | None:
         """
         Extract the best partial answer from the scratchpad when max iterations is reached.
 
@@ -626,7 +629,7 @@ Question: {task}
     def _run_with_sub_agents(self,
                             task: str,
                             routing_decision: RoutingDecision,
-                            context: Dict[str, Any],
+                            context: dict[str, Any],
                             **kwargs) -> AgentResponse:
         """
         Execute task using sub-agents based on routing decision.
@@ -696,7 +699,7 @@ Question: {task}
             }
         )
 
-    def _generate(self, prompt: str, **kwargs) -> Dict[str, Any]:
+    def _generate(self, prompt: str, **kwargs) -> dict[str, Any]:
         """
         Generate response from model with retry logic for empty responses.
 
@@ -793,7 +796,7 @@ Question: {task}
             "metadata": {"error": str(last_error) if last_error else "empty_response"}
         }
 
-    def _parse_react_response(self, text: str) -> Dict[str, Any]:
+    def _parse_react_response(self, text: str) -> dict[str, Any]:
         """
         Parse ReAct formatted response with robust error handling.
 
@@ -883,7 +886,7 @@ Question: {task}
                             final_match = re.search(r"Action:\s*Final\s*Answer[:\s]+(.+)", text, re.IGNORECASE | re.DOTALL)
                             if final_match:
                                 parsed["final_answer"] = final_match.group(1).strip()
-                                logger.debug(f"Extracted final answer from Action line")
+                                logger.debug("Extracted final answer from Action line")
                                 return parsed  # Return early since we have final answer
 
                         # Handle function-call format: tool_name(args) or tool_name("args")
@@ -1286,7 +1289,7 @@ Question: {task}
 
     def _run_direct_inference(self,
                                task: str,
-                               context: Dict[str, Any],
+                               context: dict[str, Any],
                                **kwargs) -> AgentResponse:
         """
         Run direct inference without ReAct loop (for when no tools are available).
@@ -1336,7 +1339,7 @@ Question: {task}
                 metadata={"error": str(e)}
             )
 
-    def _get_tools_description(self, verbose: Optional[bool] = None) -> str:
+    def _get_tools_description(self, verbose: bool | None = None) -> str:
         """
         Get formatted description of available tools.
 
@@ -1436,7 +1439,7 @@ Question: {task}
         """
         self.state = AgentState.load(filepath, format)
 
-    def synthesize(self, synthesis_data: Dict[str, Any]) -> str:
+    def synthesize(self, synthesis_data: dict[str, Any]) -> str:
         """
         Synthesize results from sub-agents.
 
@@ -1469,7 +1472,7 @@ Provide a well-structured, comprehensive response that integrates all findings."
     async def run_async(self,
                        task: str,
                        mode: AgentMode = AgentMode.AUTO,
-                       context: Optional[Dict[str, Any]] = None,
+                       context: dict[str, Any] | None = None,
                        **kwargs) -> AgentResponse:
         """
         Truly asynchronous version of run().
@@ -1506,11 +1509,11 @@ Provide a well-structured, comprehensive response that integrates all findings."
     def stream(self,
                task: str,
                mode: AgentMode = AgentMode.AUTO,
-               context: Optional[Dict[str, Any]] = None,
-               on_thought: Optional[Callable[[str], None]] = None,
-               on_tool_call: Optional[Callable[[str, str], None]] = None,
-               on_observation: Optional[Callable[[str], None]] = None,
-               on_answer: Optional[Callable[[str], None]] = None,
+               context: dict[str, Any] | None = None,
+               on_thought: Callable[[str], None] | None = None,
+               on_tool_call: Callable[[str, str], None] | None = None,
+               on_observation: Callable[[str], None] | None = None,
+               on_answer: Callable[[str], None] | None = None,
                **kwargs) -> Iterator[str]:
         """
         Stream response token by token using real model streaming.
@@ -1662,7 +1665,7 @@ Provide a well-structured, comprehensive response that integrates all findings."
 
         yield "\n[Max iterations reached]"
 
-    def get_execution_summary(self) -> Dict[str, Any]:
+    def get_execution_summary(self) -> dict[str, Any]:
         """
         Get summary of execution.
 

@@ -11,12 +11,12 @@ License: Apache-2.0
 
 import logging
 import time
-from dataclasses import dataclass, field
-from datetime import datetime
-from enum import Enum
-from threading import Thread, Event, Lock
-from typing import Dict, List, Optional, Callable, Any
 import warnings
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from enum import Enum
+from threading import Event, Lock, Thread
+from typing import Any
 
 try:
     import torch
@@ -66,11 +66,11 @@ class GPUMetrics:
     vram_free: int  # bytes
     gpu_utilization: float  # 0.0 to 1.0
     memory_utilization: float  # 0.0 to 1.0
-    temperature: Optional[float] = None  # Celsius
-    power_usage: Optional[float] = None  # Watts
-    power_limit: Optional[float] = None  # Watts
-    fan_speed: Optional[float] = None  # 0.0 to 1.0
-    processes: List[Dict[str, Any]] = field(default_factory=list)
+    temperature: float | None = None  # Celsius
+    power_usage: float | None = None  # Watts
+    power_limit: float | None = None  # Watts
+    fan_speed: float | None = None  # 0.0 to 1.0
+    processes: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def vram_used_gb(self) -> float:
@@ -147,7 +147,7 @@ class GPUMonitor:
         >>> monitor.stop()
     """
 
-    def __init__(self, config: Optional[MonitorConfig] = None):
+    def __init__(self, config: MonitorConfig | None = None):
         """
         Initialize GPU monitor.
 
@@ -158,18 +158,18 @@ class GPUMonitor:
         self._lock = Lock()
         self._running = False
         self._stop_event = Event()
-        self._monitor_thread: Optional[Thread] = None
-        self._log_thread: Optional[Thread] = None
+        self._monitor_thread: Thread | None = None
+        self._log_thread: Thread | None = None
 
         # Metrics storage
-        self._current_metrics: Dict[int, GPUMetrics] = {}
-        self._metrics_history: Dict[int, List[GPUMetrics]] = {}
+        self._current_metrics: dict[int, GPUMetrics] = {}
+        self._metrics_history: dict[int, list[GPUMetrics]] = {}
         self._max_history_size = 1000
 
         # Alerts
-        self._alerts: List[Alert] = []
+        self._alerts: list[Alert] = []
         self._max_alerts = 100
-        self._alert_callbacks: List[Callable[[Alert], None]] = []
+        self._alert_callbacks: list[Callable[[Alert], None]] = []
 
         # NVML initialization
         self._nvml_initialized = False
@@ -182,7 +182,7 @@ class GPUMonitor:
                 logger.warning(f"Failed to initialize NVML: {e}")
 
         # Discover devices
-        self._device_handles: Dict[int, Any] = {}
+        self._device_handles: dict[int, Any] = {}
         self._discover_devices()
 
         logger.info(f"GPUMonitor initialized for {len(self._device_handles)} device(s)")
@@ -335,7 +335,7 @@ class GPUMonitor:
             temperature = float(pynvml.nvmlDeviceGetTemperature(
                 handle, pynvml.NVML_TEMPERATURE_GPU
             ))
-        except (Exception,):
+        except Exception:
             logger.debug(f"Could not read temperature for GPU {device_id}")
             temperature = None
 
@@ -343,7 +343,7 @@ class GPUMonitor:
         try:
             power_usage = pynvml.nvmlDeviceGetPowerUsage(handle) / 1000.0  # mW to W
             power_limit = pynvml.nvmlDeviceGetPowerManagementLimit(handle) / 1000.0
-        except (Exception,):
+        except Exception:
             logger.debug(f"Could not read power info for GPU {device_id}")
             power_usage = None
             power_limit = None
@@ -351,7 +351,7 @@ class GPUMonitor:
         # Fan speed
         try:
             fan_speed = pynvml.nvmlDeviceGetFanSpeed(handle) / 100.0
-        except (Exception,):
+        except Exception:
             logger.debug(f"Could not read fan speed for GPU {device_id}")
             fan_speed = None
 
@@ -364,7 +364,7 @@ class GPUMonitor:
                     'pid': proc.pid,
                     'used_memory': proc.usedGpuMemory,
                 })
-        except (Exception,):
+        except Exception:
             logger.debug(f"Could not read process info for GPU {device_id}")
 
         return GPUMetrics(
@@ -546,8 +546,8 @@ class GPUMonitor:
 
     def get_metrics(
         self,
-        device_id: Optional[int] = None
-    ) -> Dict[int, GPUMetrics]:
+        device_id: int | None = None
+    ) -> dict[int, GPUMetrics]:
         """
         Get current metrics.
 
@@ -568,8 +568,8 @@ class GPUMonitor:
     def get_metrics_history(
         self,
         device_id: int,
-        limit: Optional[int] = None
-    ) -> List[GPUMetrics]:
+        limit: int | None = None
+    ) -> list[GPUMetrics]:
         """
         Get metrics history for a device.
 
@@ -591,10 +591,10 @@ class GPUMonitor:
 
     def get_alerts(
         self,
-        device_id: Optional[int] = None,
-        level: Optional[AlertLevel] = None,
-        limit: Optional[int] = None
-    ) -> List[Alert]:
+        device_id: int | None = None,
+        level: AlertLevel | None = None,
+        limit: int | None = None
+    ) -> list[Alert]:
         """
         Get alerts.
 
@@ -650,7 +650,7 @@ class GPUMonitor:
             self._alert_callbacks.remove(callback)
             logger.info(f"Removed alert callback: {callback.__name__}")
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """
         Get summary of current GPU status.
 
@@ -695,7 +695,7 @@ class GPUMonitor:
         if self._nvml_initialized:
             try:
                 pynvml.nvmlShutdown()
-            except (Exception,):
+            except Exception:
                 logger.debug("Failed to shutdown NVML during cleanup")
 
     def __repr__(self) -> str:

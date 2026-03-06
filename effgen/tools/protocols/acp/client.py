@@ -9,26 +9,23 @@ capability tokens, and BeeAI platform support.
 import asyncio
 import json
 import logging
-from typing import Dict, Any, List, Optional, AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
-import httpx
 from datetime import datetime, timedelta
+from typing import Any
+
+import httpx
 
 from .protocol import (
-    ACPProtocolHandler,
-    AgentManifest,
     ACPRequest,
     ACPResponse,
-    ACPError,
+    AgentManifest,
+    CapabilityDefinition,
+    CapabilityToken,
+    RequestType,
     TaskInfo,
     TaskStatus,
-    RequestType,
-    CapabilityToken,
-    ErrorSeverity,
-    SchemaDefinition,
-    CapabilityDefinition,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +48,8 @@ class ACPClientConfig:
     max_retries: int = 3
     retry_delay: float = 1.0
     verify_ssl: bool = True
-    headers: Dict[str, str] = None
-    discovery_url: Optional[str] = None
+    headers: dict[str, str] = None
+    discovery_url: str | None = None
     enable_telemetry: bool = True
 
     def __post_init__(self):
@@ -63,7 +60,7 @@ class ACPClientConfig:
 class ACPAuthHandler:
     """Base class for ACP authentication handlers."""
 
-    async def apply_auth(self, headers: Dict[str, str]) -> Dict[str, str]:
+    async def apply_auth(self, headers: dict[str, str]) -> dict[str, str]:
         """
         Apply authentication to request headers.
 
@@ -88,7 +85,7 @@ class TokenAuthHandler(ACPAuthHandler):
         """
         self.token = token
 
-    async def apply_auth(self, headers: Dict[str, str]) -> Dict[str, str]:
+    async def apply_auth(self, headers: dict[str, str]) -> dict[str, str]:
         """Apply token authentication."""
         if not self.token.is_valid():
             raise RuntimeError("Token has expired")
@@ -110,7 +107,7 @@ class APIKeyAuthHandler(ACPAuthHandler):
         self.api_key = api_key
         self.header_name = header_name
 
-    async def apply_auth(self, headers: Dict[str, str]) -> Dict[str, str]:
+    async def apply_auth(self, headers: dict[str, str]) -> dict[str, str]:
         """Apply API key authentication."""
         headers[self.header_name] = self.api_key
         return headers
@@ -128,7 +125,7 @@ class BearerAuthHandler(ACPAuthHandler):
         """
         self.token = token
 
-    async def apply_auth(self, headers: Dict[str, str]) -> Dict[str, str]:
+    async def apply_auth(self, headers: dict[str, str]) -> dict[str, str]:
         """Apply bearer authentication."""
         headers["Authorization"] = f"Bearer {self.token}"
         return headers
@@ -151,9 +148,9 @@ class ACPClient:
     def __init__(
         self,
         agent_url: str,
-        config: Optional[ACPClientConfig] = None,
-        auth_handler: Optional[ACPAuthHandler] = None,
-        manifest: Optional[AgentManifest] = None,
+        config: ACPClientConfig | None = None,
+        auth_handler: ACPAuthHandler | None = None,
+        manifest: AgentManifest | None = None,
     ):
         """
         Initialize ACP client.
@@ -168,7 +165,7 @@ class ACPClient:
         self.config = config or ACPClientConfig()
         self.auth_handler = auth_handler
         self.manifest = manifest
-        self.http_client: Optional[httpx.AsyncClient] = None
+        self.http_client: httpx.AsyncClient | None = None
         self._connected = False
         self._tracer = None
 
@@ -247,8 +244,8 @@ class ACPClient:
         self,
         method: str,
         endpoint: str,
-        data: Optional[Dict[str, Any]] = None,
-        params: Optional[Dict[str, Any]] = None,
+        data: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
     ) -> httpx.Response:
         """
         Make an HTTP request with authentication and retries.
@@ -347,8 +344,8 @@ class ACPClient:
     async def execute_sync(
         self,
         capability: str,
-        input_data: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None,
+        input_data: dict[str, Any],
+        context: dict[str, Any] | None = None,
     ) -> ACPResponse:
         """
         Execute a synchronous request.
@@ -399,8 +396,8 @@ class ACPClient:
     async def execute_async(
         self,
         capability: str,
-        input_data: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None,
+        input_data: dict[str, Any],
+        context: dict[str, Any] | None = None,
     ) -> TaskInfo:
         """
         Execute an asynchronous request.
@@ -471,7 +468,7 @@ class ACPClient:
         self,
         task_id: str,
         poll_interval: float = 1.0,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> TaskInfo:
         """
         Wait for task to complete.
@@ -548,8 +545,8 @@ class ACPClient:
         self,
         task_id: str,
         poll_interval: float = 1.0,
-        timeout: Optional[float] = None,
-        on_progress: Optional[Callable[[TaskInfo], None]] = None,
+        timeout: float | None = None,
+        on_progress: Callable[[TaskInfo], None] | None = None,
     ) -> TaskInfo:
         """
         Poll an async task until completion with progress callbacks.
@@ -626,7 +623,7 @@ class ACPClient:
             logger.error(f"Failed to cancel task {task_id}: {e}")
             return False
 
-    async def list_capabilities(self) -> List[CapabilityDefinition]:
+    async def list_capabilities(self) -> list[CapabilityDefinition]:
         """
         List available capabilities.
 
@@ -635,7 +632,7 @@ class ACPClient:
         """
         return self.manifest.capabilities
 
-    async def get_capability(self, name: str) -> Optional[CapabilityDefinition]:
+    async def get_capability(self, name: str) -> CapabilityDefinition | None:
         """
         Get a capability by name.
 
@@ -668,7 +665,7 @@ class ACPDiscoveryClient:
     def __init__(
         self,
         discovery_url: str,
-        auth_handler: Optional[ACPAuthHandler] = None,
+        auth_handler: ACPAuthHandler | None = None,
         timeout: int = 10,
     ):
         """
@@ -685,8 +682,8 @@ class ACPDiscoveryClient:
 
     async def discover_agents(
         self,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[AgentManifest]:
+        filters: dict[str, Any] | None = None,
+    ) -> list[AgentManifest]:
         """
         Discover agents from the discovery service.
 
@@ -794,7 +791,7 @@ class ACPDiscoveryClient:
 
     async def find_by_capability(
         self, capability: str
-    ) -> List[AgentManifest]:
+    ) -> list[AgentManifest]:
         """
         Find agents that support a specific capability.
 
@@ -807,8 +804,8 @@ class ACPDiscoveryClient:
         return await self.discover_agents(filters={"capability": capability})
 
     async def find_by_tags(
-        self, tags: List[str]
-    ) -> List[AgentManifest]:
+        self, tags: list[str]
+    ) -> list[AgentManifest]:
         """
         Find agents by tags.
 
@@ -823,9 +820,9 @@ class ACPDiscoveryClient:
 
 async def create_capability_token(
     agent_id: str,
-    capabilities: List[str],
-    expires_in: Optional[int] = None,
-    permissions: Optional[Dict[str, List[str]]] = None,
+    capabilities: list[str],
+    expires_in: int | None = None,
+    permissions: dict[str, list[str]] | None = None,
 ) -> CapabilityToken:
     """
     Create a capability token for an agent.

@@ -6,14 +6,13 @@ communication, including task lifecycle management, message protocols, and
 context passing between agents.
 """
 
-from typing import Dict, Any, List, Optional, Union, Literal
-from dataclasses import dataclass, field, asdict
-from enum import Enum
-import logging
-from datetime import datetime
 import json
+import logging
 import uuid
-
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -69,10 +68,10 @@ class A2AError:
     """
     code: ErrorCode
     message: str
-    details: Optional[Dict[str, Any]] = None
+    details: dict[str, Any] | None = None
     retryable: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "code": self.code.value,
@@ -84,7 +83,7 @@ class A2AError:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "A2AError":
+    def from_dict(cls, data: dict[str, Any]) -> "A2AError":
         """Create from dictionary."""
         return cls(
             code=ErrorCode(data["code"]),
@@ -107,10 +106,10 @@ class MessagePart:
     """
     type: MessagePartType
     content: Any
-    mimeType: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    mimeType: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "type": self.type.value,
@@ -123,7 +122,7 @@ class MessagePart:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MessagePart":
+    def from_dict(cls, data: dict[str, Any]) -> "MessagePart":
         """Create from dictionary."""
         return cls(
             type=MessagePartType(data["type"]),
@@ -145,13 +144,13 @@ class A2AMessage:
         metadata: Additional message metadata
         timestamp: Message creation timestamp
     """
-    parts: List[MessagePart]
+    parts: list[MessagePart]
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    context: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "id": self.id,
@@ -162,7 +161,7 @@ class A2AMessage:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "A2AMessage":
+    def from_dict(cls, data: dict[str, Any]) -> "A2AMessage":
         """Create from dictionary."""
         return cls(
             id=data.get("id", str(uuid.uuid4())),
@@ -172,7 +171,7 @@ class A2AMessage:
             timestamp=data.get("timestamp", datetime.utcnow().isoformat()),
         )
 
-    def add_text(self, text: str, metadata: Optional[Dict[str, Any]] = None) -> None:
+    def add_text(self, text: str, metadata: dict[str, Any] | None = None) -> None:
         """
         Add a text part to the message.
 
@@ -189,7 +188,7 @@ class A2AMessage:
         )
 
     def add_image(
-        self, content: str, mime_type: str = "image/png", metadata: Optional[Dict[str, Any]] = None
+        self, content: str, mime_type: str = "image/png", metadata: dict[str, Any] | None = None
     ) -> None:
         """
         Add an image part to the message.
@@ -208,7 +207,7 @@ class A2AMessage:
             )
         )
 
-    def add_structured(self, data: Dict[str, Any], metadata: Optional[Dict[str, Any]] = None) -> None:
+    def add_structured(self, data: dict[str, Any], metadata: dict[str, Any] | None = None) -> None:
         """
         Add structured data to the message.
 
@@ -224,7 +223,7 @@ class A2AMessage:
             )
         )
 
-    def get_text_parts(self) -> List[str]:
+    def get_text_parts(self) -> list[str]:
         """Get all text parts from the message."""
         return [
             part.content
@@ -251,11 +250,11 @@ class Artifact:
     type: str
     content: Any
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    mimeType: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    mimeType: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     created: str = field(default_factory=lambda: datetime.utcnow().isoformat())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "id": self.id,
@@ -271,7 +270,7 @@ class Artifact:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Artifact":
+    def from_dict(cls, data: dict[str, Any]) -> "Artifact":
         """Create from dictionary."""
         return cls(
             id=data.get("id", str(uuid.uuid4())),
@@ -304,15 +303,15 @@ class Task:
     instruction: A2AMessage
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     state: TaskState = TaskState.CREATED
-    artifacts: List[Artifact] = field(default_factory=list)
+    artifacts: list[Artifact] = field(default_factory=list)
     progress: float = 0.0
-    error: Optional[A2AError] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    error: A2AError | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     created: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     updated: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    completed: Optional[str] = None
+    completed: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "id": self.id,
@@ -331,7 +330,7 @@ class Task:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Task":
+    def from_dict(cls, data: dict[str, Any]) -> "Task":
         """Create from dictionary."""
         error = None
         if "error" in data:
@@ -416,11 +415,11 @@ class TaskRequest:
     """
     instruction: A2AMessage
     capability: str
-    context: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     streaming: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "instruction": self.instruction.to_dict(),
@@ -431,7 +430,7 @@ class TaskRequest:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TaskRequest":
+    def from_dict(cls, data: dict[str, Any]) -> "TaskRequest":
         """Create from dictionary."""
         return cls(
             instruction=A2AMessage.from_dict(data["instruction"]),
@@ -455,12 +454,12 @@ class TaskUpdate:
         error: Error information
     """
     taskId: str
-    state: Optional[TaskState] = None
-    progress: Optional[float] = None
-    artifacts: List[Artifact] = field(default_factory=list)
-    error: Optional[A2AError] = None
+    state: TaskState | None = None
+    progress: float | None = None
+    artifacts: list[Artifact] = field(default_factory=list)
+    error: A2AError | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {"taskId": self.taskId}
         if self.state:
@@ -474,7 +473,7 @@ class TaskUpdate:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TaskUpdate":
+    def from_dict(cls, data: dict[str, Any]) -> "TaskUpdate":
         """Create from dictionary."""
         state = TaskState(data["state"]) if "state" in data else None
         error = A2AError.from_dict(data["error"]) if "error" in data else None
@@ -504,14 +503,14 @@ class A2AProtocolHandler:
             version: A2A protocol version
         """
         self.version = version
-        self._tasks: Dict[str, Task] = {}
+        self._tasks: dict[str, Task] = {}
 
     def create_task(
         self,
         instruction: A2AMessage,
         capability: str,
-        context: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> Task:
         """
         Create a new task.
@@ -537,7 +536,7 @@ class A2AProtocolHandler:
         logger.info(f"Created task {task.id} for capability {capability}")
         return task
 
-    def get_task(self, task_id: str) -> Optional[Task]:
+    def get_task(self, task_id: str) -> Task | None:
         """
         Get a task by ID.
 
@@ -595,9 +594,9 @@ class A2AProtocolHandler:
 
     def list_tasks(
         self,
-        state: Optional[TaskState] = None,
-        capability: Optional[str] = None,
-    ) -> List[Task]:
+        state: TaskState | None = None,
+        capability: str | None = None,
+    ) -> list[Task]:
         """
         List tasks with optional filtering.
 
@@ -621,9 +620,9 @@ class A2AProtocolHandler:
 
     def create_message(
         self,
-        text: Optional[str] = None,
-        parts: Optional[List[MessagePart]] = None,
-        context: Optional[Dict[str, Any]] = None,
+        text: str | None = None,
+        parts: list[MessagePart] | None = None,
+        context: dict[str, Any] | None = None,
     ) -> A2AMessage:
         """
         Create an A2A message.
@@ -653,7 +652,7 @@ class A2AProtocolHandler:
         name: str,
         content: Any,
         artifact_type: str = "result",
-        mime_type: Optional[str] = None,
+        mime_type: str | None = None,
     ) -> Artifact:
         """
         Create a task artifact.
@@ -678,7 +677,7 @@ class A2AProtocolHandler:
         self,
         code: ErrorCode,
         message: str,
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
         retryable: bool = False,
     ) -> A2AError:
         """
@@ -712,7 +711,7 @@ class A2AProtocolHandler:
         """
         return json.dumps(task.to_dict(), indent=2)
 
-    def deserialize_task(self, data: Union[str, Dict[str, Any]]) -> Task:
+    def deserialize_task(self, data: str | dict[str, Any]) -> Task:
         """
         Deserialize task from JSON.
 

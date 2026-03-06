@@ -8,10 +8,10 @@ task structure and chosen strategy.
 import json
 import logging
 import re
-from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
+from typing import Any
 
-from .task import SubTask, TaskPriority, TaskStatus
+from .task import SubTask, TaskPriority
 
 logger = logging.getLogger(__name__)
 
@@ -36,14 +36,14 @@ class TaskStructure:
     has_synthesis: bool = False
     has_dependencies: bool = False
     parallelizable: bool = False
-    metadata: Dict[str, Any] = None
+    metadata: dict[str, Any] = None
 
     def __post_init__(self):
         """Initialize metadata if not provided."""
         if self.metadata is None:
             self.metadata = {}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "has_multiple_questions": self.has_multiple_questions,
@@ -153,7 +153,7 @@ Format your response as JSON:
 
 Respond with ONLY the JSON, no additional text."""
 
-    def __init__(self, llm_client: Optional[Any] = None, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, llm_client: Any | None = None, config: dict[str, Any] | None = None):
         """
         Initialize decomposition engine.
 
@@ -232,8 +232,8 @@ Respond with ONLY the JSON, no additional text."""
     def decompose(self,
                   task: str,
                   strategy: str,
-                  structure: Optional[TaskStructure] = None,
-                  context: Optional[Dict[str, Any]] = None) -> List[SubTask]:
+                  structure: TaskStructure | None = None,
+                  context: dict[str, Any] | None = None) -> list[SubTask]:
         """
         Decompose task into subtasks.
 
@@ -261,7 +261,7 @@ Respond with ONLY the JSON, no additional text."""
                        task: str,
                        strategy: str,
                        structure: TaskStructure,
-                       context: Optional[Dict[str, Any]]) -> List[SubTask]:
+                       context: dict[str, Any] | None) -> list[SubTask]:
         """
         Use LLM to decompose task.
 
@@ -300,7 +300,7 @@ Respond with ONLY the JSON, no additional text."""
             logger.warning(f"LLM decomposition failed: {e}. Using rule-based fallback.")
             return self._rule_based_decompose(task, strategy, structure)
 
-    def _parse_decomposition(self, response: str) -> List[SubTask]:
+    def _parse_decomposition(self, response: str) -> list[SubTask]:
         """
         Parse LLM response into SubTask objects.
 
@@ -350,7 +350,7 @@ Respond with ONLY the JSON, no additional text."""
     def _rule_based_decompose(self,
                               task: str,
                               strategy: str,
-                              structure: TaskStructure) -> List[SubTask]:
+                              structure: TaskStructure) -> list[SubTask]:
         """
         Fallback rule-based decomposition when LLM is unavailable.
 
@@ -426,9 +426,9 @@ Respond with ONLY the JSON, no additional text."""
             return "general"
 
     def _validate_decomposition(self,
-                                subtasks: List[SubTask],
+                                subtasks: list[SubTask],
                                 original_task: str,
-                                structure: TaskStructure) -> List[SubTask]:
+                                structure: TaskStructure) -> list[SubTask]:
         """
         Validate decomposition and adjust if needed.
 
@@ -465,7 +465,7 @@ Respond with ONLY the JSON, no additional text."""
 
         return subtasks
 
-    def optimize_decomposition(self, subtasks: List[SubTask]) -> List[SubTask]:
+    def optimize_decomposition(self, subtasks: list[SubTask]) -> list[SubTask]:
         """
         Optimize subtask decomposition for better execution.
 
@@ -489,7 +489,7 @@ Respond with ONLY the JSON, no additional text."""
 
         return optimized_subtasks
 
-    def _remove_duplicates(self, subtasks: List[SubTask]) -> List[SubTask]:
+    def _remove_duplicates(self, subtasks: list[SubTask]) -> list[SubTask]:
         """Remove duplicate subtasks based on description similarity."""
         unique = []
         seen_descriptions = set()
@@ -503,7 +503,7 @@ Respond with ONLY the JSON, no additional text."""
 
         return unique
 
-    def _merge_similar_subtasks(self, subtasks: List[SubTask]) -> List[SubTask]:
+    def _merge_similar_subtasks(self, subtasks: list[SubTask]) -> list[SubTask]:
         """Merge subtasks that are very similar."""
         if len(subtasks) <= 1:
             return subtasks
@@ -512,7 +512,7 @@ Respond with ONLY the JSON, no additional text."""
         # For now, just return as-is
         return subtasks
 
-    def _balance_complexity(self, subtasks: List[SubTask]) -> List[SubTask]:
+    def _balance_complexity(self, subtasks: list[SubTask]) -> list[SubTask]:
         """Balance complexity across subtasks."""
         if not subtasks:
             return subtasks
@@ -528,7 +528,7 @@ Respond with ONLY the JSON, no additional text."""
 
         return subtasks
 
-    def _optimize_dependencies(self, subtasks: List[SubTask]) -> List[SubTask]:
+    def _optimize_dependencies(self, subtasks: list[SubTask]) -> list[SubTask]:
         """Optimize dependency graph."""
         if not subtasks:
             return subtasks
@@ -541,7 +541,7 @@ Respond with ONLY the JSON, no additional text."""
 
         return subtasks
 
-    def _remove_circular_dependencies(self, subtasks: List[SubTask]) -> List[SubTask]:
+    def _remove_circular_dependencies(self, subtasks: list[SubTask]) -> list[SubTask]:
         """Remove circular dependencies from subtask graph."""
         subtask_map = {st.id: st for st in subtasks}
 
@@ -573,13 +573,13 @@ Respond with ONLY the JSON, no additional text."""
 
         return subtasks
 
-    def _topological_sort(self, subtasks: List[SubTask]) -> List[SubTask]:
+    def _topological_sort(self, subtasks: list[SubTask]) -> list[SubTask]:
         """Sort subtasks topologically based on dependencies."""
         if not subtasks:
             return subtasks
 
         # Build adjacency list
-        subtask_map = {st.id: st for st in subtasks}
+        {st.id: st for st in subtasks}
         in_degree = {st.id: len(st.depends_on) for st in subtasks}
 
         # Find nodes with no dependencies
@@ -606,7 +606,7 @@ Respond with ONLY the JSON, no additional text."""
 
         return sorted_subtasks
 
-    def get_decomposition_metrics(self, subtasks: List[SubTask]) -> Dict[str, Any]:
+    def get_decomposition_metrics(self, subtasks: list[SubTask]) -> dict[str, Any]:
         """
         Get metrics about decomposition quality.
 
@@ -644,11 +644,11 @@ Respond with ONLY the JSON, no additional text."""
             "parallelization_potential": len([st for st in subtasks if not st.depends_on]) / len(subtasks)
         }
 
-    def _calculate_dependency_depth(self, subtasks: List[SubTask]) -> int:
+    def _calculate_dependency_depth(self, subtasks: list[SubTask]) -> int:
         """Calculate maximum depth of dependency chain."""
         subtask_map = {st.id: st for st in subtasks}
 
-        def get_depth(subtask_id: str, memo: Dict[str, int]) -> int:
+        def get_depth(subtask_id: str, memo: dict[str, int]) -> int:
             if subtask_id in memo:
                 return memo[subtask_id]
 
@@ -667,7 +667,7 @@ Respond with ONLY the JSON, no additional text."""
         memo = {}
         return max(get_depth(st.id, memo) for st in subtasks) if subtasks else 0
 
-    def visualize_decomposition(self, subtasks: List[SubTask]) -> str:
+    def visualize_decomposition(self, subtasks: list[SubTask]) -> str:
         """
         Create a text-based visualization of task decomposition.
 

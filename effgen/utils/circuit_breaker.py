@@ -5,10 +5,9 @@ Tracks tool failure rates and temporarily disables tools that
 fail too frequently, preventing repeated wasteful calls.
 """
 
-import time
 import logging
-from typing import Dict
-from dataclasses import dataclass, field
+import time
+from dataclasses import dataclass
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -45,7 +44,7 @@ class CircuitBreaker:
     def __init__(self, failure_threshold: int = 3, cooldown_seconds: float = 60.0):
         self.failure_threshold = failure_threshold
         self.cooldown_seconds = cooldown_seconds
-        self._circuits: Dict[str, _ToolCircuit] = {}
+        self._circuits: dict[str, _ToolCircuit] = {}
 
     def _get_circuit(self, tool_name: str) -> _ToolCircuit:
         if tool_name not in self._circuits:

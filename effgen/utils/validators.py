@@ -29,24 +29,26 @@ Example:
         ...     pass
 """
 
-import re
-import os
 import json
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Callable, Type, get_type_hints
+import os
+import re
+from collections.abc import Callable
 from functools import wraps
+from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 try:
-    from jsonschema import validate as json_validate
+    from jsonschema import Draft7Validator  # noqa: F401
     from jsonschema import ValidationError as JSONSchemaValidationError
-    from jsonschema import Draft7Validator
+    from jsonschema import validate as json_validate
     JSONSCHEMA_AVAILABLE = True
 except ImportError:
     JSONSCHEMA_AVAILABLE = False
 
 try:
-    from pydantic import BaseModel, ValidationError as PydanticValidationError
+    from pydantic import BaseModel
+    from pydantic import ValidationError as PydanticValidationError
     PYDANTIC_AVAILABLE = True
 except ImportError:
     PYDANTIC_AVAILABLE = False
@@ -66,9 +68,9 @@ class ValidationError(Exception):
     def __init__(
         self,
         message: str,
-        field: Optional[str] = None,
+        field: str | None = None,
         value: Any = None,
-        errors: Optional[List[str]] = None
+        errors: list[str] | None = None
     ):
         super().__init__(message)
         self.message = message
@@ -92,7 +94,7 @@ class ValidationError(Exception):
 # Type Validators
 # ============================================================================
 
-def validate_type(value: Any, expected_type: Type, allow_none: bool = False) -> bool:
+def validate_type(value: Any, expected_type: type, allow_none: bool = False) -> bool:
     """
     Validate that a value is of the expected type.
 
@@ -121,9 +123,9 @@ def validate_type(value: Any, expected_type: Type, allow_none: bool = False) -> 
 
 def validate_string(
     value: Any,
-    min_length: Optional[int] = None,
-    max_length: Optional[int] = None,
-    pattern: Optional[str] = None,
+    min_length: int | None = None,
+    max_length: int | None = None,
+    pattern: str | None = None,
     allow_empty: bool = True,
 ) -> bool:
     """
@@ -171,8 +173,8 @@ def validate_string(
 
 def validate_number(
     value: Any,
-    min_value: Optional[Union[int, float]] = None,
-    max_value: Optional[Union[int, float]] = None,
+    min_value: int | float | None = None,
+    max_value: int | float | None = None,
     allow_negative: bool = True,
 ) -> bool:
     """
@@ -213,9 +215,9 @@ def validate_number(
 
 def validate_list(
     value: Any,
-    item_type: Optional[Type] = None,
-    min_length: Optional[int] = None,
-    max_length: Optional[int] = None,
+    item_type: type | None = None,
+    min_length: int | None = None,
+    max_length: int | None = None,
     allow_empty: bool = True,
 ) -> bool:
     """
@@ -265,10 +267,10 @@ def validate_list(
 
 def validate_dict(
     value: Any,
-    required_keys: Optional[List[str]] = None,
-    allowed_keys: Optional[List[str]] = None,
-    key_type: Optional[Type] = None,
-    value_type: Optional[Type] = None,
+    required_keys: list[str] | None = None,
+    allowed_keys: list[str] | None = None,
+    key_type: type | None = None,
+    value_type: type | None = None,
 ) -> bool:
     """
     Validate a dictionary value.
@@ -329,7 +331,7 @@ def validate_dict(
 # ============================================================================
 
 def validate_path(
-    path: Union[str, Path],
+    path: str | Path,
     must_exist: bool = False,
     must_be_file: bool = False,
     must_be_dir: bool = False,
@@ -373,8 +375,8 @@ def validate_path(
 
 
 def validate_file_extension(
-    path: Union[str, Path],
-    allowed_extensions: List[str],
+    path: str | Path,
+    allowed_extensions: list[str],
 ) -> bool:
     """
     Validate file extension.
@@ -411,7 +413,7 @@ def validate_file_extension(
 def validate_url(
     url: str,
     require_scheme: bool = True,
-    allowed_schemes: Optional[List[str]] = None,
+    allowed_schemes: list[str] | None = None,
 ) -> bool:
     """
     Validate a URL.
@@ -499,9 +501,9 @@ def validate_model_name(model_name: str) -> bool:
 
 
 def validate_config_dict(
-    config: Dict[str, Any],
-    required_fields: Optional[List[str]] = None,
-    field_types: Optional[Dict[str, Type]] = None,
+    config: dict[str, Any],
+    required_fields: list[str] | None = None,
+    field_types: dict[str, type] | None = None,
 ) -> bool:
     """
     Validate a configuration dictionary.
@@ -549,7 +551,7 @@ def validate_config_dict(
 # JSON Schema Validators
 # ============================================================================
 
-def validate_json_schema(data: Any, schema: Dict[str, Any]) -> bool:
+def validate_json_schema(data: Any, schema: dict[str, Any]) -> bool:
     """
     Validate data against a JSON schema.
 
@@ -581,9 +583,9 @@ def validate_json_schema(data: Any, schema: Dict[str, Any]) -> bool:
 
 
 def load_and_validate_json(
-    filepath: Union[str, Path],
-    schema: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    filepath: str | Path,
+    schema: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Load and validate a JSON file.
 
@@ -603,7 +605,7 @@ def load_and_validate_json(
         raise ValidationError(f"File does not exist: {filepath}", value=str(filepath))
 
     try:
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             data = json.load(f)
     except json.JSONDecodeError as e:
         raise ValidationError(f"Invalid JSON: {e}", value=str(filepath))
@@ -618,7 +620,7 @@ def load_and_validate_json(
 # Pydantic Validators
 # ============================================================================
 
-def validate_pydantic_model(data: Any, model_class: Type[BaseModel]) -> BaseModel:
+def validate_pydantic_model(data: Any, model_class: type[BaseModel]) -> BaseModel:
     """
     Validate data against a Pydantic model.
 
@@ -656,7 +658,7 @@ def sanitize_string(
     remove_whitespace: bool = False,
     remove_special_chars: bool = False,
     lowercase: bool = False,
-    max_length: Optional[int] = None,
+    max_length: int | None = None,
 ) -> str:
     """
     Sanitize a string value.
@@ -724,7 +726,7 @@ def sanitize_filename(filename: str, max_length: int = 255) -> str:
 # Decorator Validators
 # ============================================================================
 
-def require_type(*expected_types: Type):
+def require_type(*expected_types: type):
     """
     Decorator to validate function argument types.
 

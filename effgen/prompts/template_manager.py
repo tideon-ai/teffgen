@@ -5,16 +5,17 @@ Provides comprehensive template management with Jinja2 support, dynamic example 
 template optimization for SLMs, and versioning capabilities.
 """
 
-import os
-import yaml
 import json
-from typing import Dict, List, Optional, Any, Union
-from pathlib import Path
+import logging
+import os
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
-import re
+from pathlib import Path
+from typing import Any
+
+import yaml
 from jinja2 import Environment, FileSystemLoader, Template, meta
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -25,14 +26,14 @@ class PromptTemplate:
 
     name: str
     template: str
-    description: Optional[str] = None
+    description: str | None = None
     version: str = "1.0.0"
-    tags: List[str] = field(default_factory=list)
-    variables: List[str] = field(default_factory=list)
-    examples: List[Dict[str, Any]] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
+    tags: list[str] = field(default_factory=list)
+    variables: list[str] = field(default_factory=list)
+    examples: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
 
     def __post_init__(self):
         if self.created_at is None:
@@ -45,7 +46,7 @@ class PromptTemplate:
         template = Template(self.template)
         return template.render(**kwargs)
 
-    def get_required_variables(self) -> List[str]:
+    def get_required_variables(self) -> list[str]:
         """Extract required variables from template"""
         env = Environment()
         parsed = env.parse(self.template)
@@ -62,7 +63,7 @@ class PromptTemplate:
             return False
         return True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary representation"""
         return {
             'name': self.name,
@@ -78,7 +79,7 @@ class PromptTemplate:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PromptTemplate':
+    def from_dict(cls, data: dict[str, Any]) -> 'PromptTemplate':
         """Create from dictionary representation"""
         if 'created_at' in data and data['created_at']:
             data['created_at'] = datetime.fromisoformat(data['created_at'])
@@ -93,10 +94,10 @@ class FewShotExample:
 
     input: str
     output: str
-    context: Optional[str] = None
-    tags: List[str] = field(default_factory=list)
+    context: str | None = None
+    tags: list[str] = field(default_factory=list)
     difficulty: str = "medium"  # easy, medium, hard
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def format(self, style: str = "default") -> str:
         """Format example for inclusion in prompt"""
@@ -127,7 +128,7 @@ class FewShotExample:
 
         return f"Input: {self.input}\nOutput: {self.output}"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             'input': self.input,
@@ -139,7 +140,7 @@ class FewShotExample:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'FewShotExample':
+    def from_dict(cls, data: dict[str, Any]) -> 'FewShotExample':
         """Create from dictionary"""
         return cls(**data)
 
@@ -154,16 +155,16 @@ class TemplateManager:
     - Variable extraction and validation
     """
 
-    def __init__(self, template_dir: Optional[str] = None):
+    def __init__(self, template_dir: str | None = None):
         """
         Initialize template manager
 
         Args:
             template_dir: Directory containing template files
         """
-        self.templates: Dict[str, PromptTemplate] = {}
-        self.examples: Dict[str, List[FewShotExample]] = {}
-        self.template_versions: Dict[str, List[PromptTemplate]] = {}
+        self.templates: dict[str, PromptTemplate] = {}
+        self.examples: dict[str, list[FewShotExample]] = {}
+        self.template_versions: dict[str, list[PromptTemplate]] = {}
 
         # Set default template directory
         if template_dir is None:
@@ -181,7 +182,7 @@ class TemplateManager:
 
         logger.info(f"TemplateManager initialized with directory: {self.template_dir}")
 
-    def load_from_yaml(self, filepath: Union[str, Path]) -> None:
+    def load_from_yaml(self, filepath: str | Path) -> None:
         """
         Load templates from YAML file
 
@@ -191,7 +192,7 @@ class TemplateManager:
         filepath = Path(filepath)
 
         try:
-            with open(filepath, 'r') as f:
+            with open(filepath) as f:
                 data = yaml.safe_load(f)
 
             # Load templates
@@ -213,7 +214,7 @@ class TemplateManager:
             logger.error(f"Failed to load templates from {filepath}: {e}")
             raise
 
-    def load_from_directory(self, directory: Optional[Union[str, Path]] = None) -> None:
+    def load_from_directory(self, directory: str | Path | None = None) -> None:
         """
         Load all YAML templates from directory
 
@@ -264,7 +265,7 @@ class TemplateManager:
         self.templates[template.name] = template
         logger.debug(f"Added template: {template.name} (v{template.version})")
 
-    def get_template(self, name: str, version: Optional[str] = None) -> Optional[PromptTemplate]:
+    def get_template(self, name: str, version: str | None = None) -> PromptTemplate | None:
         """
         Get template by name and optionally version
 
@@ -291,7 +292,7 @@ class TemplateManager:
 
         return None
 
-    def list_templates(self, tag: Optional[str] = None) -> List[str]:
+    def list_templates(self, tag: str | None = None) -> list[str]:
         """
         List available template names
 
@@ -312,11 +313,11 @@ class TemplateManager:
     def render_template(
         self,
         name: str,
-        variables: Optional[Dict[str, Any]] = None,
+        variables: dict[str, Any] | None = None,
         include_examples: bool = False,
         num_examples: int = 3,
         example_style: str = "default",
-        example_filter: Optional[Dict[str, Any]] = None,
+        example_filter: dict[str, Any] | None = None,
         **kwargs
     ) -> str:
         """
@@ -374,9 +375,9 @@ class TemplateManager:
         self,
         template_name: str,
         num_examples: int = 3,
-        filter_criteria: Optional[Dict[str, Any]] = None,
+        filter_criteria: dict[str, Any] | None = None,
         diversity_mode: str = "random"
-    ) -> List[FewShotExample]:
+    ) -> list[FewShotExample]:
         """
         Select few-shot examples for a template
 
@@ -535,8 +536,8 @@ class TemplateManager:
     def create_chain_template(
         self,
         name: str,
-        steps: List[Dict[str, Any]],
-        description: Optional[str] = None
+        steps: list[dict[str, Any]],
+        description: str | None = None
     ) -> PromptTemplate:
         """
         Create a template for prompt chaining
@@ -571,7 +572,7 @@ class TemplateManager:
     def save_template(
         self,
         template: PromptTemplate,
-        filepath: Union[str, Path]
+        filepath: str | Path
     ) -> None:
         """
         Save template to YAML file
@@ -593,7 +594,7 @@ class TemplateManager:
 
     def export_all_templates(
         self,
-        filepath: Union[str, Path]
+        filepath: str | Path
     ) -> None:
         """
         Export all templates to single YAML file
@@ -616,14 +617,14 @@ class TemplateManager:
 
         logger.info(f"Exported {len(self.templates)} templates to {filepath}")
 
-    def get_template_stats(self) -> Dict[str, Any]:
+    def get_template_stats(self) -> dict[str, Any]:
         """Get statistics about loaded templates"""
         return {
             'total_templates': len(self.templates),
             'total_versions': sum(len(v) for v in self.template_versions.values()),
             'templates_with_examples': len(self.examples),
             'total_examples': sum(len(ex) for ex in self.examples.values()),
-            'tags': list(set(tag for t in self.templates.values() for tag in t.tags))
+            'tags': list({tag for t in self.templates.values() for tag in t.tags})
         }
 
 

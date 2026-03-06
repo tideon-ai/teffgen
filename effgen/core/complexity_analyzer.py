@@ -7,8 +7,8 @@ Uses multiple weighted factors to score complexity on a 0-10 scale.
 
 import logging
 import re
-from typing import Dict, Optional, Any, List
 from dataclasses import dataclass
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +33,9 @@ class ComplexityScore:
     domain_breadth: float
     tool_requirements: float
     reasoning_depth: float
-    breakdown: Dict[str, Any]
+    breakdown: dict[str, Any]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "overall": round(self.overall, 2),
@@ -100,7 +100,7 @@ class ComplexityAnalyzer:
         "very_complex": ["synthesize", "design", "create strategy", "optimize", "architect", "comprehensive"]
     }
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize complexity analyzer.
 
@@ -116,7 +116,7 @@ class ComplexityAnalyzer:
             # Normalize weights
             self.weights = {k: v / weight_sum for k, v in self.weights.items()}
 
-    def analyze(self, task: str, context: Optional[Dict[str, Any]] = None) -> ComplexityScore:
+    def analyze(self, task: str, context: dict[str, Any] | None = None) -> ComplexityScore:
         """
         Calculate overall complexity score.
 
@@ -311,7 +311,7 @@ class ComplexityAnalyzer:
         else:
             return "simple"
 
-    def analyze_complexity(self, task: str, context: Optional[Dict[str, Any]] = None) -> ComplexityScore:
+    def analyze_complexity(self, task: str, context: dict[str, Any] | None = None) -> ComplexityScore:
         """
         Alias for analyze() method for backwards compatibility.
 
@@ -340,7 +340,7 @@ class ComplexityAnalyzer:
         """
         return complexity_score.overall >= threshold
 
-    def get_insights(self, complexity_score: ComplexityScore) -> Dict[str, Any]:
+    def get_insights(self, complexity_score: ComplexityScore) -> dict[str, Any]:
         """
         Get detailed insights about complexity score.
 
@@ -372,7 +372,7 @@ class ComplexityAnalyzer:
         else:
             return "Very High - Complex task requiring hierarchical sub-agent approach"
 
-    def _identify_dominant_factors(self, score: ComplexityScore) -> List[str]:
+    def _identify_dominant_factors(self, score: ComplexityScore) -> list[str]:
         """Identify which factors contribute most to complexity."""
         factors = {
             "task_length": score.task_length,
@@ -393,7 +393,7 @@ class ComplexityAnalyzer:
 
         return dominant if dominant else ["All factors contributing moderately"]
 
-    def _generate_recommendations(self, score: ComplexityScore) -> List[str]:
+    def _generate_recommendations(self, score: ComplexityScore) -> list[str]:
         """Generate actionable recommendations based on complexity."""
         recommendations = []
 
@@ -454,12 +454,11 @@ class ComplexityAnalyzer:
 
         return recommendations
 
-    def _estimate_resources(self, score: ComplexityScore) -> Dict[str, Any]:
+    def _estimate_resources(self, score: ComplexityScore) -> dict[str, Any]:
         """Estimate resource requirements based on complexity."""
         # Base estimates
         base_time = 10  # seconds
         base_tokens = 500
-        base_agents = 1
 
         # Scale by complexity
         complexity_multiplier = score.overall / 5.0
@@ -484,7 +483,7 @@ class ComplexityAnalyzer:
             "confidence": "medium" if score.overall > 4.0 else "high"
         }
 
-    def _identify_risk_factors(self, score: ComplexityScore) -> List[Dict[str, str]]:
+    def _identify_risk_factors(self, score: ComplexityScore) -> list[dict[str, str]]:
         """Identify potential risk factors in task execution."""
         risks = []
 
@@ -535,7 +534,7 @@ class ComplexityAnalyzer:
 
         return risks
 
-    def compare_tasks(self, task1: str, task2: str) -> Dict[str, Any]:
+    def compare_tasks(self, task1: str, task2: str) -> dict[str, Any]:
         """
         Compare complexity of two tasks.
 
@@ -571,7 +570,7 @@ class ComplexityAnalyzer:
             more_complex = "1" if score1.overall > score2.overall else "2"
             return f"Task {more_complex} is significantly more complex ({diff:.1f} point difference)"
 
-    def calibrate_weights(self, training_data: List[Dict[str, Any]]):
+    def calibrate_weights(self, training_data: list[dict[str, Any]]):
         """
         Calibrate weights based on historical performance data.
 
@@ -593,7 +592,7 @@ class ComplexityAnalyzer:
         # In production: use proper statistical methods
         logger.info("Weight calibration complete (feature in development)")
 
-    def batch_analyze(self, tasks: List[str]) -> List[ComplexityScore]:
+    def batch_analyze(self, tasks: list[str]) -> list[ComplexityScore]:
         """
         Analyze multiple tasks efficiently.
 
@@ -605,7 +604,7 @@ class ComplexityAnalyzer:
         """
         return [self.analyze(task) for task in tasks]
 
-    def get_complexity_distribution(self, scores: List[ComplexityScore]) -> Dict[str, Any]:
+    def get_complexity_distribution(self, scores: list[ComplexityScore]) -> dict[str, Any]:
         """
         Analyze distribution of complexity scores.
 

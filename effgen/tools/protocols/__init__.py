@@ -9,11 +9,7 @@ This package provides implementations for various agent communication protocols:
 - ACP (Agent Communication Protocol): IBM's protocol for agent interoperability
 """
 
-from . import mcp
-from . import mcp_official
-from . import a2a
-from . import acp
-
+from . import a2a, acp, mcp, mcp_official
 
 __all__ = [
     "mcp",

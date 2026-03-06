@@ -9,12 +9,11 @@ import json
 import sqlite3
 import time
 import uuid
-from pathlib import Path
-from typing import List, Dict, Any, Optional, Union, Tuple
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timedelta
 from abc import ABC, abstractmethod
+from dataclasses import asdict, dataclass, field
 from enum import Enum
+from pathlib import Path
+from typing import Any
 
 
 class MemoryType(Enum):
@@ -57,13 +56,13 @@ class MemoryEntry:
     importance: ImportanceLevel = ImportanceLevel.MEDIUM
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     timestamp: float = field(default_factory=time.time)
-    session_id: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    session_id: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     access_count: int = 0
-    last_accessed: Optional[float] = None
-    tags: List[str] = field(default_factory=list)
+    last_accessed: float | None = None
+    tags: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "id": self.id,
@@ -79,7 +78,7 @@ class MemoryEntry:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MemoryEntry":
+    def from_dict(cls, data: dict[str, Any]) -> "MemoryEntry":
         """Create from dictionary."""
         return cls(
             id=data["id"],
@@ -109,18 +108,18 @@ class Session:
         memory_count: Number of memories in session
     """
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    name: Optional[str] = None
+    name: str | None = None
     start_time: float = field(default_factory=time.time)
-    end_time: Optional[float] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    end_time: float | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     memory_count: int = 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Session":
+    def from_dict(cls, data: dict[str, Any]) -> "Session":
         """Create from dictionary."""
         return cls(**data)
 
@@ -145,23 +144,23 @@ class StorageBackend(ABC):
         pass
 
     @abstractmethod
-    def get_memory(self, memory_id: str) -> Optional[MemoryEntry]:
+    def get_memory(self, memory_id: str) -> MemoryEntry | None:
         """Get a memory by ID."""
         pass
 
     @abstractmethod
     def search_memories(self,
-                       query: Optional[str] = None,
-                       memory_type: Optional[MemoryType] = None,
-                       session_id: Optional[str] = None,
-                       tags: Optional[List[str]] = None,
-                       min_importance: Optional[ImportanceLevel] = None,
-                       limit: Optional[int] = None) -> List[MemoryEntry]:
+                       query: str | None = None,
+                       memory_type: MemoryType | None = None,
+                       session_id: str | None = None,
+                       tags: list[str] | None = None,
+                       min_importance: ImportanceLevel | None = None,
+                       limit: int | None = None) -> list[MemoryEntry]:
         """Search memories with filters."""
         pass
 
     @abstractmethod
-    def update_memory(self, memory_id: str, updates: Dict[str, Any]) -> bool:
+    def update_memory(self, memory_id: str, updates: dict[str, Any]) -> bool:
         """Update a memory entry."""
         pass
 
@@ -179,7 +178,7 @@ class StorageBackend(ABC):
 class JSONStorageBackend(StorageBackend):
     """JSON file-based storage backend."""
 
-    def __init__(self, filepath: Union[str, Path]):
+    def __init__(self, filepath: str | Path):
         """
         Initialize JSON storage backend.
 
@@ -193,7 +192,7 @@ class JSONStorageBackend(StorageBackend):
     def _load_or_create(self) -> None:
         """Load existing data or create new file."""
         if self.filepath.exists():
-            with open(self.filepath, 'r') as f:
+            with open(self.filepath) as f:
                 self.data = json.load(f)
         else:
             self.data = {"memories": {}, "sessions": {}}
@@ -209,7 +208,7 @@ class JSONStorageBackend(StorageBackend):
         self.data["memories"][entry.id] = entry.to_dict()
         self._save()
 
-    def get_memory(self, memory_id: str) -> Optional[MemoryEntry]:
+    def get_memory(self, memory_id: str) -> MemoryEntry | None:
         """Get a memory by ID."""
         mem_data = self.data["memories"].get(memory_id)
         if mem_data:
@@ -217,12 +216,12 @@ class JSONStorageBackend(StorageBackend):
         return None
 
     def search_memories(self,
-                       query: Optional[str] = None,
-                       memory_type: Optional[MemoryType] = None,
-                       session_id: Optional[str] = None,
-                       tags: Optional[List[str]] = None,
-                       min_importance: Optional[ImportanceLevel] = None,
-                       limit: Optional[int] = None) -> List[MemoryEntry]:
+                       query: str | None = None,
+                       memory_type: MemoryType | None = None,
+                       session_id: str | None = None,
+                       tags: list[str] | None = None,
+                       min_importance: ImportanceLevel | None = None,
+                       limit: int | None = None) -> list[MemoryEntry]:
         """Search memories with filters."""
         results = []
 
@@ -253,7 +252,7 @@ class JSONStorageBackend(StorageBackend):
 
         return results
 
-    def update_memory(self, memory_id: str, updates: Dict[str, Any]) -> bool:
+    def update_memory(self, memory_id: str, updates: dict[str, Any]) -> bool:
         """Update a memory entry."""
         if memory_id not in self.data["memories"]:
             return False
@@ -280,7 +279,7 @@ class JSONStorageBackend(StorageBackend):
         self.data["sessions"][session.id] = session.to_dict()
         self._save()
 
-    def get_session(self, session_id: str) -> Optional[Session]:
+    def get_session(self, session_id: str) -> Session | None:
         """Get a session by ID."""
         sess_data = self.data["sessions"].get(session_id)
         if sess_data:
@@ -291,7 +290,7 @@ class JSONStorageBackend(StorageBackend):
 class SQLiteStorageBackend(StorageBackend):
     """SQLite database storage backend."""
 
-    def __init__(self, db_path: Union[str, Path]):
+    def __init__(self, db_path: str | Path):
         """
         Initialize SQLite storage backend.
 
@@ -374,7 +373,7 @@ class SQLiteStorageBackend(StorageBackend):
         conn.commit()
         conn.close()
 
-    def get_memory(self, memory_id: str) -> Optional[MemoryEntry]:
+    def get_memory(self, memory_id: str) -> MemoryEntry | None:
         """Get a memory by ID."""
         conn = self._get_connection()
         cursor = conn.cursor()
@@ -388,12 +387,12 @@ class SQLiteStorageBackend(StorageBackend):
         return None
 
     def search_memories(self,
-                       query: Optional[str] = None,
-                       memory_type: Optional[MemoryType] = None,
-                       session_id: Optional[str] = None,
-                       tags: Optional[List[str]] = None,
-                       min_importance: Optional[ImportanceLevel] = None,
-                       limit: Optional[int] = None) -> List[MemoryEntry]:
+                       query: str | None = None,
+                       memory_type: MemoryType | None = None,
+                       session_id: str | None = None,
+                       tags: list[str] | None = None,
+                       min_importance: ImportanceLevel | None = None,
+                       limit: int | None = None) -> list[MemoryEntry]:
         """Search memories with filters."""
         conn = self._get_connection()
         cursor = conn.cursor()
@@ -438,7 +437,7 @@ class SQLiteStorageBackend(StorageBackend):
 
         return results
 
-    def update_memory(self, memory_id: str, updates: Dict[str, Any]) -> bool:
+    def update_memory(self, memory_id: str, updates: dict[str, Any]) -> bool:
         """Update a memory entry."""
         conn = self._get_connection()
         cursor = conn.cursor()
@@ -486,7 +485,7 @@ class SQLiteStorageBackend(StorageBackend):
         conn.commit()
         conn.close()
 
-    def _row_to_memory(self, row: Tuple) -> MemoryEntry:
+    def _row_to_memory(self, row: tuple) -> MemoryEntry:
         """Convert database row to MemoryEntry."""
         return MemoryEntry(
             id=row[0],
@@ -522,7 +521,7 @@ class SQLiteStorageBackend(StorageBackend):
         conn.commit()
         conn.close()
 
-    def get_session(self, session_id: str) -> Optional[Session]:
+    def get_session(self, session_id: str) -> Session | None:
         """Get a session by ID."""
         conn = self._get_connection()
         cursor = conn.cursor()
@@ -576,13 +575,13 @@ class LongTermMemory:
         self.min_importance_to_keep = min_importance_to_keep
 
         # Current session
-        self.current_session: Optional[Session] = None
+        self.current_session: Session | None = None
 
         # Statistics
         self.memories_added_since_consolidation = 0
         self.total_consolidations = 0
 
-    def start_session(self, name: Optional[str] = None) -> Session:
+    def start_session(self, name: str | None = None) -> Session:
         """
         Start a new session.
 
@@ -609,8 +608,8 @@ class LongTermMemory:
                   content: str,
                   memory_type: MemoryType,
                   importance: ImportanceLevel = ImportanceLevel.MEDIUM,
-                  tags: Optional[List[str]] = None,
-                  metadata: Optional[Dict[str, Any]] = None) -> MemoryEntry:
+                  tags: list[str] | None = None,
+                  metadata: dict[str, Any] | None = None) -> MemoryEntry:
         """
         Add a memory entry.
 
@@ -648,7 +647,7 @@ class LongTermMemory:
 
         return entry
 
-    def get_memory(self, memory_id: str, update_access: bool = True) -> Optional[MemoryEntry]:
+    def get_memory(self, memory_id: str, update_access: bool = True) -> MemoryEntry | None:
         """
         Get a memory by ID.
 
@@ -673,12 +672,12 @@ class LongTermMemory:
         return entry
 
     def search(self,
-              query: Optional[str] = None,
-              memory_type: Optional[MemoryType] = None,
-              session_id: Optional[str] = None,
-              tags: Optional[List[str]] = None,
-              min_importance: Optional[ImportanceLevel] = None,
-              limit: int = 50) -> List[MemoryEntry]:
+              query: str | None = None,
+              memory_type: MemoryType | None = None,
+              session_id: str | None = None,
+              tags: list[str] | None = None,
+              min_importance: ImportanceLevel | None = None,
+              limit: int = 50) -> list[MemoryEntry]:
         """
         Search memories.
 
@@ -729,7 +728,7 @@ class LongTermMemory:
         all_memories.sort(key=score_memory, reverse=True)
 
         # Keep top memories
-        to_keep = all_memories[:self.max_memories]
+        all_memories[:self.max_memories]
         to_remove = all_memories[self.max_memories:]
 
         # Remove low-scoring memories
@@ -750,7 +749,7 @@ class LongTermMemory:
         self.backend.clear_all()
         self.current_session = None
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get memory statistics.
 
@@ -768,7 +767,7 @@ class LongTermMemory:
             "memories_by_importance": self._count_by_importance(all_memories),
         }
 
-    def _count_by_type(self, memories: List[MemoryEntry]) -> Dict[str, int]:
+    def _count_by_type(self, memories: list[MemoryEntry]) -> dict[str, int]:
         """Count memories by type."""
         counts = {}
         for entry in memories:
@@ -776,7 +775,7 @@ class LongTermMemory:
             counts[type_name] = counts.get(type_name, 0) + 1
         return counts
 
-    def _count_by_importance(self, memories: List[MemoryEntry]) -> Dict[str, int]:
+    def _count_by_importance(self, memories: list[MemoryEntry]) -> dict[str, int]:
         """Count memories by importance."""
         counts = {}
         for entry in memories:

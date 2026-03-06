@@ -11,17 +11,16 @@ This module provides integration with OpenAI's API, supporting:
 """
 
 import logging
-import time
-from typing import Iterator, Optional, List, Dict, Any
 import os
+from collections.abc import Iterator
+from typing import Any
 
 from effgen.models.base import (
-    BaseModel,
     FunctionCallingModel,
-    ModelType,
     GenerationConfig,
     GenerationResult,
-    TokenCount
+    ModelType,
+    TokenCount,
 )
 
 logger = logging.getLogger(__name__)
@@ -73,8 +72,8 @@ class OpenAIAdapter(FunctionCallingModel):
     def __init__(
         self,
         model_name: str = "gpt-4-turbo-preview",
-        api_key: Optional[str] = None,
-        organization_id: Optional[str] = None,
+        api_key: str | None = None,
+        organization_id: str | None = None,
         max_retries: int = 3,
         timeout: int = 60,
         **kwargs
@@ -165,7 +164,7 @@ class OpenAIAdapter(FunctionCallingModel):
             logger.error(f"Failed to initialize OpenAI client: {e}")
             raise RuntimeError(f"OpenAI initialization failed: {e}") from e
 
-    def _create_messages(self, prompt: str) -> List[Dict[str, str]]:
+    def _create_messages(self, prompt: str) -> list[dict[str, str]]:
         """
         Convert prompt to OpenAI messages format.
 
@@ -207,7 +206,7 @@ class OpenAIAdapter(FunctionCallingModel):
     def generate(
         self,
         prompt: str,
-        config: Optional[GenerationConfig] = None,
+        config: GenerationConfig | None = None,
         **kwargs
     ) -> GenerationResult:
         """
@@ -301,7 +300,7 @@ class OpenAIAdapter(FunctionCallingModel):
     def generate_stream(
         self,
         prompt: str,
-        config: Optional[GenerationConfig] = None,
+        config: GenerationConfig | None = None,
         **kwargs
     ) -> Iterator[str]:
         """
@@ -365,8 +364,8 @@ class OpenAIAdapter(FunctionCallingModel):
     def generate_with_tools(
         self,
         prompt: str,
-        tools: List[Dict[str, Any]],
-        config: Optional[GenerationConfig] = None,
+        tools: list[dict[str, Any]],
+        config: GenerationConfig | None = None,
         **kwargs
     ) -> GenerationResult:
         """

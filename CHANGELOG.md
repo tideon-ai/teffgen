@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Fixed
+- **License consistency**: Changed all `MIT` license references to `Apache-2.0` across 6 files (`effgen/__init__.py`, `pyproject.toml`, `effgen/gpu/utils.py`, `effgen/gpu/__init__.py`, `effgen/gpu/allocator.py`, `effgen/gpu/monitor.py`)
+- **Entry point mismatch**: Fixed `setup.py` entry point `effgen-agent` to point to `effgen.cli:agent_main` (was `effgen.cli:main`), matching `pyproject.toml`
+- **Development status**: Changed `setup.py` classifier from `Alpha` to `Beta` to match `pyproject.toml`
+- **Dependency version mismatch**: Fixed `duckduckgo-search` version in `setup.py` from `>=3.9.0` to `>=8.1.0` to match `pyproject.toml`
+- **Dependency group sync**: Synced all `setup.py` extras_require with `pyproject.toml` optional-dependencies (added missing `cloud-secrets` and `monitoring` groups)
+- **Bare except handlers**: Replaced 5 bare `except:` in `effgen/gpu/monitor.py` with specific exception types and debug logging
+- **Silent error swallowing**: Added `logger.debug()` to silent `except Exception: pass` handlers in `docker_sandbox.py`, `sandbox.py`, and `code_executor.py`
+
+### Changed
+- **Logging cleanup**: Converted 15+ `print()` calls to proper `logger` calls in `docker_sandbox.py`, `decomposition_engine.py`, `router.py`, `complexity_analyzer.py`, and `gpu/utils.py`
+- **Error handling**: Tightened critical `except Exception:` handlers in execution modules with specific exception types where possible
+- **Top-level exports**: Added `ToolFallbackChain`, `CircuitBreaker`, `ToolPromptGenerator`, `AgentSystemPromptBuilder` to `effgen/__init__.py`
+- **Lint cleanup**: Fixed 2200+ linting issues via ruff (unused imports, whitespace, style)
+
+### Added
+- **NEWS.md**: User-friendly summary of v0.1.0 changes (was referenced but never created)
+- **Example scripts**: 6 new examples — `preset_agents.py`, `streaming_agent.py`, `memory_agent.py`, `multi_tool_agent.py`, `weather_agent.py`, `plugin_example.py`
+- **Test suite**: 50+ new tests — CLI smoke tests, API server tests, plugin tests, preset tests, fallback chain tests, circuit breaker tests
+- **Benchmark baseline**: Stored performance baseline in `tests/benchmarks/baseline.json`
+
+---
+
 ## [0.1.0] - 2026-03-01
 
 ### Added

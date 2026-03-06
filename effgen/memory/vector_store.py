@@ -7,12 +7,13 @@ supporting semantic search, similarity retrieval, and periodic consolidation.
 
 import json
 import time
-import numpy as np
-from pathlib import Path
-from typing import List, Dict, Any, Optional, Union, Tuple
-from dataclasses import dataclass, field, asdict
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
+from typing import Any
+
+import numpy as np
 
 # Optional imports for vector backends
 try:
@@ -56,12 +57,12 @@ class VectorMemoryEntry:
     id: str
     content: str
     embedding: np.ndarray
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     timestamp: float = field(default_factory=time.time)
     access_count: int = 0
-    last_accessed: Optional[float] = None
+    last_accessed: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary (without embedding for serialization)."""
         return {
             "id": self.id,
@@ -87,7 +88,7 @@ class SearchResult:
     similarity: float
     rank: int
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "id": self.entry.id,
@@ -115,7 +116,7 @@ class EmbeddingProvider(ABC):
         pass
 
     @abstractmethod
-    def embed_batch(self, texts: List[str]) -> List[np.ndarray]:
+    def embed_batch(self, texts: list[str]) -> list[np.ndarray]:
         """
         Generate embeddings for multiple texts.
 
@@ -159,10 +160,10 @@ class SentenceTransformerEmbedding(EmbeddingProvider):
         """Generate embedding for text."""
         return self.model.encode(text, convert_to_numpy=True)
 
-    def embed_batch(self, texts: List[str]) -> List[np.ndarray]:
+    def embed_batch(self, texts: list[str]) -> list[np.ndarray]:
         """Generate embeddings for multiple texts."""
         embeddings = self.model.encode(texts, convert_to_numpy=True)
-        return [emb for emb in embeddings]
+        return list(embeddings)
 
     @property
     def embedding_dim(self) -> int:
@@ -204,7 +205,7 @@ class SimpleEmbedding(EmbeddingProvider):
             vector = np.pad(vector, (0, self._embedding_dim - len(vector)))
         return vector
 
-    def embed_batch(self, texts: List[str]) -> List[np.ndarray]:
+    def embed_batch(self, texts: list[str]) -> list[np.ndarray]:
         """Generate embeddings for multiple texts."""
         if not self._fitted:
             self._corpus.extend(texts)
@@ -235,7 +236,7 @@ class VectorStoreBackend(ABC):
         pass
 
     @abstractmethod
-    def search(self, query_vector: np.ndarray, k: int = 10) -> List[Tuple[str, float]]:
+    def search(self, query_vector: np.ndarray, k: int = 10) -> list[tuple[str, float]]:
         """
         Search for similar vectors.
 
@@ -285,8 +286,8 @@ class FAISSBackend(VectorStoreBackend):
         self.embedding_dim = embedding_dim
         # Use inner product index (cosine similarity with normalized vectors)
         self.index = faiss.IndexFlatIP(embedding_dim)
-        self.id_map: Dict[int, str] = {}  # FAISS index -> entry ID
-        self.reverse_id_map: Dict[str, int] = {}  # entry ID -> FAISS index
+        self.id_map: dict[int, str] = {}  # FAISS index -> entry ID
+        self.reverse_id_map: dict[str, int] = {}  # entry ID -> FAISS index
         self.next_idx = 0
 
     def add(self, entry: VectorMemoryEntry) -> None:
@@ -303,7 +304,7 @@ class FAISSBackend(VectorStoreBackend):
         self.reverse_id_map[entry.id] = self.next_idx
         self.next_idx += 1
 
-    def search(self, query_vector: np.ndarray, k: int = 10) -> List[Tuple[str, float]]:
+    def search(self, query_vector: np.ndarray, k: int = 10) -> list[tuple[str, float]]:
         """Search for similar vectors."""
         # Normalize query vector
         query = query_vector.astype('float32')
@@ -369,7 +370,7 @@ class FAISSBackend(VectorStoreBackend):
         self.index = faiss.read_index(str(path / "faiss.index"))
 
         # Load mappings
-        with open(path / "mappings.json", 'r') as f:
+        with open(path / "mappings.json") as f:
             data = json.load(f)
             self.id_map = {int(k): v for k, v in data["id_map"].items()}
             self.reverse_id_map = data["reverse_id_map"]
@@ -379,7 +380,7 @@ class FAISSBackend(VectorStoreBackend):
 class ChromaBackend(VectorStoreBackend):
     """Chroma-based vector store backend."""
 
-    def __init__(self, embedding_dim: int, persist_directory: Optional[str] = None):
+    def __init__(self, embedding_dim: int, persist_directory: str | None = None):
         """
         Initialize Chroma backend.
 
@@ -416,7 +417,7 @@ class ChromaBackend(VectorStoreBackend):
             metadatas=[entry.metadata]
         )
 
-    def search(self, query_vector: np.ndarray, k: int = 10) -> List[Tuple[str, float]]:
+    def search(self, query_vector: np.ndarray, k: int = 10) -> list[tuple[str, float]]:
         """Search for similar vectors."""
         results = self.collection.query(
             query_embeddings=[query_vector.tolist()],
@@ -472,8 +473,8 @@ class VectorMemoryStore:
 
     def __init__(self,
                  backend_type: str = "faiss",
-                 embedding_provider: Optional[EmbeddingProvider] = None,
-                 persist_directory: Optional[Union[str, Path]] = None,
+                 embedding_provider: EmbeddingProvider | None = None,
+                 persist_directory: str | Path | None = None,
                  consolidation_threshold: int = 1000,
                  max_entries: int = 10000):
         """
@@ -511,7 +512,7 @@ class VectorMemoryStore:
         self.persist_directory = persist_path
 
         # Storage for entries
-        self.entries: Dict[str, VectorMemoryEntry] = {}
+        self.entries: dict[str, VectorMemoryEntry] = {}
 
         # Configuration
         self.consolidation_threshold = consolidation_threshold
@@ -528,8 +529,8 @@ class VectorMemoryStore:
 
     def add(self,
             content: str,
-            entry_id: Optional[str] = None,
-            metadata: Optional[Dict[str, Any]] = None) -> VectorMemoryEntry:
+            entry_id: str | None = None,
+            metadata: dict[str, Any] | None = None) -> VectorMemoryEntry:
         """
         Add a new memory entry.
 
@@ -568,8 +569,8 @@ class VectorMemoryStore:
         return entry
 
     def add_batch(self,
-                 contents: List[str],
-                 metadatas: Optional[List[Dict[str, Any]]] = None) -> List[VectorMemoryEntry]:
+                 contents: list[str],
+                 metadatas: list[dict[str, Any]] | None = None) -> list[VectorMemoryEntry]:
         """
         Add multiple memory entries efficiently.
 
@@ -611,7 +612,7 @@ class VectorMemoryStore:
     def search(self,
               query: str,
               k: int = 10,
-              min_similarity: float = 0.0) -> List[SearchResult]:
+              min_similarity: float = 0.0) -> list[SearchResult]:
         """
         Search for similar memories.
 
@@ -653,7 +654,7 @@ class VectorMemoryStore:
         self.total_searches += 1
         return results
 
-    def get(self, entry_id: str) -> Optional[VectorMemoryEntry]:
+    def get(self, entry_id: str) -> VectorMemoryEntry | None:
         """
         Get entry by ID.
 
@@ -779,7 +780,7 @@ class VectorMemoryStore:
         # Load entries
         entries_file = self.persist_directory / "entries.json"
         if entries_file.exists():
-            with open(entries_file, 'r') as f:
+            with open(entries_file) as f:
                 entries_data = json.load(f)
 
             for entry_data in entries_data.values():
@@ -797,13 +798,13 @@ class VectorMemoryStore:
         # Load statistics
         stats_file = self.persist_directory / "stats.json"
         if stats_file.exists():
-            with open(stats_file, 'r') as f:
+            with open(stats_file) as f:
                 stats = json.load(f)
                 self.total_entries_added = stats.get("total_entries_added", 0)
                 self.total_searches = stats.get("total_searches", 0)
                 self.total_consolidations = stats.get("total_consolidations", 0)
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get store statistics.
 

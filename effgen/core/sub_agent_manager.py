@@ -11,14 +11,15 @@ Manages the lifecycle of specialized sub-agents including:
 
 import asyncio
 import time
-from typing import List, Dict, Optional, Any, Callable
+import traceback
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-import traceback
+from typing import Any
 
-from .task import SubTask, TaskStatus
-from .execution_tracker import ExecutionTracker, ExecutionEvent, EventType
+from .execution_tracker import EventType, ExecutionEvent, ExecutionTracker
 from .router import RoutingStrategy
+from .task import SubTask, TaskStatus
 
 
 class SubAgentSpecialization(Enum):
@@ -47,7 +48,7 @@ class SubAgentConfig:
         timeout: Execution timeout in seconds
     """
     specialization: SubAgentSpecialization
-    tools: List[str] = field(default_factory=list)
+    tools: list[str] = field(default_factory=list)
     system_prompt: str = ""
     model: str = "inherit"
     max_iterations: int = 5
@@ -139,13 +140,13 @@ class SubAgentResult:
     agent_id: str
     success: bool
     result: Any = None
-    error: Optional[str] = None
+    error: str | None = None
     execution_time: float = 0.0
     tokens_used: int = 0
     tool_calls: int = 0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "subtask_id": self.subtask_id,
@@ -174,8 +175,8 @@ class SubAgentManager:
 
     def __init__(self,
                  parent_agent: Any = None,
-                 config: Optional[Dict[str, Any]] = None,
-                 execution_tracker: Optional[ExecutionTracker] = None):
+                 config: dict[str, Any] | None = None,
+                 execution_tracker: ExecutionTracker | None = None):
         """
         Initialize sub-agent manager.
 
@@ -187,13 +188,13 @@ class SubAgentManager:
         self.parent_agent = parent_agent
         self.config = config or {}
         self.execution_tracker = execution_tracker or ExecutionTracker()
-        self.active_sub_agents: Dict[str, Any] = {}
-        self.sub_agent_results: Dict[str, SubAgentResult] = {}
+        self.active_sub_agents: dict[str, Any] = {}
+        self.sub_agent_results: dict[str, SubAgentResult] = {}
         self.max_parallel = self.config.get("max_parallel_agents", 5)
 
     def spawn_sub_agent(self,
                        subtask: SubTask,
-                       specialization: Optional[str] = None) -> Any:
+                       specialization: str | None = None) -> Any:
         """
         Create a specialized sub-agent.
 
@@ -240,8 +241,8 @@ class SubAgentManager:
         return sub_agent_info
 
     async def execute_parallel(self,
-                               subtasks: List[SubTask],
-                               progress_callback: Optional[Callable] = None) -> List[SubAgentResult]:
+                               subtasks: list[SubTask],
+                               progress_callback: Callable | None = None) -> list[SubAgentResult]:
         """
         Execute subtasks in parallel using sub-agents.
 
@@ -292,8 +293,8 @@ class SubAgentManager:
         return final_results
 
     def execute_sequential(self,
-                          subtasks: List[SubTask],
-                          progress_callback: Optional[Callable] = None) -> List[SubAgentResult]:
+                          subtasks: list[SubTask],
+                          progress_callback: Callable | None = None) -> list[SubAgentResult]:
         """
         Execute subtasks sequentially.
 
@@ -329,8 +330,8 @@ class SubAgentManager:
         return results
 
     def execute_hybrid(self,
-                      subtasks: List[SubTask],
-                      progress_callback: Optional[Callable] = None) -> List[SubAgentResult]:
+                      subtasks: list[SubTask],
+                      progress_callback: Callable | None = None) -> list[SubAgentResult]:
         """
         Execute with hybrid strategy (parallel groups + sequential stages).
 
@@ -359,7 +360,7 @@ class SubAgentManager:
 
         return all_results
 
-    def _group_by_dependencies(self, subtasks: List[SubTask]) -> List[List[SubTask]]:
+    def _group_by_dependencies(self, subtasks: list[SubTask]) -> list[list[SubTask]]:
         """
         Group subtasks into stages based on dependencies.
 
@@ -389,9 +390,9 @@ class SubAgentManager:
         return stages
 
     async def _execute_sub_agent_async(self,
-                                      agent_info: Dict,
+                                      agent_info: dict,
                                       subtask: SubTask,
-                                      progress_callback: Optional[Callable] = None) -> SubAgentResult:
+                                      progress_callback: Callable | None = None) -> SubAgentResult:
         """Execute sub-agent asynchronously."""
         # Run in executor to avoid blocking
         loop = asyncio.get_event_loop()
@@ -404,9 +405,9 @@ class SubAgentManager:
         )
 
     def _execute_sub_agent(self,
-                          agent_info: Dict,
+                          agent_info: dict,
                           subtask: SubTask,
-                          progress_callback: Optional[Callable] = None) -> SubAgentResult:
+                          progress_callback: Callable | None = None) -> SubAgentResult:
         """
         Execute a sub-agent on a subtask.
 
@@ -504,7 +505,7 @@ class SubAgentManager:
 
             return result
 
-    def _simulate_execution(self, subtask: SubTask, config: SubAgentConfig) -> Dict[str, Any]:
+    def _simulate_execution(self, subtask: SubTask, config: SubAgentConfig) -> dict[str, Any]:
         """
         Simulate sub-agent execution (placeholder).
 
@@ -521,9 +522,9 @@ class SubAgentManager:
         }
 
     def synthesize_results(self,
-                          results: List[SubAgentResult],
+                          results: list[SubAgentResult],
                           original_task: str,
-                          strategy: RoutingStrategy) -> Dict[str, Any]:
+                          strategy: RoutingStrategy) -> dict[str, Any]:
         """
         Combine sub-agent results into final answer.
 
@@ -592,7 +593,7 @@ class SubAgentManager:
 
         return synthesis
 
-    def _simple_synthesis(self, synthesis_data: Dict[str, Any]) -> str:
+    def _simple_synthesis(self, synthesis_data: dict[str, Any]) -> str:
         """Simple synthesis by concatenating results."""
         parts = []
         parts.append(f"Task: {synthesis_data['original_task']}\n")

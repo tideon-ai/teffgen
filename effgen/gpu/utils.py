@@ -10,7 +10,6 @@ License: Apache-2.0
 
 import logging
 import math
-from typing import Dict, List, Optional, Tuple, Union
 import warnings
 
 try:
@@ -21,7 +20,7 @@ except ImportError:
     warnings.warn("PyTorch not available. GPU utilities will use CPU fallback.")
 
 try:
-    import pynvml
+    import pynvml  # noqa: F401
     PYNVML_AVAILABLE = True
 except ImportError:
     PYNVML_AVAILABLE = False
@@ -85,7 +84,7 @@ def get_device_name(device_id: int) -> str:
     return torch.cuda.get_device_properties(device_id).name
 
 
-def get_device_capability(device_id: int) -> Tuple[int, int]:
+def get_device_capability(device_id: int) -> tuple[int, int]:
     """
     Get CUDA compute capability of device.
 
@@ -204,7 +203,7 @@ def format_memory_size(size_bytes: int) -> str:
 def estimate_model_memory(
     num_parameters: int,
     dtype: str = "float32",
-    quantization: Optional[str] = None,
+    quantization: str | None = None,
     overhead_factor: float = 1.2
 ) -> int:
     """
@@ -281,9 +280,9 @@ def estimate_batch_memory(
 
 def select_best_device(
     memory_required: int,
-    exclude_devices: Optional[List[int]] = None,
+    exclude_devices: list[int] | None = None,
     prefer_empty: bool = True
-) -> Optional[int]:
+) -> int | None:
     """
     Select best GPU device based on available memory.
 
@@ -323,7 +322,7 @@ def select_devices_for_tensor_parallel(
     memory_required_per_device: int,
     num_devices: int,
     prefer_contiguous: bool = True
-) -> Optional[List[int]]:
+) -> list[int] | None:
     """
     Select devices for tensor parallel model.
 
@@ -365,7 +364,7 @@ def select_devices_for_tensor_parallel(
 
 def calculate_optimal_tensor_parallel_size(
     model_memory: int,
-    available_devices: Optional[List[int]] = None
+    available_devices: list[int] | None = None
 ) -> int:
     """
     Calculate optimal tensor parallel size for a model.
@@ -407,7 +406,7 @@ def calculate_optimal_tensor_parallel_size(
     return tensor_parallel_size
 
 
-def clear_cache(device_id: Optional[int] = None) -> None:
+def clear_cache(device_id: int | None = None) -> None:
     """
     Clear GPU memory cache.
 
@@ -428,7 +427,7 @@ def clear_cache(device_id: Optional[int] = None) -> None:
         logger.debug("Cleared cache for all GPUs")
 
 
-def synchronize(device_id: Optional[int] = None) -> None:
+def synchronize(device_id: int | None = None) -> None:
     """
     Synchronize GPU operations.
 
@@ -445,7 +444,7 @@ def synchronize(device_id: Optional[int] = None) -> None:
         torch.cuda.synchronize()
 
 
-def reset_peak_memory_stats(device_id: Optional[int] = None) -> None:
+def reset_peak_memory_stats(device_id: int | None = None) -> None:
     """
     Reset peak memory statistics.
 
@@ -462,7 +461,7 @@ def reset_peak_memory_stats(device_id: Optional[int] = None) -> None:
             torch.cuda.reset_peak_memory_stats(device_id)
 
 
-def get_memory_summary(device_id: int) -> Dict[str, Union[int, str]]:
+def get_memory_summary(device_id: int) -> dict[str, int | str]:
     """
     Get comprehensive memory summary for a device.
 
@@ -644,7 +643,7 @@ def get_device_info_string(device_id: int) -> str:
         return f"Error getting device info: {e}"
 
 
-def print_device_info(device_id: Optional[int] = None) -> None:
+def print_device_info(device_id: int | None = None) -> None:
     """
     Print device information to console.
 
@@ -679,7 +678,7 @@ def validate_device_id(device_id: int) -> bool:
     return 0 <= device_id < get_device_count()
 
 
-def get_device_or_cpu(device_id: Optional[int] = None) -> str:
+def get_device_or_cpu(device_id: int | None = None) -> str:
     """
     Get device string for PyTorch, with CPU fallback.
 
@@ -708,7 +707,7 @@ def get_device_or_cpu(device_id: Optional[int] = None) -> str:
 def estimate_tokens_per_second(
     model_parameters: int,
     batch_size: int,
-    device_ids: List[int],
+    device_ids: list[int],
     dtype: str = "float16"
 ) -> float:
     """

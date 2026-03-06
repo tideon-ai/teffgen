@@ -5,16 +5,15 @@ This module provides a central registry for tool registration, discovery,
 lazy loading, and dependency management.
 """
 
+import asyncio
 import importlib
 import inspect
-from typing import Dict, List, Optional, Type, Any, Set
-from pathlib import Path
 import logging
 from collections import defaultdict
-import asyncio
+from pathlib import Path
+from typing import Any
 
 from .base_tool import BaseTool, ToolCategory, ToolMetadata
-
 
 logger = logging.getLogger(__name__)
 
@@ -50,18 +49,18 @@ class ToolRegistry:
 
     def __init__(self):
         """Initialize the tool registry."""
-        self._tools: Dict[str, Type[BaseTool]] = {}
-        self._instances: Dict[str, BaseTool] = {}
-        self._metadata_cache: Dict[str, ToolMetadata] = {}
-        self._dependencies: Dict[str, Set[str]] = defaultdict(set)
-        self._categories: Dict[ToolCategory, Set[str]] = defaultdict(set)
-        self._plugins: Dict[str, Path] = {}
-        self._initialized_tools: Set[str] = set()
+        self._tools: dict[str, type[BaseTool]] = {}
+        self._instances: dict[str, BaseTool] = {}
+        self._metadata_cache: dict[str, ToolMetadata] = {}
+        self._dependencies: dict[str, set[str]] = defaultdict(set)
+        self._categories: dict[ToolCategory, set[str]] = defaultdict(set)
+        self._plugins: dict[str, Path] = {}
+        self._initialized_tools: set[str] = set()
         self._lock = asyncio.Lock()
 
     def register_tool(
         self,
-        tool_class: Type[BaseTool],
+        tool_class: type[BaseTool],
         override: bool = False
     ) -> None:
         """
@@ -234,10 +233,10 @@ class ToolRegistry:
 
     def list_tools(
         self,
-        category: Optional[ToolCategory] = None,
-        tags: Optional[List[str]] = None,
-        name_filter: Optional[str] = None
-    ) -> List[str]:
+        category: ToolCategory | None = None,
+        tags: list[str] | None = None,
+        name_filter: str | None = None
+    ) -> list[str]:
         """
         List available tools with optional filtering.
 
@@ -288,7 +287,7 @@ class ToolRegistry:
             raise KeyError(f"Tool '{name}' is not registered")
         return self._metadata_cache[name]
 
-    def get_all_metadata(self) -> Dict[str, ToolMetadata]:
+    def get_all_metadata(self) -> dict[str, ToolMetadata]:
         """
         Get metadata for all registered tools.
 
@@ -297,7 +296,7 @@ class ToolRegistry:
         """
         return self._metadata_cache.copy()
 
-    def get_tools_by_category(self, category: ToolCategory) -> List[str]:
+    def get_tools_by_category(self, category: ToolCategory) -> list[str]:
         """
         Get all tools in a specific category.
 
@@ -321,7 +320,7 @@ class ToolRegistry:
         """
         return name in self._tools
 
-    def get_dependency_graph(self) -> Dict[str, List[str]]:
+    def get_dependency_graph(self) -> dict[str, list[str]]:
         """
         Get the dependency graph for all tools.
 
@@ -419,7 +418,7 @@ class ToolRegistry:
         except Exception as e:
             logger.error(f"Failed to discover builtin tools: {e}")
 
-    def export_schemas(self, format: str = "json") -> Dict[str, Any]:
+    def export_schemas(self, format: str = "json") -> dict[str, Any]:
         """
         Export all tool schemas in the specified format.
 
@@ -452,7 +451,7 @@ class ToolRegistry:
 
 
 # Global tool registry instance
-_global_registry: Optional[ToolRegistry] = None
+_global_registry: ToolRegistry | None = None
 
 
 def get_registry() -> ToolRegistry:

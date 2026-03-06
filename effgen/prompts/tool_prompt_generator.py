@@ -7,7 +7,7 @@ optimized for Small Language Models (1B-7B parameters).
 """
 
 import logging
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 from ..tools.base_tool import BaseTool, ParameterType
 
@@ -31,7 +31,7 @@ class ToolPromptGenerator:
         "gemma": ["gemma"],
     }
 
-    def __init__(self, tools: List[BaseTool], model_name: Optional[str] = None):
+    def __init__(self, tools: list[BaseTool], model_name: str | None = None):
         """
         Initialize the generator.
 

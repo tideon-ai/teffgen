@@ -6,15 +6,14 @@ strong security guarantees and resource limits.
 """
 
 import os
-import time
 import tempfile
+import time
 import traceback
-from typing import Optional, Dict, Any, List
-from pathlib import Path
+from typing import Any
 
 try:
     import docker
-    from docker.errors import DockerException, ContainerError, ImageNotFound
+    from docker.errors import ContainerError, DockerException, ImageNotFound  # noqa: F401
     DOCKER_AVAILABLE = True
 except ImportError:
     DOCKER_AVAILABLE = False
@@ -46,9 +45,9 @@ class DockerSandbox(BaseSandbox):
     }
 
     def __init__(self,
-                 config: Optional[SandboxConfig] = None,
-                 docker_client: Optional[Any] = None,
-                 custom_images: Optional[Dict[str, str]] = None):
+                 config: SandboxConfig | None = None,
+                 docker_client: Any | None = None,
+                 custom_images: dict[str, str] | None = None):
         """
         Initialize Docker sandbox.
 
@@ -285,7 +284,7 @@ class DockerSandbox(BaseSandbox):
                                    image: str,
                                    code_file: str,
                                    language: str,
-                                   temp_dir: str) -> Dict[str, Any]:
+                                   temp_dir: str) -> dict[str, Any]:
         """
         Prepare Docker container configuration.
 
@@ -431,8 +430,8 @@ class DockerManager:
             )
 
     def create_sandbox(self,
-                      config: Optional[SandboxConfig] = None,
-                      custom_images: Optional[Dict[str, str]] = None) -> DockerSandbox:
+                      config: SandboxConfig | None = None,
+                      custom_images: dict[str, str] | None = None) -> DockerSandbox:
         """
         Create a new Docker sandbox.
 
@@ -463,7 +462,7 @@ class DockerManager:
         except Exception as e:
             raise RuntimeError(f"Failed to pull image {image}: {e}")
 
-    def list_images(self) -> List[str]:
+    def list_images(self) -> list[str]:
         """
         List available Docker images.
 
@@ -515,7 +514,7 @@ class DockerManager:
             logger.warning(f"Container cleanup failed: {e}")
             return 0
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get Docker system statistics.
 

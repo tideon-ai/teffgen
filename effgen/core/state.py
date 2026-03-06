@@ -2,31 +2,31 @@
 Agent state management for effGen framework.
 """
 
-from dataclasses import dataclass, field, asdict
-from typing import Any, Dict, List, Optional
-from datetime import datetime
 import json
 import pickle
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
+from typing import Any
 
 
 @dataclass
 class AgentState:
     """
     Represents the complete state of an agent.
-    
+
     This includes conversation history, tool usage, memory, and configuration.
     Can be saved and loaded for persistence.
     """
-    
+
     agent_id: str
-    conversation_history: List[Dict[str, Any]] = field(default_factory=list)
-    tool_history: List[Dict[str, Any]] = field(default_factory=list)
-    memory: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    conversation_history: list[dict[str, Any]] = field(default_factory=list)
+    tool_history: list[dict[str, Any]] = field(default_factory=list)
+    memory: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
-    
-    def add_message(self, role: str, content: str, metadata: Optional[Dict] = None):
+
+    def add_message(self, role: str, content: str, metadata: dict | None = None):
         """Add a message to conversation history."""
         self.conversation_history.append({
             "role": role,
@@ -35,8 +35,8 @@ class AgentState:
             "metadata": metadata or {}
         })
         self.updated_at = datetime.now()
-    
-    def add_tool_call(self, tool_name: str, args: Dict, result: Any, error: Optional[str] = None):
+
+    def add_tool_call(self, tool_name: str, args: dict, result: Any, error: str | None = None):
         """Record a tool call."""
         self.tool_history.append({
             "tool": tool_name,
@@ -46,11 +46,11 @@ class AgentState:
             "timestamp": datetime.now().isoformat()
         })
         self.updated_at = datetime.now()
-    
+
     def save(self, filepath: str, format: str = "json"):
         """Save state to file."""
         self.updated_at = datetime.now()
-        
+
         if format == "json":
             with open(filepath, "w") as f:
                 json.dump(self.to_dict(), f, indent=2, default=str)
@@ -59,12 +59,12 @@ class AgentState:
                 pickle.dump(self, f)
         else:
             raise ValueError(f"Unsupported format: {format}")
-    
+
     @classmethod
     def load(cls, filepath: str, format: str = "json") -> "AgentState":
         """Load state from file."""
         if format == "json":
-            with open(filepath, "r") as f:
+            with open(filepath) as f:
                 data = json.load(f)
             # Convert ISO strings back to datetime
             if "created_at" in data:
@@ -77,21 +77,21 @@ class AgentState:
                 return pickle.load(f)
         else:
             raise ValueError(f"Unsupported format: {format}")
-    
-    def to_dict(self) -> Dict[str, Any]:
+
+    def to_dict(self) -> dict[str, Any]:
         """Convert state to dictionary."""
         return asdict(self)
-    
+
     def clear_history(self):
         """Clear conversation and tool history."""
         self.conversation_history = []
         self.tool_history = []
         self.updated_at = datetime.now()
-    
-    def get_recent_messages(self, n: int = 10) -> List[Dict[str, Any]]:
+
+    def get_recent_messages(self, n: int = 10) -> list[dict[str, Any]]:
         """Get n most recent messages."""
         return self.conversation_history[-n:]
-    
+
     def get_token_count_estimate(self) -> int:
         """Estimate total tokens in conversation history."""
         # Rough estimate: 4 characters per token

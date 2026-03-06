@@ -5,13 +5,13 @@ This module provides the abstract base class that all tools must inherit from,
 ensuring consistent interfaces for tool metadata, parameter validation, and execution.
 """
 
-from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional, List, Type, Union
-from dataclasses import dataclass, field
-from enum import Enum
 import json
 import time
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
+from typing import Any
 
 
 class ToolCategory(Enum):
@@ -45,15 +45,15 @@ class ParameterSpec:
     description: str
     required: bool = False
     default: Any = None
-    enum: Optional[List[Any]] = None
-    min_value: Optional[Union[int, float]] = None
-    max_value: Optional[Union[int, float]] = None
-    min_length: Optional[int] = None
-    max_length: Optional[int] = None
-    pattern: Optional[str] = None
-    items_type: Optional[ParameterType] = None  # For arrays
+    enum: list[Any] | None = None
+    min_value: int | float | None = None
+    max_value: int | float | None = None
+    min_length: int | None = None
+    max_length: int | None = None
+    pattern: str | None = None
+    items_type: ParameterType | None = None  # For arrays
 
-    def validate(self, value: Any) -> tuple[bool, Optional[str]]:
+    def validate(self, value: Any) -> tuple[bool, str | None]:
         """
         Validate a value against this parameter specification.
 
@@ -118,18 +118,18 @@ class ToolMetadata:
     name: str
     description: str
     category: ToolCategory
-    parameters: List[ParameterSpec] = field(default_factory=list)
-    returns: Dict[str, Any] = field(default_factory=dict)
+    parameters: list[ParameterSpec] = field(default_factory=list)
+    returns: dict[str, Any] = field(default_factory=dict)
     version: str = "1.0.0"
-    author: Optional[str] = None
+    author: str | None = None
     requires_auth: bool = False
     requires_api_key: bool = False
     cost_estimate: str = "low"  # low, medium, high
     timeout_seconds: int = 30
-    tags: List[str] = field(default_factory=list)
-    examples: List[Dict[str, Any]] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
+    examples: list[dict[str, Any]] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert metadata to dictionary format."""
         return {
             "name": self.name,
@@ -157,7 +157,7 @@ class ToolMetadata:
             "examples": self.examples,
         }
 
-    def to_json_schema(self) -> Dict[str, Any]:
+    def to_json_schema(self) -> dict[str, Any]:
         """
         Convert metadata to JSON Schema format for LLM function calling.
 
@@ -213,12 +213,12 @@ class ToolResult:
     """Result from a tool execution."""
     success: bool
     output: Any
-    error: Optional[str] = None
+    error: str | None = None
     execution_time: float = 0.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary format."""
         return {
             "success": self.success,
@@ -275,7 +275,7 @@ class BaseTool(ABC):
         """
         self._metadata = metadata
         self._initialized = False
-        self._dependencies: List[str] = []
+        self._dependencies: list[str] = []
 
     @property
     def metadata(self) -> ToolMetadata:
@@ -298,11 +298,11 @@ class BaseTool(ABC):
         return self._metadata.category
 
     @property
-    def dependencies(self) -> List[str]:
+    def dependencies(self) -> list[str]:
         """Get tool dependencies (names of other required tools)."""
         return self._dependencies
 
-    def validate_parameters(self, **kwargs) -> tuple[bool, Optional[str]]:
+    def validate_parameters(self, **kwargs) -> tuple[bool, str | None]:
         """
         Validate input parameters against the tool's parameter specifications.
 

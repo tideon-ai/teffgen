@@ -7,15 +7,13 @@ with resource limits, security validation, and output capture.
 
 import logging
 import os
-import time
-import signal
 import tempfile
+import time
 import traceback
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any, List, Tuple
 from enum import Enum
-from pathlib import Path
+from typing import Any
 
 from .validators import CodeValidator, ValidationResult
 
@@ -39,17 +37,17 @@ class ExecutionResult:
     error: str = ""
     return_value: Any = None
     execution_time: float = 0.0
-    memory_used: Optional[int] = None
+    memory_used: int | None = None
     exit_code: int = 0
-    validation_result: Optional[ValidationResult] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    validation_result: ValidationResult | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     @property
     def success(self) -> bool:
         """Check if execution was successful."""
         return self.status == ExecutionStatus.SUCCESS
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary."""
         return {
             "status": self.status.value,
@@ -69,13 +67,13 @@ class SandboxConfig:
     def __init__(self,
                  timeout: int = 30,
                  memory_limit: str = "512M",
-                 cpu_limit: Optional[float] = None,
+                 cpu_limit: float | None = None,
                  allow_network: bool = False,
                  allow_file_ops: bool = False,
                  max_output_size: int = 1024 * 1024,  # 1MB
-                 working_dir: Optional[str] = None,
-                 env_vars: Optional[Dict[str, str]] = None,
-                 custom_allow_imports: Optional[set] = None):
+                 working_dir: str | None = None,
+                 env_vars: dict[str, str] | None = None,
+                 custom_allow_imports: set | None = None):
         """
         Initialize sandbox configuration.
 
@@ -126,7 +124,7 @@ class BaseSandbox(ABC):
     and implement the execute method.
     """
 
-    def __init__(self, config: Optional[SandboxConfig] = None):
+    def __init__(self, config: SandboxConfig | None = None):
         """
         Initialize sandbox.
 
@@ -167,7 +165,7 @@ class BaseSandbox(ABC):
         """
         return self.validator.validate(code, language)
 
-    def _prepare_environment(self) -> Dict[str, str]:
+    def _prepare_environment(self) -> dict[str, str]:
         """
         Prepare environment variables for execution.
 
@@ -274,9 +272,7 @@ class LocalSandbox(BaseSandbox):
             ExecutionResult
         """
         import subprocess
-        import io
         import sys
-        from contextlib import redirect_stdout, redirect_stderr
 
         # Create temporary file for code
         with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as f:
@@ -333,8 +329,8 @@ class LocalSandbox(BaseSandbox):
         Returns:
             ExecutionResult
         """
-        import subprocess
         import shutil
+        import subprocess
 
         # Check if Node.js is available
         if not shutil.which('node'):
@@ -446,7 +442,7 @@ class CodeExecutor:
 
     def __init__(self,
                  sandbox_type: str = "local",
-                 config: Optional[SandboxConfig] = None):
+                 config: SandboxConfig | None = None):
         """
         Initialize code executor.
 
@@ -473,9 +469,9 @@ class CodeExecutor:
     def execute(self,
                 code: str,
                 language: str = "python",
-                timeout: Optional[int] = None,
-                memory_limit: Optional[str] = None,
-                allow_network: Optional[bool] = None) -> ExecutionResult:
+                timeout: int | None = None,
+                memory_limit: str | None = None,
+                allow_network: bool | None = None) -> ExecutionResult:
         """
         Execute code in sandbox.
 
@@ -586,7 +582,7 @@ class CodeExecutor:
 
         return last_result
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get execution statistics.
 
@@ -613,7 +609,7 @@ class ExecutionPool:
 
     def __init__(self,
                  sandbox_type: str = "local",
-                 config: Optional[SandboxConfig] = None,
+                 config: SandboxConfig | None = None,
                  pool_size: int = 4):
         """
         Initialize execution pool.
@@ -670,8 +666,8 @@ class ExecutionPool:
             self.available_executors.append(executor_idx)
 
     def execute_batch(self,
-                     code_snippets: List[Tuple[str, str]],
-                     **kwargs) -> List[ExecutionResult]:
+                     code_snippets: list[tuple[str, str]],
+                     **kwargs) -> list[ExecutionResult]:
         """
         Execute multiple code snippets.
 
@@ -690,7 +686,7 @@ class ExecutionPool:
 
         return results
 
-    def get_pool_status(self) -> Dict[str, Any]:
+    def get_pool_status(self) -> dict[str, Any]:
         """
         Get pool status.
 
@@ -718,7 +714,7 @@ class ExecutionHistory:
             max_history: Maximum number of executions to track
         """
         self.max_history = max_history
-        self.history: List[Dict[str, Any]] = []
+        self.history: list[dict[str, Any]] = []
         self.execution_count = 0
         self.success_count = 0
         self.failure_count = 0
@@ -762,7 +758,7 @@ class ExecutionHistory:
             self.failure_count += 1
         self.total_execution_time += result.execution_time
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get execution statistics.
 
@@ -778,7 +774,7 @@ class ExecutionHistory:
             "history_size": len(self.history)
         }
 
-    def get_recent(self, n: int = 10) -> List[Dict[str, Any]]:
+    def get_recent(self, n: int = 10) -> list[dict[str, Any]]:
         """
         Get recent executions.
 
@@ -806,7 +802,7 @@ class CodeExecutorWithHistory(CodeExecutor):
 
     def __init__(self,
                  sandbox_type: str = "local",
-                 config: Optional[SandboxConfig] = None,
+                 config: SandboxConfig | None = None,
                  max_history: int = 1000):
         """
         Initialize executor with history tracking.
@@ -838,7 +834,7 @@ class CodeExecutorWithHistory(CodeExecutor):
         self.history.record(code, language, result)
         return result
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get comprehensive statistics.
 

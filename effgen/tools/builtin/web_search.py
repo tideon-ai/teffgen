@@ -6,21 +6,19 @@ search backends including DuckDuckGo, SerpAPI, and Google Custom Search.
 """
 
 import asyncio
-import logging
-from typing import Dict, Any, List, Optional
-from datetime import datetime, timedelta
 import hashlib
-import json
+import logging
+from datetime import datetime, timedelta
 from enum import Enum
+from typing import Any
 
 from ..base_tool import (
     BaseTool,
-    ToolMetadata,
-    ToolCategory,
     ParameterSpec,
     ParameterType,
+    ToolCategory,
+    ToolMetadata,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -136,9 +134,9 @@ class WebSearch(BaseTool):
                 ],
             )
         )
-        self._cache: Dict[str, tuple[List[Dict[str, Any]], datetime]] = {}
+        self._cache: dict[str, tuple[list[dict[str, Any]], datetime]] = {}
         self._cache_ttl = timedelta(hours=1)
-        self._api_keys: Dict[str, str] = {}
+        self._api_keys: dict[str, str] = {}
 
     async def initialize(self) -> None:
         """Initialize the web search tool."""
@@ -150,9 +148,9 @@ class WebSearch(BaseTool):
         # Check DuckDuckGo
         try:
             try:
-                import ddgs
+                import ddgs  # noqa: F401
             except ImportError:
-                import duckduckgo_search
+                import duckduckgo_search  # noqa: F401
             self._available_backends.add(SearchBackend.DUCKDUCKGO)
         except ImportError:
             logger.warning(
@@ -162,7 +160,7 @@ class WebSearch(BaseTool):
         # Check SerpAPI
         if self._api_keys.get("serpapi"):
             try:
-                import serpapi
+                import serpapi  # noqa: F401
                 self._available_backends.add(SearchBackend.SERPAPI)
             except ImportError:
                 logger.warning(
@@ -172,7 +170,7 @@ class WebSearch(BaseTool):
         # Check Google
         if self._api_keys.get("google_api_key") and self._api_keys.get("google_cse_id"):
             try:
-                import googleapiclient.discovery
+                import googleapiclient.discovery  # noqa: F401
                 self._available_backends.add(SearchBackend.GOOGLE)
             except ImportError:
                 logger.warning(
@@ -198,11 +196,11 @@ class WebSearch(BaseTool):
         query: str,
         num_results: int = 5,
         backend: str = "duckduckgo",
-        time_range: Optional[str] = None,
+        time_range: str | None = None,
         language: str = "en",
-        region: Optional[str] = None,
+        region: str | None = None,
         **kwargs,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Execute a web search.
 
@@ -252,10 +250,10 @@ class WebSearch(BaseTool):
         self,
         query: str,
         num_results: int,
-        time_range: Optional[str],
+        time_range: str | None,
         language: str,
-        region: Optional[str],
-    ) -> List[Dict[str, Any]]:
+        region: str | None,
+    ) -> list[dict[str, Any]]:
         """Search using DuckDuckGo."""
         try:
             from ddgs import DDGS
@@ -302,10 +300,10 @@ class WebSearch(BaseTool):
         self,
         query: str,
         num_results: int,
-        time_range: Optional[str],
+        time_range: str | None,
         language: str,
-        region: Optional[str],
-    ) -> List[Dict[str, Any]]:
+        region: str | None,
+    ) -> list[dict[str, Any]]:
         """Search using SerpAPI."""
         try:
             from serpapi import GoogleSearch
@@ -362,8 +360,8 @@ class WebSearch(BaseTool):
         query: str,
         num_results: int,
         language: str,
-        region: Optional[str],
-    ) -> List[Dict[str, Any]]:
+        region: str | None,
+    ) -> list[dict[str, Any]]:
         """Search using Google Custom Search API."""
         try:
             from googleapiclient.discovery import build
@@ -410,15 +408,15 @@ class WebSearch(BaseTool):
         query: str,
         num_results: int,
         backend: str,
-        time_range: Optional[str],
+        time_range: str | None,
         language: str,
-        region: Optional[str],
+        region: str | None,
     ) -> str:
         """Generate cache key for search parameters."""
         key_data = f"{query}:{num_results}:{backend}:{time_range}:{language}:{region}"
         return hashlib.md5(key_data.encode()).hexdigest()
 
-    def _get_from_cache(self, key: str) -> Optional[List[Dict[str, Any]]]:
+    def _get_from_cache(self, key: str) -> list[dict[str, Any]] | None:
         """Get results from cache if not expired."""
         if key in self._cache:
             results, timestamp = self._cache[key]
@@ -428,7 +426,7 @@ class WebSearch(BaseTool):
                 del self._cache[key]
         return None
 
-    def _add_to_cache(self, key: str, results: List[Dict[str, Any]]) -> None:
+    def _add_to_cache(self, key: str, results: list[dict[str, Any]]) -> None:
         """Add results to cache."""
         self._cache[key] = (results, datetime.now())
 

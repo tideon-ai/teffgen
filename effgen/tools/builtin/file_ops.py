@@ -5,25 +5,22 @@ This module provides file operations including read, write, search,
 and format conversion with comprehensive security measures.
 """
 
-import os
 import asyncio
-from pathlib import Path
-from typing import Dict, Any, List, Optional, Union
-import logging
-import json
 import csv
+import json
+import logging
 import xml.etree.ElementTree as ET
 from io import StringIO
-import hashlib
+from pathlib import Path
+from typing import Any
 
 from ..base_tool import (
     BaseTool,
-    ToolMetadata,
-    ToolCategory,
     ParameterSpec,
     ParameterType,
+    ToolCategory,
+    ToolMetadata,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +55,7 @@ class FileOperations(BaseTool):
         "write": {".txt", ".json", ".csv", ".xml", ".yaml", ".yml", ".md"},
     }
 
-    def __init__(self, allowed_directories: Optional[List[str]] = None):
+    def __init__(self, allowed_directories: list[str] | None = None):
         """
         Initialize file operations tool.
 
@@ -156,8 +153,8 @@ class FileOperations(BaseTool):
         self._max_file_size = self.DEFAULT_MAX_FILE_SIZE
 
     def _normalize_allowed_directories(
-        self, directories: Optional[List[str]]
-    ) -> List[Path]:
+        self, directories: list[str] | None
+    ) -> list[Path]:
         """Normalize and validate allowed directories."""
         if not directories:
             return [Path.cwd()]
@@ -223,14 +220,14 @@ class FileOperations(BaseTool):
         self,
         operation: str,
         path: str,
-        content: Optional[str] = None,
+        content: str | None = None,
         format: str = "text",
         encoding: str = DEFAULT_ENCODING,
-        pattern: Optional[str] = None,
+        pattern: str | None = None,
         recursive: bool = False,
-        target_format: Optional[str] = None,
+        target_format: str | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute file operation.
 
@@ -295,7 +292,7 @@ class FileOperations(BaseTool):
 
     async def _read_file(
         self, path: str, format: str, encoding: str
-    ) -> Union[str, Dict, List]:
+    ) -> str | dict | list:
         """Read file with format parsing."""
         file_path = self._validate_path(path, "read")
 
@@ -311,7 +308,7 @@ class FileOperations(BaseTool):
 
         # Read file content
         def read_sync():
-            with open(file_path, "r", encoding=encoding) as f:
+            with open(file_path, encoding=encoding) as f:
                 return f.read()
 
         content = await asyncio.to_thread(read_sync)
@@ -329,7 +326,7 @@ class FileOperations(BaseTool):
             return content
 
     async def _write_file(
-        self, path: str, content: Optional[str], format: str, encoding: str
+        self, path: str, content: str | None, format: str, encoding: str
     ) -> str:
         """Write content to file with format conversion."""
         if content is None:
@@ -368,7 +365,7 @@ class FileOperations(BaseTool):
 
         return str(file_path)
 
-    async def _list_directory(self, path: str, recursive: bool) -> List[Dict[str, Any]]:
+    async def _list_directory(self, path: str, recursive: bool) -> list[dict[str, Any]]:
         """List directory contents."""
         dir_path = self._validate_path(path, "list")
 
@@ -393,8 +390,8 @@ class FileOperations(BaseTool):
         return await asyncio.to_thread(list_sync)
 
     async def _search_files(
-        self, path: str, pattern: Optional[str], recursive: bool
-    ) -> List[str]:
+        self, path: str, pattern: str | None, recursive: bool
+    ) -> list[str]:
         """Search for files matching pattern."""
         dir_path = self._validate_path(path, "search")
 
@@ -414,7 +411,7 @@ class FileOperations(BaseTool):
 
         return await asyncio.to_thread(search_sync)
 
-    async def _get_metadata(self, path: str) -> Dict[str, Any]:
+    async def _get_metadata(self, path: str) -> dict[str, Any]:
         """Get file metadata."""
         file_path = self._validate_path(path, "metadata")
 
@@ -424,7 +421,7 @@ class FileOperations(BaseTool):
         return self._get_file_info(file_path)
 
     async def _convert_format(
-        self, path: str, source_format: str, target_format: Optional[str], encoding: str
+        self, path: str, source_format: str, target_format: str | None, encoding: str
     ) -> str:
         """Convert file from one format to another."""
         if not target_format:
@@ -447,7 +444,7 @@ class FileOperations(BaseTool):
 
         return str(new_path)
 
-    def _get_file_info(self, path: Path) -> Dict[str, Any]:
+    def _get_file_info(self, path: Path) -> dict[str, Any]:
         """Get file information."""
         stat = path.stat()
         return {
@@ -459,7 +456,7 @@ class FileOperations(BaseTool):
             "extension": path.suffix,
         }
 
-    def _xml_to_dict(self, element: ET.Element) -> Dict[str, Any]:
+    def _xml_to_dict(self, element: ET.Element) -> dict[str, Any]:
         """Convert XML element to dictionary."""
         result = {}
         if element.attrib:

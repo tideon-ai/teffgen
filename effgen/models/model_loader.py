@@ -11,16 +11,16 @@ This module provides intelligent model loading with:
 
 import logging
 import os
-from typing import Optional, Dict, Any, Union
-from pathlib import Path
+from typing import Any
+
 import torch
 
-from effgen.models.base import BaseModel, ModelType
-from effgen.models.vllm_engine import VLLMEngine
-from effgen.models.transformers_engine import TransformersEngine
-from effgen.models.openai_adapter import OpenAIAdapter
 from effgen.models.anthropic_adapter import AnthropicAdapter
+from effgen.models.base import BaseModel, ModelType
 from effgen.models.gemini_adapter import GeminiAdapter
+from effgen.models.openai_adapter import OpenAIAdapter
+from effgen.models.transformers_engine import TransformersEngine
+from effgen.models.vllm_engine import VLLMEngine
 
 logger = logging.getLogger(__name__)
 
@@ -62,9 +62,9 @@ class ModelLoader:
 
     def __init__(
         self,
-        cache_dir: Optional[str] = None,
+        cache_dir: str | None = None,
         default_device: str = "auto",
-        force_engine: Optional[str] = None,
+        force_engine: str | None = None,
     ):
         """
         Initialize model loader.
@@ -80,12 +80,12 @@ class ModelLoader:
         self.default_device = default_device
         self.force_engine = force_engine
 
-        self.loaded_models: Dict[str, BaseModel] = {}
+        self.loaded_models: dict[str, BaseModel] = {}
 
     def load_model(
         self,
         model_name: str,
-        engine_config: Optional[Dict[str, Any]] = None,
+        engine_config: dict[str, Any] | None = None,
         **kwargs
     ) -> BaseModel:
         """
@@ -173,7 +173,7 @@ class ModelLoader:
     def _load_openai_model(
         self,
         model_name: str,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
         **kwargs
     ) -> OpenAIAdapter:
         """
@@ -197,7 +197,7 @@ class ModelLoader:
     def _load_anthropic_model(
         self,
         model_name: str,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
         **kwargs
     ) -> AnthropicAdapter:
         """
@@ -221,7 +221,7 @@ class ModelLoader:
     def _load_gemini_model(
         self,
         model_name: str,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
         **kwargs
     ) -> GeminiAdapter:
         """
@@ -245,9 +245,9 @@ class ModelLoader:
     def _load_huggingface_model(
         self,
         model_name: str,
-        config: Optional[Dict[str, Any]] = None,
+        config: dict[str, Any] | None = None,
         **kwargs
-    ) -> Union[VLLMEngine, TransformersEngine]:
+    ) -> VLLMEngine | TransformersEngine:
         """
         Load HuggingFace model with Transformers-first strategy.
 
@@ -279,7 +279,7 @@ class ModelLoader:
     def _load_with_vllm(
         self,
         model_name: str,
-        params: Dict[str, Any]
+        params: dict[str, Any]
     ) -> VLLMEngine:
         """
         Load model with vLLM.
@@ -318,7 +318,7 @@ class ModelLoader:
     def _load_with_transformers(
         self,
         model_name: str,
-        params: Dict[str, Any]
+        params: dict[str, Any]
     ) -> TransformersEngine:
         """
         Load model with Transformers.
@@ -342,7 +342,7 @@ class ModelLoader:
 
         return TransformersEngine(model_name=model_name, **params)
 
-    def _auto_select_quantization(self, model_name: str) -> Optional[str]:
+    def _auto_select_quantization(self, model_name: str) -> str | None:
         """
         Automatically select quantization based on available VRAM.
 
@@ -376,7 +376,7 @@ class ModelLoader:
         logger.info("Sufficient VRAM available, no quantization needed")
         return None
 
-    def _auto_select_quantization_bits(self) -> Optional[int]:
+    def _auto_select_quantization_bits(self) -> int | None:
         """
         Automatically select quantization bits for Transformers.
 
@@ -457,7 +457,7 @@ class ModelLoader:
             return tp_size
 
         # Default: conservative approach, use 1 GPU unless we know the model
-        logger.info(f"Unknown model size, using tensor_parallel_size=1 for safety")
+        logger.info("Unknown model size, using tensor_parallel_size=1 for safety")
         return 1
 
     def _validate_model(self, model: BaseModel) -> None:
@@ -517,7 +517,7 @@ class ModelLoader:
             self.unload_model(model_name)
         logger.info("All models unloaded")
 
-    def get_loaded_models(self) -> Dict[str, BaseModel]:
+    def get_loaded_models(self) -> dict[str, BaseModel]:
         """
         Get dictionary of all loaded models.
 
@@ -526,7 +526,7 @@ class ModelLoader:
         """
         return self.loaded_models.copy()
 
-    def get_model_info(self, model_name: str) -> Optional[Dict[str, Any]]:
+    def get_model_info(self, model_name: str) -> dict[str, Any] | None:
         """
         Get information about a loaded model.
 
@@ -545,10 +545,10 @@ class ModelLoader:
 # Convenience function for quick model loading
 def load_model(
     model_name: str,
-    engine: Optional[str] = None,
-    engine_config: Optional[Dict[str, Any]] = None,
-    tensor_parallel_size: Optional[int] = None,
-    gpu_memory_utilization: Optional[float] = None,
+    engine: str | None = None,
+    engine_config: dict[str, Any] | None = None,
+    tensor_parallel_size: int | None = None,
+    gpu_memory_utilization: float | None = None,
     apply_chat_template: bool = True,
     **kwargs
 ) -> BaseModel:

@@ -6,40 +6,37 @@ providing agent manifests, synchronous/asynchronous requests, task tracking,
 and OpenTelemetry instrumentation.
 """
 
-from .protocol import (
-    ACPProtocolHandler,
-    AgentManifest,
-    ACPRequest,
-    ACPResponse,
-    ACPError,
-    TaskInfo,
-    TaskStatus,
-    RequestType,
-    ErrorSeverity,
-    SchemaDefinition,
-    CapabilityDefinition,
-    CapabilityToken,
-    ACPVersion,
-)
-
 from .client import (
+    ACPAuthHandler,
     ACPClient,
     ACPClientConfig,
-    ACPAuthHandler,
-    TokenAuthHandler,
+    ACPDiscoveryClient,
     APIKeyAuthHandler,
     BearerAuthHandler,
-    ACPDiscoveryClient,
+    TokenAuthHandler,
     create_capability_token,
 )
-
+from .protocol import (
+    ACPError,
+    ACPProtocolHandler,
+    ACPRequest,
+    ACPResponse,
+    ACPVersion,
+    AgentManifest,
+    CapabilityDefinition,
+    CapabilityToken,
+    ErrorSeverity,
+    RequestType,
+    SchemaDefinition,
+    TaskInfo,
+    TaskStatus,
+)
 from .server import (
+    ACPCapabilityRegistry,
     ACPServer,
     ACPServerConfig,
-    ACPCapabilityRegistry,
     capability,
 )
-
 
 __all__ = [
     # Protocol

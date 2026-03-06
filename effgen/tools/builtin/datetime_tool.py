@@ -7,14 +7,14 @@ and formatting — all using the Python standard library.
 
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..base_tool import (
     BaseTool,
-    ToolCategory,
-    ToolMetadata,
     ParameterSpec,
     ParameterType,
+    ToolCategory,
+    ToolMetadata,
 )
 
 logger = logging.getLogger(__name__)
@@ -165,14 +165,14 @@ class DateTimeTool(BaseTool):
     async def _execute(
         self,
         operation: str,
-        timezone_param: Optional[str] = None,
-        date: Optional[str] = None,
-        date2: Optional[str] = None,
+        timezone_param: str | None = None,
+        date: str | None = None,
+        date2: str | None = None,
         days: int = 0,
         hours: int = 0,
-        to_timezone: Optional[str] = None,
+        to_timezone: str | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute datetime operation."""
         # Handle 'timezone' parameter name collision
         tz_name = kwargs.get("timezone", timezone_param) or "UTC"

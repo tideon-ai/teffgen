@@ -5,23 +5,21 @@ This module provides a Python REPL (Read-Eval-Print Loop) tool with
 persistent session state, safe evaluation, and comprehensive error handling.
 """
 
-import sys
-import io
-import traceback
-from typing import Dict, Any, Optional
-import logging
-from contextlib import redirect_stdout, redirect_stderr
 import ast
 import builtins
+import io
+import logging
+import traceback
+from contextlib import redirect_stderr, redirect_stdout
+from typing import Any
 
 from ..base_tool import (
     BaseTool,
-    ToolMetadata,
-    ToolCategory,
     ParameterSpec,
     ParameterType,
+    ToolCategory,
+    ToolMetadata,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +147,7 @@ class PythonREPL(BaseTool):
                 ],
             )
         )
-        self._sessions: Dict[str, Dict[str, Any]] = {}
+        self._sessions: dict[str, dict[str, Any]] = {}
         self._allowed_imports = self.DEFAULT_ALLOWED_IMPORTS.copy()
 
     async def initialize(self) -> None:
@@ -170,13 +168,13 @@ class PythonREPL(BaseTool):
             "locals": namespace,  # Same dict for proper function recursion
         }
 
-    def _get_session(self, session_id: str) -> Dict[str, Any]:
+    def _get_session(self, session_id: str) -> dict[str, Any]:
         """Get or create a session."""
         if session_id not in self._sessions:
             self._create_session(session_id)
         return self._sessions[session_id]
 
-    def _get_restricted_builtins(self) -> Dict[str, Any]:
+    def _get_restricted_builtins(self) -> dict[str, Any]:
         """Get restricted builtins dictionary."""
         safe_builtins = {}
         for name in dir(builtins):
@@ -201,7 +199,7 @@ class PythonREPL(BaseTool):
         base_module = module_name.split(".")[0]
         return base_module in self._allowed_imports
 
-    def _check_imports(self, code: str) -> Optional[str]:
+    def _check_imports(self, code: str) -> str | None:
         """
         Check if code contains only allowed imports.
 
@@ -232,7 +230,7 @@ class PythonREPL(BaseTool):
         return_variables: bool = False,
         restricted_mode: bool = True,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute Python code in a REPL session.
 
@@ -369,7 +367,7 @@ class PythonREPL(BaseTool):
         if session_id in self._sessions:
             self._create_session(session_id)
 
-    def get_session_variables(self, session_id: str) -> Dict[str, str]:
+    def get_session_variables(self, session_id: str) -> dict[str, str]:
         """
         Get all variables in a session.
 

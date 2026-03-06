@@ -7,8 +7,8 @@ Fetches and extracts text from web pages using requests + BeautifulSoup
 
 import logging
 import re
-from typing import Any, Dict, List, Optional, Set
 from html.parser import HTMLParser
+from typing import Any
 
 
 def _get_user_agent() -> str:
@@ -20,10 +20,10 @@ def _get_user_agent() -> str:
 
 from ..base_tool import (
     BaseTool,
-    ToolCategory,
-    ToolMetadata,
     ParameterSpec,
     ParameterType,
+    ToolCategory,
+    ToolMetadata,
 )
 
 logger = logging.getLogger(__name__)
@@ -36,7 +36,7 @@ class _SimpleHTMLTextExtractor(HTMLParser):
 
     def __init__(self):
         super().__init__()
-        self._text_parts: List[str] = []
+        self._text_parts: list[str] = []
         self._skip_depth = 0
 
     def handle_starttag(self, tag, attrs):
@@ -81,8 +81,8 @@ class URLFetchTool(BaseTool):
 
     def __init__(
         self,
-        allowed_domains: Optional[Set[str]] = None,
-        blocked_domains: Optional[Set[str]] = None,
+        allowed_domains: set[str] | None = None,
+        blocked_domains: set[str] | None = None,
         max_content_length: int = 10000,
         timeout: int = 15,
     ):
@@ -207,7 +207,7 @@ class URLFetchTool(BaseTool):
         url: str,
         extract_links: bool = False,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Fetch URL and extract text."""
         url = self._validate_url(url)
 
@@ -223,7 +223,7 @@ class URLFetchTool(BaseTool):
             resp.raise_for_status()
             html = resp.text
         except ImportError:
-            from urllib.request import urlopen, Request
+            from urllib.request import Request, urlopen
             req = Request(url, headers={"User-Agent": _get_user_agent()})
             with urlopen(req, timeout=self.timeout) as resp:
                 html = resp.read().decode("utf-8", errors="replace")

@@ -12,11 +12,9 @@ Usage:
     print(metrics.export())
 """
 
-import time
 import threading
-from typing import Dict, Optional, List
-from dataclasses import dataclass, field
 from collections import defaultdict
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -25,10 +23,10 @@ class Counter:
     name: str
     help: str
     _value: float = 0.0
-    _labels: Dict[str, float] = field(default_factory=lambda: defaultdict(float))
+    _labels: dict[str, float] = field(default_factory=lambda: defaultdict(float))
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
-    def inc(self, amount: float = 1.0, labels: Optional[Dict[str, str]] = None) -> None:
+    def inc(self, amount: float = 1.0, labels: dict[str, str] | None = None) -> None:
         with self._lock:
             if labels:
                 key = ",".join(f'{k}="{v}"' for k, v in sorted(labels.items()))
@@ -36,7 +34,7 @@ class Counter:
             else:
                 self._value += amount
 
-    def get(self, labels: Optional[Dict[str, str]] = None) -> float:
+    def get(self, labels: dict[str, str] | None = None) -> float:
         if labels:
             key = ",".join(f'{k}="{v}"' for k, v in sorted(labels.items()))
             return self._labels.get(key, 0.0)
@@ -58,11 +56,11 @@ class Histogram:
     help: str
     _sum: float = 0.0
     _count: int = 0
-    _labels_sum: Dict[str, float] = field(default_factory=lambda: defaultdict(float))
-    _labels_count: Dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    _labels_sum: dict[str, float] = field(default_factory=lambda: defaultdict(float))
+    _labels_count: dict[str, int] = field(default_factory=lambda: defaultdict(int))
     _lock: threading.Lock = field(default_factory=threading.Lock)
 
-    def observe(self, value: float, labels: Optional[Dict[str, str]] = None) -> None:
+    def observe(self, value: float, labels: dict[str, str] | None = None) -> None:
         with self._lock:
             if labels:
                 key = ",".join(f'{k}="{v}"' for k, v in sorted(labels.items()))
@@ -72,7 +70,7 @@ class Histogram:
                 self._sum += value
                 self._count += 1
 
-    def get_avg(self, labels: Optional[Dict[str, str]] = None) -> float:
+    def get_avg(self, labels: dict[str, str] | None = None) -> float:
         if labels:
             key = ",".join(f'{k}="{v}"' for k, v in sorted(labels.items()))
             count = self._labels_count.get(key, 0)

@@ -14,12 +14,11 @@ Usage:
     results = checker.check_all()
 """
 
+import logging
 import socket
 import ssl
 import time
-import logging
 from dataclasses import dataclass, field
-from typing import List, Optional
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
@@ -60,11 +59,11 @@ class HealthChecker:
     PYPI_URL = "https://pypi.org/pypi/effgen/json"
     TIMEOUT = 10
 
-    def __init__(self, urls: Optional[List[str]] = None, timeout: int = 10):
+    def __init__(self, urls: list[str] | None = None, timeout: int = 10):
         self.urls = urls or self.DEFAULT_URLS
         self.timeout = timeout
 
-    def check_all(self) -> List[HealthCheckResult]:
+    def check_all(self) -> list[HealthCheckResult]:
         """Run all health checks and return results."""
         results = []
 
@@ -212,7 +211,7 @@ class HealthChecker:
                 message=str(e),
             )
 
-    def print_results(self, results: Optional[List[HealthCheckResult]] = None) -> bool:
+    def print_results(self, results: list[HealthCheckResult] | None = None) -> bool:
         """
         Print health check results in a formatted way.
 

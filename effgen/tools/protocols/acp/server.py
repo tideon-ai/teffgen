@@ -7,35 +7,32 @@ integration and manifest generation.
 """
 
 import asyncio
-import json
 import logging
-from typing import Dict, Any, List, Optional, Callable, Awaitable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-import uuid
 from datetime import datetime
 from functools import wraps
+from typing import Any
 
 from .protocol import (
     ACPProtocolHandler,
-    AgentManifest,
     ACPRequest,
     ACPResponse,
-    ACPError,
-    TaskInfo,
-    TaskStatus,
-    RequestType,
-    ErrorSeverity,
-    SchemaDefinition,
+    AgentManifest,
     CapabilityDefinition,
     CapabilityToken,
+    ErrorSeverity,
+    RequestType,
+    SchemaDefinition,
+    TaskInfo,
+    TaskStatus,
 )
-
 
 logger = logging.getLogger(__name__)
 
 
 # Type alias for capability handlers
-CapabilityHandler = Callable[[Dict[str, Any], Dict[str, Any]], Awaitable[Dict[str, Any]]]
+CapabilityHandler = Callable[[dict[str, Any], dict[str, Any]], Awaitable[dict[str, Any]]]
 
 
 @dataclass
@@ -58,7 +55,7 @@ class ACPServerConfig:
     port: int = 8080
     enable_telemetry: bool = True
     enable_cors: bool = True
-    cors_origins: List[str] = None
+    cors_origins: list[str] = None
     max_concurrent_tasks: int = 100
     task_timeout: int = 300
     enable_streaming: bool = True
@@ -78,18 +75,18 @@ class ACPCapabilityRegistry:
 
     def __init__(self):
         """Initialize capability registry."""
-        self._capabilities: Dict[str, CapabilityDefinition] = {}
-        self._handlers: Dict[str, CapabilityHandler] = {}
+        self._capabilities: dict[str, CapabilityDefinition] = {}
+        self._handlers: dict[str, CapabilityHandler] = {}
 
     def register(
         self,
         name: str,
         description: str,
-        input_schema: Dict[str, Any],
-        output_schema: Optional[Dict[str, Any]] = None,
-        handler: Optional[CapabilityHandler] = None,
+        input_schema: dict[str, Any],
+        output_schema: dict[str, Any] | None = None,
+        handler: CapabilityHandler | None = None,
         version: str = "1.0.0",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """
         Register a capability.
@@ -154,7 +151,7 @@ class ACPCapabilityRegistry:
             return True
         return False
 
-    def get_capability(self, name: str) -> Optional[CapabilityDefinition]:
+    def get_capability(self, name: str) -> CapabilityDefinition | None:
         """
         Get a capability definition.
 
@@ -166,7 +163,7 @@ class ACPCapabilityRegistry:
         """
         return self._capabilities.get(name)
 
-    def get_handler(self, name: str) -> Optional[CapabilityHandler]:
+    def get_handler(self, name: str) -> CapabilityHandler | None:
         """
         Get a capability handler.
 
@@ -178,7 +175,7 @@ class ACPCapabilityRegistry:
         """
         return self._handlers.get(name)
 
-    def list_capabilities(self) -> List[CapabilityDefinition]:
+    def list_capabilities(self) -> list[CapabilityDefinition]:
         """
         List all registered capabilities.
 
@@ -203,10 +200,10 @@ class ACPCapabilityRegistry:
 def capability(
     name: str,
     description: str,
-    input_schema: Dict[str, Any],
-    output_schema: Optional[Dict[str, Any]] = None,
+    input_schema: dict[str, Any],
+    output_schema: dict[str, Any] | None = None,
     version: str = "1.0.0",
-    metadata: Optional[Dict[str, Any]] = None,
+    metadata: dict[str, Any] | None = None,
 ):
     """
     Decorator for registering capability handlers.
@@ -276,7 +273,7 @@ class ACPServer:
         name: str,
         version: str,
         description: str,
-        config: Optional[ACPServerConfig] = None,
+        config: ACPServerConfig | None = None,
     ):
         """
         Initialize ACP server.
@@ -300,7 +297,7 @@ class ACPServer:
         self.protocol = ACPProtocolHandler(self.manifest)
 
         # Task management
-        self._active_tasks: Dict[str, asyncio.Task] = {}
+        self._active_tasks: dict[str, asyncio.Task] = {}
         self._task_semaphore = asyncio.Semaphore(self.config.max_concurrent_tasks)
 
         # Telemetry
@@ -313,7 +310,7 @@ class ACPServer:
                 logger.warning("OpenTelemetry not available, telemetry disabled")
 
         # Auth tokens
-        self._valid_tokens: Dict[str, CapabilityToken] = {}
+        self._valid_tokens: dict[str, CapabilityToken] = {}
 
     def _create_manifest(self) -> AgentManifest:
         """Create agent manifest."""
@@ -333,11 +330,11 @@ class ACPServer:
         self,
         name: str,
         description: str,
-        input_schema: Dict[str, Any],
-        output_schema: Optional[Dict[str, Any]] = None,
-        handler: Optional[CapabilityHandler] = None,
+        input_schema: dict[str, Any],
+        output_schema: dict[str, Any] | None = None,
+        handler: CapabilityHandler | None = None,
         version: str = "1.0.0",
-        metadata: Optional[Dict[str, Any]] = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """
         Register a capability with the server.
@@ -416,7 +413,7 @@ class ACPServer:
     async def handle_request(
         self,
         request: ACPRequest,
-        token_id: Optional[str] = None,
+        token_id: str | None = None,
     ) -> ACPResponse:
         """
         Handle an ACP request.
@@ -522,7 +519,7 @@ class ACPServer:
             if span_context:
                 span_context.end()
 
-    async def _execute_sync(self, request: ACPRequest) -> Dict[str, Any]:
+    async def _execute_sync(self, request: ACPRequest) -> dict[str, Any]:
         """
         Execute a synchronous request.
 
@@ -627,7 +624,7 @@ class ACPServer:
 
         return task
 
-    def get_task_status(self, task_id: str) -> Optional[TaskInfo]:
+    def get_task_status(self, task_id: str) -> TaskInfo | None:
         """
         Get task status.
 
@@ -674,7 +671,7 @@ class ACPServer:
         self._update_manifest()
         return self.manifest
 
-    def export_manifest_json(self, indent: Optional[int] = 2) -> str:
+    def export_manifest_json(self, indent: int | None = 2) -> str:
         """
         Export manifest as JSON.
 
@@ -792,8 +789,8 @@ class ACPServer:
         """
         try:
             from fastapi import FastAPI, HTTPException, Request
-            from fastapi.responses import JSONResponse
             from fastapi.middleware.cors import CORSMiddleware
+            from fastapi.responses import JSONResponse  # noqa: F401
         except ImportError:
             raise ImportError(
                 "FastAPI is required for ACP server mode. "

@@ -4,11 +4,11 @@ Task abstraction for effGen framework.
 This module provides task representation and management.
 """
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
-from enum import Enum
-from datetime import datetime
 import uuid
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any
 
 
 class TaskStatus(Enum):
@@ -34,13 +34,13 @@ class SubTask:
     id: str
     description: str
     expected_output: str
-    depends_on: List[str] = field(default_factory=list)
+    depends_on: list[str] = field(default_factory=list)
     estimated_complexity: float = 0.0  # 0-10 scale
-    required_specialization: Optional[str] = None
+    required_specialization: str | None = None
     status: TaskStatus = TaskStatus.PENDING
-    result: Optional[Any] = None
-    error: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    result: Any | None = None
+    error: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         """Validate subtask after initialization."""
@@ -62,26 +62,26 @@ class Task:
     id: str = field(default_factory=lambda: f"task_{uuid.uuid4().hex[:8]}")
     priority: TaskPriority = TaskPriority.MEDIUM
     status: TaskStatus = TaskStatus.PENDING
-    context: Dict[str, Any] = field(default_factory=dict)
-    constraints: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
+    constraints: dict[str, Any] = field(default_factory=dict)
 
     # Execution tracking
     created_at: datetime = field(default_factory=datetime.now)
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
     # Results
-    result: Optional[Any] = None
-    error: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    result: Any | None = None
+    error: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     # Sub-task decomposition
-    subtasks: List[SubTask] = field(default_factory=list)
+    subtasks: list[SubTask] = field(default_factory=list)
     is_decomposed: bool = False
 
     # Agent assignment
-    assigned_agent: Optional[str] = None
-    parent_task_id: Optional[str] = None
+    assigned_agent: str | None = None
+    parent_task_id: str | None = None
 
     def start(self):
         """Mark task as started."""
@@ -105,7 +105,7 @@ class Task:
         self.status = TaskStatus.CANCELLED
         self.completed_at = datetime.now()
 
-    def get_duration(self) -> Optional[float]:
+    def get_duration(self) -> float | None:
         """Get task execution duration in seconds."""
         if self.started_at and self.completed_at:
             return (self.completed_at - self.started_at).total_seconds()
@@ -120,15 +120,15 @@ class Task:
         self.subtasks.append(subtask)
         self.is_decomposed = True
 
-    def get_pending_subtasks(self) -> List[SubTask]:
+    def get_pending_subtasks(self) -> list[SubTask]:
         """Get all pending subtasks."""
         return [st for st in self.subtasks if st.status == TaskStatus.PENDING]
 
-    def get_completed_subtasks(self) -> List[SubTask]:
+    def get_completed_subtasks(self) -> list[SubTask]:
         """Get all completed subtasks."""
         return [st for st in self.subtasks if st.status == TaskStatus.COMPLETED]
 
-    def get_failed_subtasks(self) -> List[SubTask]:
+    def get_failed_subtasks(self) -> list[SubTask]:
         """Get all failed subtasks."""
         return [st for st in self.subtasks if st.status == TaskStatus.FAILED]
 
@@ -139,7 +139,7 @@ class Task:
         completed = len(self.get_completed_subtasks())
         return completed / len(self.subtasks)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert task to dictionary."""
         return {
             "id": self.id,

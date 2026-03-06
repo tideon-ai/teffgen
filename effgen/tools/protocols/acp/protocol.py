@@ -6,13 +6,13 @@ communication, including agent manifests, synchronous/asynchronous requests,
 task tracking, and OpenTelemetry instrumentation.
 """
 
-from typing import Dict, Any, List, Optional, Union, Literal
-from dataclasses import dataclass, field
-from enum import Enum
-import logging
-from datetime import datetime
 import json
+import logging
 import uuid
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any
 
 try:
     import jsonschema
@@ -68,10 +68,10 @@ class ACPError:
     code: str
     message: str
     severity: ErrorSeverity = ErrorSeverity.ERROR
-    details: Optional[Dict[str, Any]] = None
+    details: dict[str, Any] | None = None
     timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "code": self.code,
@@ -84,7 +84,7 @@ class ACPError:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ACPError":
+    def from_dict(cls, data: dict[str, Any]) -> "ACPError":
         """Create from dictionary."""
         return cls(
             code=data["code"],
@@ -108,12 +108,12 @@ class SchemaDefinition:
         additionalProperties: Whether additional properties are allowed
     """
     type: str
-    properties: Dict[str, Any] = field(default_factory=dict)
-    required: List[str] = field(default_factory=list)
-    description: Optional[str] = None
+    properties: dict[str, Any] = field(default_factory=dict)
+    required: list[str] = field(default_factory=list)
+    description: str | None = None
     additionalProperties: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "type": self.type,
@@ -127,7 +127,7 @@ class SchemaDefinition:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SchemaDefinition":
+    def from_dict(cls, data: dict[str, Any]) -> "SchemaDefinition":
         """Create from dictionary."""
         return cls(
             type=data["type"],
@@ -154,11 +154,11 @@ class CapabilityDefinition:
     name: str
     description: str
     inputSchema: SchemaDefinition
-    outputSchema: Optional[SchemaDefinition] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    outputSchema: SchemaDefinition | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     version: str = "1.0.0"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "name": self.name,
@@ -173,7 +173,7 @@ class CapabilityDefinition:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "CapabilityDefinition":
+    def from_dict(cls, data: dict[str, Any]) -> "CapabilityDefinition":
         """Create from dictionary."""
         output_schema = None
         if "outputSchema" in data:
@@ -208,12 +208,12 @@ class AgentManifest:
     name: str
     version: str
     description: str
-    capabilities: List[CapabilityDefinition] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    capabilities: list[CapabilityDefinition] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
     created: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     updated: str = field(default_factory=lambda: datetime.utcnow().isoformat())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "agentId": self.agentId,
@@ -227,7 +227,7 @@ class AgentManifest:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AgentManifest":
+    def from_dict(cls, data: dict[str, Any]) -> "AgentManifest":
         """Create from dictionary."""
         return cls(
             agentId=data["agentId"],
@@ -243,7 +243,7 @@ class AgentManifest:
             updated=data.get("updated", datetime.utcnow().isoformat()),
         )
 
-    def to_json(self, indent: Optional[int] = 2) -> str:
+    def to_json(self, indent: int | None = 2) -> str:
         """Convert to JSON string."""
         return json.dumps(self.to_dict(), indent=indent)
 
@@ -253,7 +253,7 @@ class AgentManifest:
         data = json.loads(json_str)
         return cls.from_dict(data)
 
-    def get_capability(self, name: str) -> Optional[CapabilityDefinition]:
+    def get_capability(self, name: str) -> CapabilityDefinition | None:
         """
         Get a capability by name.
 
@@ -295,12 +295,12 @@ class CapabilityToken:
     """
     tokenId: str
     agentId: str
-    capabilities: List[str]
-    permissions: Dict[str, List[str]] = field(default_factory=dict)
-    expires: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    capabilities: list[str]
+    permissions: dict[str, list[str]] = field(default_factory=dict)
+    expires: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "tokenId": self.tokenId,
@@ -315,7 +315,7 @@ class CapabilityToken:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "CapabilityToken":
+    def from_dict(cls, data: dict[str, Any]) -> "CapabilityToken":
         """Create from dictionary."""
         return cls(
             tokenId=data["tokenId"],
@@ -362,15 +362,15 @@ class ACPRequest:
         timestamp: Request timestamp
     """
     capability: str
-    input: Dict[str, Any]
+    input: dict[str, Any]
     requestId: str = field(default_factory=lambda: str(uuid.uuid4()))
-    agentId: Optional[str] = None
+    agentId: str | None = None
     requestType: RequestType = RequestType.SYNCHRONOUS
-    context: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    context: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "requestId": self.requestId,
@@ -388,7 +388,7 @@ class ACPRequest:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ACPRequest":
+    def from_dict(cls, data: dict[str, Any]) -> "ACPRequest":
         """Create from dictionary."""
         return cls(
             requestId=data.get("requestId", str(uuid.uuid4())),
@@ -417,12 +417,12 @@ class ACPResponse:
     """
     requestId: str
     status: TaskStatus
-    output: Optional[Dict[str, Any]] = None
-    error: Optional[ACPError] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    output: dict[str, Any] | None = None
+    error: ACPError | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
     timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "requestId": self.requestId,
@@ -438,7 +438,7 @@ class ACPResponse:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ACPResponse":
+    def from_dict(cls, data: dict[str, Any]) -> "ACPResponse":
         """Create from dictionary."""
         error = None
         if "error" in data:
@@ -474,13 +474,13 @@ class TaskInfo:
     requestId: str
     status: TaskStatus
     progress: float = 0.0
-    result: Optional[Dict[str, Any]] = None
-    error: Optional[ACPError] = None
+    result: dict[str, Any] | None = None
+    error: ACPError | None = None
     created: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     updated: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-    completed: Optional[str] = None
+    completed: str | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "taskId": self.taskId,
@@ -499,7 +499,7 @@ class TaskInfo:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TaskInfo":
+    def from_dict(cls, data: dict[str, Any]) -> "TaskInfo":
         """Create from dictionary."""
         error = None
         if "error" in data:
@@ -522,7 +522,7 @@ class TaskInfo:
         self.progress = max(0.0, min(1.0, progress))
         self.updated = datetime.utcnow().isoformat()
 
-    def complete(self, result: Dict[str, Any]) -> None:
+    def complete(self, result: dict[str, Any]) -> None:
         """Mark task as completed."""
         self.status = TaskStatus.COMPLETED
         self.result = result
@@ -554,15 +554,15 @@ class ACPProtocolHandler:
             manifest: Agent manifest
         """
         self.manifest = manifest
-        self._tasks: Dict[str, TaskInfo] = {}
+        self._tasks: dict[str, TaskInfo] = {}
 
     def create_request(
         self,
         capability: str,
-        input_data: Dict[str, Any],
-        agent_id: Optional[str] = None,
+        input_data: dict[str, Any],
+        agent_id: str | None = None,
         request_type: RequestType = RequestType.SYNCHRONOUS,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> ACPRequest:
         """
         Create an ACP request.
@@ -589,8 +589,8 @@ class ACPProtocolHandler:
         self,
         request_id: str,
         status: TaskStatus,
-        output: Optional[Dict[str, Any]] = None,
-        error: Optional[ACPError] = None,
+        output: dict[str, Any] | None = None,
+        error: ACPError | None = None,
     ) -> ACPResponse:
         """
         Create an ACP response.
@@ -630,7 +630,7 @@ class ACPProtocolHandler:
         logger.info(f"Created task {task.taskId} for request {request.requestId}")
         return task
 
-    def get_task(self, task_id: str) -> Optional[TaskInfo]:
+    def get_task(self, task_id: str) -> TaskInfo | None:
         """
         Get task by ID.
 
@@ -645,10 +645,10 @@ class ACPProtocolHandler:
     def update_task(
         self,
         task_id: str,
-        status: Optional[TaskStatus] = None,
-        progress: Optional[float] = None,
-        result: Optional[Dict[str, Any]] = None,
-        error: Optional[ACPError] = None,
+        status: TaskStatus | None = None,
+        progress: float | None = None,
+        result: dict[str, Any] | None = None,
+        error: ACPError | None = None,
     ) -> bool:
         """
         Update task status.
@@ -680,7 +680,7 @@ class ACPProtocolHandler:
         logger.info(f"Updated task {task_id}: status={task.status.value}")
         return True
 
-    def validate_request(self, request: ACPRequest) -> tuple[bool, Optional[str]]:
+    def validate_request(self, request: ACPRequest) -> tuple[bool, str | None]:
         """
         Validate an ACP request against capability schema.
 
@@ -758,7 +758,7 @@ class ACPProtocolHandler:
         code: str,
         message: str,
         severity: ErrorSeverity = ErrorSeverity.ERROR,
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> ACPError:
         """
         Create an ACP error.

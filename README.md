@@ -117,6 +117,12 @@ effgen chat
 # Start API server
 effgen serve --port 8000
 
+# List available presets
+effgen presets
+
+# Check infrastructure health
+effgen health
+
 # Interactive wizard
 effgen
 ```
@@ -360,6 +366,13 @@ python examples/web_agent.py        # Web search agent
 python examples/retrieval_agent.py  # RAG-based retrieval
 
 python examples/agentic_search_agent.py # Grep-based agentic search
+
+python examples/preset_agents.py       # Ready-to-use agent presets
+python examples/streaming_agent.py     # Real-time token streaming
+python examples/memory_agent.py        # Multi-turn memory
+python examples/multi_tool_agent.py    # Multi-tool agent
+python examples/weather_agent.py       # Weather via Open-Meteo (free)
+python examples/plugin_example.py      # Custom tool plugins
 ```
 
 <details>

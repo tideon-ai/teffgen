@@ -6,7 +6,6 @@ in a defined order, improving agent robustness.
 """
 
 import logging
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -20,14 +19,14 @@ class ToolFallbackChain:
     """
 
     # Default fallback chains for built-in tools
-    DEFAULT_CHAINS: Dict[str, List[str]] = {
+    DEFAULT_CHAINS: dict[str, list[str]] = {
         "calculator": ["python_repl", "code_executor"],
         "python_repl": ["code_executor"],
         "code_executor": ["python_repl"],
         "web_search": ["agentic_search"],
     }
 
-    def __init__(self, custom_chains: Optional[Dict[str, List[str]]] = None):
+    def __init__(self, custom_chains: dict[str, list[str]] | None = None):
         """
         Initialize with default chains, optionally merged with custom ones.
 
@@ -35,11 +34,11 @@ class ToolFallbackChain:
             custom_chains: Optional user-defined fallback chains that override
                            or extend the defaults.
         """
-        self.chains: Dict[str, List[str]] = dict(self.DEFAULT_CHAINS)
+        self.chains: dict[str, list[str]] = dict(self.DEFAULT_CHAINS)
         if custom_chains:
             self.chains.update(custom_chains)
 
-    def register_chain(self, tool_name: str, fallbacks: List[str]) -> None:
+    def register_chain(self, tool_name: str, fallbacks: list[str]) -> None:
         """
         Register or replace a fallback chain for a tool.
 
@@ -50,7 +49,7 @@ class ToolFallbackChain:
         self.chains[tool_name] = list(fallbacks)
         logger.debug(f"Registered fallback chain: {tool_name} -> {fallbacks}")
 
-    def get_fallbacks(self, tool_name: str) -> List[str]:
+    def get_fallbacks(self, tool_name: str) -> list[str]:
         """
         Get ordered fallback tools for a given tool.
 

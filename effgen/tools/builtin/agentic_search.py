@@ -20,24 +20,23 @@ well for:
 - Large knowledge bases where indexing is impractical
 """
 
+import json
+import logging
 import os
 import re
-import json
-import subprocess
-import logging
-from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
-from dataclasses import dataclass
 import shutil
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 from ..base_tool import (
     BaseTool,
-    ToolMetadata,
-    ToolCategory,
     ParameterSpec,
     ParameterType,
+    ToolCategory,
+    ToolMetadata,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -68,8 +67,8 @@ class SearchMatch:
     file_path: str
     line_number: int
     match_line: str
-    context_before: List[str]
-    context_after: List[str]
+    context_before: list[str]
+    context_after: list[str]
     relevance_score: float
 
 
@@ -95,10 +94,10 @@ class AgenticSearch(BaseTool):
 
     def __init__(
         self,
-        data_path: Optional[str] = None,
+        data_path: str | None = None,
         context_lines: int = 5,
         max_results: int = 10,
-        supported_extensions: Optional[List[str]] = None,
+        supported_extensions: list[str] | None = None,
     ):
         """
         Initialize the agentic search tool.
@@ -235,7 +234,7 @@ class AgenticSearch(BaseTool):
 
         # Detect backend
         self._use_ripgrep = False
-        self._file_cache: Dict[str, List[str]] = {}
+        self._file_cache: dict[str, list[str]] = {}
         self._cache_enabled = False
 
     async def initialize(self) -> None:
@@ -274,7 +273,7 @@ class AgenticSearch(BaseTool):
         """Get the system prompt for search agents."""
         return SEARCH_AGENT_SYSTEM_PROMPT
 
-    def _get_file_type_extensions(self, file_type: str) -> List[str]:
+    def _get_file_type_extensions(self, file_type: str) -> list[str]:
         """Get file extensions for a given file type filter."""
         FILE_TYPE_MAP = {
             "all": self.supported_extensions,
@@ -285,7 +284,7 @@ class AgenticSearch(BaseTool):
         }
         return FILE_TYPE_MAP.get(file_type, self.supported_extensions)
 
-    def _extract_keywords(self, query: str) -> List[str]:
+    def _extract_keywords(self, query: str) -> list[str]:
         """Extract meaningful keywords from query."""
         stop_words = {
             "a", "an", "the", "is", "are", "was", "were", "be", "been",
@@ -323,8 +322,8 @@ class AgenticSearch(BaseTool):
         context_lines: int = 5,
         use_regex: bool = False,
         max_count: int = 100,
-        file_extensions: Optional[List[str]] = None,
-    ) -> List[Tuple[str, int, str, List[str], List[str]]]:
+        file_extensions: list[str] | None = None,
+    ) -> list[tuple[str, int, str, list[str], list[str]]]:
         """
         Run search using ripgrep or grep.
 
@@ -350,8 +349,8 @@ class AgenticSearch(BaseTool):
         context_lines: int = 5,
         use_regex: bool = False,
         max_count: int = 100,
-        file_extensions: Optional[List[str]] = None,
-    ) -> List[Tuple[str, int, str, List[str], List[str]]]:
+        file_extensions: list[str] | None = None,
+    ) -> list[tuple[str, int, str, list[str], list[str]]]:
         """Run ripgrep and parse results."""
         cmd = ["rg"]
 
@@ -397,8 +396,8 @@ class AgenticSearch(BaseTool):
         context_lines: int = 5,
         use_regex: bool = False,
         max_count: int = 100,
-        file_extensions: Optional[List[str]] = None,
-    ) -> List[Tuple[str, int, str, List[str], List[str]]]:
+        file_extensions: list[str] | None = None,
+    ) -> list[tuple[str, int, str, list[str], list[str]]]:
         """Run grep command and parse results."""
         cmd = ["grep"]
 
@@ -440,7 +439,7 @@ class AgenticSearch(BaseTool):
         output: str,
         context_lines: int,
         source_file: str = "unknown",
-    ) -> List[Tuple[str, int, str, List[str], List[str]]]:
+    ) -> list[tuple[str, int, str, list[str], list[str]]]:
         """Parse grep/ripgrep output with context."""
         results = []
         current_match_line = None
@@ -524,7 +523,7 @@ class AgenticSearch(BaseTool):
         self,
         match_line: str,
         context: str,
-        query_terms: List[str],
+        query_terms: list[str],
     ) -> float:
         """Calculate relevance score for a match."""
         if not query_terms:
@@ -547,7 +546,7 @@ class AgenticSearch(BaseTool):
 
         return round(score, 4)
 
-    def _summarize_results(self, results: List[Dict], query: str, max_length: int = 500) -> str:
+    def _summarize_results(self, results: list[dict], query: str, max_length: int = 500) -> str:
         """Generate a simple extractive summary of search results."""
         if not results:
             return "No results found."
@@ -566,11 +565,11 @@ class AgenticSearch(BaseTool):
 
     def multi_query_search(
         self,
-        queries: List[str],
+        queries: list[str],
         context_lines: int = 5,
         case_sensitive: bool = False,
         max_results: int = 10,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Search for multiple queries and correlate results.
 
@@ -623,14 +622,14 @@ class AgenticSearch(BaseTool):
     async def _execute(
         self,
         query: str,
-        context_lines: Optional[int] = None,
+        context_lines: int | None = None,
         case_sensitive: bool = False,
         use_regex: bool = False,
-        max_results: Optional[int] = None,
+        max_results: int | None = None,
         search_mode: str = "keywords",
         file_type: str = "all",
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute agentic search."""
         if not self.data_path:
             return {
@@ -738,7 +737,7 @@ class AgenticSearch(BaseTool):
         json_path: str,
         content_field: str = "text",
         context_lines: int = 5,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Search within a JSON/JSONL file's specific field."""
         results = []
         path = Path(json_path)
@@ -749,7 +748,7 @@ class AgenticSearch(BaseTool):
         keywords = self._extract_keywords(query)
 
         if path.suffix == ".jsonl":
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 for i, line in enumerate(f):
                     try:
                         entry = json.loads(line.strip())
@@ -767,7 +766,7 @@ class AgenticSearch(BaseTool):
                         continue
 
         elif path.suffix == ".json":
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
 
             if isinstance(data, list):

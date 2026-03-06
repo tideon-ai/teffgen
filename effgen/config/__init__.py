@@ -5,7 +5,7 @@ This module provides configuration loading, validation, and management capabilit
 with support for environment variable substitution, config merging, and hot reloading.
 """
 
-from .loader import ConfigLoader, Config
+from .loader import Config, ConfigLoader
 from .validator import ConfigValidator, ValidationError
 
 __all__ = [

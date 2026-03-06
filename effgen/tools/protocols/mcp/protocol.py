@@ -5,13 +5,11 @@ This module implements the MCP protocol specification for tool and resource
 communication between AI models and external servers.
 """
 
-from typing import Dict, Any, List, Optional, Union, Literal
-from dataclasses import dataclass, field, asdict
-from enum import Enum
-import logging
-from datetime import datetime
 import json
-
+import logging
+from dataclasses import asdict, dataclass, field
+from enum import Enum
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +50,9 @@ class MCPError:
     """MCP error representation."""
     code: int
     message: str
-    data: Optional[Dict[str, Any]] = None
+    data: dict[str, Any] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "code": self.code,
@@ -73,9 +71,9 @@ class MCPToolParameter:
     description: str
     required: bool = False
     default: Any = None
-    enum: Optional[List[Any]] = None
+    enum: list[Any] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "name": self.name,
@@ -95,10 +93,10 @@ class MCPTool:
     """MCP tool specification."""
     name: str
     description: str
-    inputSchema: Dict[str, Any]
-    returnSchema: Optional[Dict[str, Any]] = None
+    inputSchema: dict[str, Any]
+    returnSchema: dict[str, Any] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "name": self.name,
@@ -110,7 +108,7 @@ class MCPTool:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MCPTool":
+    def from_dict(cls, data: dict[str, Any]) -> "MCPTool":
         """Create from dictionary."""
         return cls(
             name=data["name"],
@@ -126,10 +124,10 @@ class MCPResource:
     uri: str
     name: str
     description: str
-    mimeType: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    mimeType: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "uri": self.uri,
@@ -143,7 +141,7 @@ class MCPResource:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MCPResource":
+    def from_dict(cls, data: dict[str, Any]) -> "MCPResource":
         """Create from dictionary."""
         return cls(
             uri=data["uri"],
@@ -161,9 +159,9 @@ class MCPCapabilities:
     resources: bool = False
     prompts: bool = False
     sampling: bool = False
-    experimental: Dict[str, bool] = field(default_factory=dict)
+    experimental: dict[str, bool] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "tools": self.tools,
@@ -174,7 +172,7 @@ class MCPCapabilities:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MCPCapabilities":
+    def from_dict(cls, data: dict[str, Any]) -> "MCPCapabilities":
         """Create from dictionary."""
         return cls(
             tools=data.get("tools", False),
@@ -189,14 +187,14 @@ class MCPCapabilities:
 class MCPMessage:
     """Base MCP message following JSON-RPC 2.0."""
     jsonrpc: str = "2.0"
-    id: Optional[Union[str, int]] = None
+    id: str | int | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "MCPMessage":
+    def from_dict(cls, data: dict[str, Any]) -> "MCPMessage":
         """Create from dictionary."""
         return cls(**data)
 
@@ -205,9 +203,9 @@ class MCPMessage:
 class MCPRequest(MCPMessage):
     """MCP request message."""
     method: str = ""
-    params: Optional[Dict[str, Any]] = None
+    params: dict[str, Any] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "jsonrpc": self.jsonrpc,
@@ -223,10 +221,10 @@ class MCPRequest(MCPMessage):
 @dataclass
 class MCPResponse(MCPMessage):
     """MCP response message."""
-    result: Optional[Any] = None
-    error: Optional[MCPError] = None
+    result: Any | None = None
+    error: MCPError | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "jsonrpc": self.jsonrpc,
@@ -243,9 +241,9 @@ class MCPResponse(MCPMessage):
 class MCPNotification(MCPMessage):
     """MCP notification message (no response expected)."""
     method: str = ""
-    params: Optional[Dict[str, Any]] = None
+    params: dict[str, Any] | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         result = {
             "jsonrpc": self.jsonrpc,
@@ -277,8 +275,8 @@ class MCPProtocolHandler:
     def create_request(
         self,
         method: str,
-        params: Optional[Dict[str, Any]] = None,
-        request_id: Optional[Union[str, int]] = None,
+        params: dict[str, Any] | None = None,
+        request_id: str | int | None = None,
     ) -> MCPRequest:
         """
         Create an MCP request message.
@@ -303,9 +301,9 @@ class MCPProtocolHandler:
 
     def create_response(
         self,
-        request_id: Union[str, int],
-        result: Optional[Any] = None,
-        error: Optional[MCPError] = None,
+        request_id: str | int,
+        result: Any | None = None,
+        error: MCPError | None = None,
     ) -> MCPResponse:
         """
         Create an MCP response message.
@@ -327,7 +325,7 @@ class MCPProtocolHandler:
     def create_notification(
         self,
         method: str,
-        params: Optional[Dict[str, Any]] = None,
+        params: dict[str, Any] | None = None,
     ) -> MCPNotification:
         """
         Create an MCP notification message.
@@ -348,7 +346,7 @@ class MCPProtocolHandler:
         self,
         code: ErrorCode,
         message: str,
-        data: Optional[Dict[str, Any]] = None,
+        data: dict[str, Any] | None = None,
     ) -> MCPError:
         """
         Create an MCP error.
@@ -367,7 +365,7 @@ class MCPProtocolHandler:
             data=data,
         )
 
-    def parse_message(self, data: Union[str, bytes, Dict[str, Any]]) -> Union[MCPRequest, MCPResponse, MCPNotification]:
+    def parse_message(self, data: str | bytes | dict[str, Any]) -> MCPRequest | MCPResponse | MCPNotification:
         """
         Parse MCP message from JSON data.
 
@@ -427,7 +425,7 @@ class MCPProtocolHandler:
         else:
             raise ValueError("Invalid MCP message format")
 
-    def serialize_message(self, message: Union[MCPRequest, MCPResponse, MCPNotification]) -> str:
+    def serialize_message(self, message: MCPRequest | MCPResponse | MCPNotification) -> str:
         """
         Serialize MCP message to JSON string.
 
@@ -439,7 +437,7 @@ class MCPProtocolHandler:
         """
         return json.dumps(message.to_dict())
 
-    def validate_tool_schema(self, schema: Dict[str, Any]) -> bool:
+    def validate_tool_schema(self, schema: dict[str, Any]) -> bool:
         """
         Validate MCP tool schema.
 
@@ -471,7 +469,7 @@ class MCPProtocolHandler:
         self,
         protocol_version: str,
         capabilities: MCPCapabilities,
-        client_info: Dict[str, str],
+        client_info: dict[str, str],
     ) -> MCPRequest:
         """
         Create MCP initialize request.
@@ -500,7 +498,7 @@ class MCPProtocolHandler:
     def create_tool_call_request(
         self,
         tool_name: str,
-        arguments: Dict[str, Any],
+        arguments: dict[str, Any],
     ) -> MCPRequest:
         """
         Create request to call a tool.

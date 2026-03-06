@@ -10,11 +10,10 @@ License: Apache-2.0
 """
 
 import logging
+import warnings
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple
 from threading import Lock
-import warnings
 
 try:
     import torch
@@ -51,8 +50,8 @@ class GPUInfo:
     total_memory: int  # in bytes
     available_memory: int  # in bytes
     utilization: float  # 0.0 to 1.0
-    temperature: Optional[float] = None  # in Celsius
-    power_usage: Optional[float] = None  # in Watts
+    temperature: float | None = None  # in Celsius
+    power_usage: float | None = None  # in Watts
 
     @property
     def used_memory(self) -> int:
@@ -75,7 +74,7 @@ class AllocationRequest:
     num_gpus: int = 1
     strategy: AllocationStrategy = AllocationStrategy.BALANCED
     parallelism_type: ParallelismType = ParallelismType.NONE
-    preferred_devices: Optional[List[int]] = None
+    preferred_devices: list[int] | None = None
     priority: int = 0  # Higher priority = more important
     allow_shared: bool = True  # Allow sharing GPU with other tasks
 
@@ -84,8 +83,8 @@ class AllocationRequest:
 class Allocation:
     """Represents an active GPU allocation"""
     requester_id: str
-    device_ids: List[int]
-    memory_allocated: Dict[int, int]  # device_id -> memory in bytes
+    device_ids: list[int]
+    memory_allocated: dict[int, int]  # device_id -> memory in bytes
     parallelism_type: ParallelismType
     timestamp: float = field(default_factory=lambda: __import__('time').time())
 
@@ -123,8 +122,8 @@ class GPUAllocator:
             enable_monitoring: Enable real-time GPU monitoring
         """
         self._lock = Lock()
-        self._allocations: Dict[str, Allocation] = {}
-        self._devices: Dict[int, GPUInfo] = {}
+        self._allocations: dict[str, Allocation] = {}
+        self._devices: dict[int, GPUInfo] = {}
         self._enable_monitoring = enable_monitoring
 
         # Initialize devices
@@ -157,7 +156,7 @@ class GPUAllocator:
                 torch.cuda.set_device(device_id)
                 total_memory = props.total_memory
                 reserved = torch.cuda.memory_reserved(device_id)
-                allocated = torch.cuda.memory_allocated(device_id)
+                torch.cuda.memory_allocated(device_id)
                 available = total_memory - reserved
 
                 gpu_info = GPUInfo(
@@ -178,7 +177,7 @@ class GPUAllocator:
         except Exception as e:
             logger.error(f"Error discovering GPU devices: {e}")
 
-    def get_device_info(self, device_id: Optional[int] = None) -> Dict[int, GPUInfo]:
+    def get_device_info(self, device_id: int | None = None) -> dict[int, GPUInfo]:
         """
         Get information about GPU devices.
 
@@ -212,7 +211,7 @@ class GPUAllocator:
         except Exception as e:
             logger.error(f"Error refreshing device info: {e}")
 
-    def allocate(self, request: AllocationRequest) -> Optional[Allocation]:
+    def allocate(self, request: AllocationRequest) -> Allocation | None:
         """
         Allocate GPUs based on the request.
 
@@ -271,7 +270,7 @@ class GPUAllocator:
 
             return allocation
 
-    def _select_devices(self, request: AllocationRequest) -> List[int]:
+    def _select_devices(self, request: AllocationRequest) -> list[int]:
         """
         Select GPU devices based on allocation strategy.
 
@@ -331,9 +330,9 @@ class GPUAllocator:
 
     def _greedy_selection(
         self,
-        available_devices: List[Tuple[int, int, float]],
+        available_devices: list[tuple[int, int, float]],
         num_gpus: int
-    ) -> List[int]:
+    ) -> list[int]:
         """
         Greedy selection: Fill GPUs sequentially.
 
@@ -350,9 +349,9 @@ class GPUAllocator:
 
     def _balanced_selection(
         self,
-        available_devices: List[Tuple[int, int, float]],
+        available_devices: list[tuple[int, int, float]],
         num_gpus: int
-    ) -> List[int]:
+    ) -> list[int]:
         """
         Balanced selection: Select GPUs with lowest utilization.
 
@@ -372,9 +371,9 @@ class GPUAllocator:
 
     def _optimized_selection(
         self,
-        available_devices: List[Tuple[int, int, float]],
+        available_devices: list[tuple[int, int, float]],
         num_gpus: int
-    ) -> List[int]:
+    ) -> list[int]:
         """
         Optimized selection: Minimize inter-GPU communication by selecting adjacent GPUs.
 
@@ -422,9 +421,9 @@ class GPUAllocator:
 
     def _priority_selection(
         self,
-        available_devices: List[Tuple[int, int, float]],
+        available_devices: list[tuple[int, int, float]],
         request: AllocationRequest
-    ) -> List[int]:
+    ) -> list[int]:
         """
         Priority-based selection: Allocate best GPUs to high priority tasks.
 
@@ -475,7 +474,7 @@ class GPUAllocator:
 
             return True
 
-    def get_allocation(self, requester_id: str) -> Optional[Allocation]:
+    def get_allocation(self, requester_id: str) -> Allocation | None:
         """
         Get allocation for a specific requester.
 
@@ -487,7 +486,7 @@ class GPUAllocator:
         """
         return self._allocations.get(requester_id)
 
-    def list_allocations(self) -> Dict[str, Allocation]:
+    def list_allocations(self) -> dict[str, Allocation]:
         """
         List all active allocations.
 
@@ -534,7 +533,7 @@ class GPUAllocator:
             selected_devices = self._select_devices(request)
             return len(selected_devices) >= request.num_gpus
 
-    def get_total_memory(self, device_id: Optional[int] = None) -> int:
+    def get_total_memory(self, device_id: int | None = None) -> int:
         """
         Get total memory across GPUs.
 

@@ -6,9 +6,10 @@ ensuring consistent behavior across vLLM, Transformers, and API adapters.
 """
 
 from abc import ABC, abstractmethod
-from typing import Iterator, Optional, Dict, Any, List
+from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 
 class ModelType(Enum):
@@ -26,12 +27,12 @@ class GenerationConfig:
     temperature: float = 0.7
     top_p: float = 0.9
     top_k: int = 50
-    max_tokens: Optional[int] = None
-    stop_sequences: Optional[List[str]] = None
+    max_tokens: int | None = None
+    stop_sequences: list[str] | None = None
     presence_penalty: float = 0.0
     frequency_penalty: float = 0.0
     repetition_penalty: float = 1.0
-    seed: Optional[int] = None
+    seed: int | None = None
 
 
 @dataclass
@@ -41,7 +42,7 @@ class GenerationResult:
     tokens_used: int
     finish_reason: str
     model_name: str
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: dict[str, Any] | None = None
 
 
 @dataclass
@@ -68,7 +69,7 @@ class BaseModel(ABC):
         self,
         model_name: str,
         model_type: ModelType,
-        context_length: Optional[int] = None,
+        context_length: int | None = None,
         **kwargs
     ):
         """
@@ -84,7 +85,7 @@ class BaseModel(ABC):
         self.model_type = model_type
         self._context_length = context_length
         self._is_loaded = False
-        self._metadata: Dict[str, Any] = {}
+        self._metadata: dict[str, Any] = {}
 
     @abstractmethod
     def load(self) -> None:
@@ -107,7 +108,7 @@ class BaseModel(ABC):
     def generate(
         self,
         prompt: str,
-        config: Optional[GenerationConfig] = None,
+        config: GenerationConfig | None = None,
         **kwargs
     ) -> GenerationResult:
         """
@@ -131,7 +132,7 @@ class BaseModel(ABC):
     def generate_stream(
         self,
         prompt: str,
-        config: Optional[GenerationConfig] = None,
+        config: GenerationConfig | None = None,
         **kwargs
     ) -> Iterator[str]:
         """
@@ -198,7 +199,7 @@ class BaseModel(ABC):
         """
         return self._is_loaded
 
-    def get_metadata(self) -> Dict[str, Any]:
+    def get_metadata(self) -> dict[str, Any]:
         """
         Get model metadata and information.
 
@@ -267,10 +268,10 @@ class BatchModel(BaseModel):
     @abstractmethod
     def generate_batch(
         self,
-        prompts: List[str],
-        config: Optional[GenerationConfig] = None,
+        prompts: list[str],
+        config: GenerationConfig | None = None,
         **kwargs
-    ) -> List[GenerationResult]:
+    ) -> list[GenerationResult]:
         """
         Generate text for multiple prompts in a batch.
 
@@ -310,8 +311,8 @@ class FunctionCallingModel(BaseModel):
     def generate_with_tools(
         self,
         prompt: str,
-        tools: List[Dict[str, Any]],
-        config: Optional[GenerationConfig] = None,
+        tools: list[dict[str, Any]],
+        config: GenerationConfig | None = None,
         **kwargs
     ) -> GenerationResult:
         """

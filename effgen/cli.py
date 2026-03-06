@@ -42,26 +42,26 @@ Interactive mode guides you through:
 
 import argparse
 import asyncio
+import importlib.util
 import json
 import logging
 import os
 import sys
-from pathlib import Path
-from typing import Dict, Any, Optional, List
-import importlib.util
 from datetime import datetime
+from pathlib import Path
+from typing import Any
 
 # Rich terminal output (fallback to basic if not available)
 try:
+    from rich import print as rprint  # noqa: F401
     from rich.console import Console
-    from rich.table import Table
+    from rich.layout import Layout  # noqa: F401
+    from rich.live import Live  # noqa: F401
+    from rich.markdown import Markdown
     from rich.panel import Panel
     from rich.progress import Progress, SpinnerColumn, TextColumn
     from rich.syntax import Syntax
-    from rich.markdown import Markdown
-    from rich.live import Live
-    from rich.layout import Layout
-    from rich import print as rprint
+    from rich.table import Table
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
@@ -70,13 +70,13 @@ except ImportError:
 
 # Import effGen components
 try:
-    from effgen import (
+    from effgen import (  # noqa: F401
         Agent,
         AgentConfig,
-        load_model,
         ConfigLoader,
+        __version__,
         get_tool_registry,
-        __version__
+        load_model,
     )
     from effgen.core.agent import AgentMode
     from effgen.tools.builtin import *
@@ -86,7 +86,7 @@ except ImportError:
 
 
 # Configure logging
-def setup_logging(verbose: bool = False, log_file: Optional[str] = None):
+def setup_logging(verbose: bool = False, log_file: str | None = None):
     """
     Configure logging for CLI.
 
@@ -582,7 +582,7 @@ class CLIInterface:
                         TextColumn("[progress.description]{task.description}"),
                         console=self.console
                     ) as progress:
-                        task_progress = progress.add_task("Thinking...", total=None)
+                        progress.add_task("Thinking...", total=None)
                         response = agent.run(args.task, mode=mode)
                 else:
                     self.print("Thinking...")
@@ -668,7 +668,7 @@ class CLIInterface:
                 traceback.print_exc()
             return 1
 
-    def _create_stats_table(self, stats: Dict[str, Any]) -> Any:
+    def _create_stats_table(self, stats: dict[str, Any]) -> Any:
         """Create statistics table."""
         if not self.console:
             return stats
@@ -762,7 +762,6 @@ class CLIInterface:
 
                     # Get agent response with thinking spinner
                     response_text = ""
-                    first_token = True
 
                     if self.console:
                         # Show thinking spinner until first token arrives
@@ -865,7 +864,7 @@ class CLIInterface:
         d.mkdir(parents=True, exist_ok=True)
         return d
 
-    def _save_conversation(self, history: List[Dict]):
+    def _save_conversation(self, history: list[dict]):
         """Save conversation history to ~/.effgen/history/."""
         hist_dir = self._history_dir()
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -888,7 +887,7 @@ class CLIInterface:
             size = f.stat().st_size
             self.print(f"  {i}. {f.name}  ({size} bytes)")
 
-    def _load_conversation(self) -> Optional[List[Dict]]:
+    def _load_conversation(self) -> list[dict] | None:
         """Load a previous conversation by index."""
         hist_dir = self._history_dir()
         files = sorted(hist_dir.glob("conversation_*.json"), reverse=True)
@@ -924,14 +923,23 @@ class CLIInterface:
         self.print_header(f"effGen v{__version__} - API Server")
 
         try:
+            import time as _time
             from contextlib import asynccontextmanager
-            from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect, Depends
+
+            import uvicorn
+            from fastapi import (
+                Depends,
+                FastAPI,
+                HTTPException,
+                Request,
+                WebSocket,
+                WebSocketDisconnect,
+            )
             from fastapi.middleware.cors import CORSMiddleware
             from fastapi.responses import JSONResponse
             from fastapi.security import APIKeyHeader
-            from pydantic import BaseModel as PydanticBaseModel, ConfigDict
-            import uvicorn
-            import time as _time
+            from pydantic import BaseModel as PydanticBaseModel
+            from pydantic import ConfigDict
         except ImportError:
             self.print_error("FastAPI and uvicorn are required for server mode.")
             self.print("Install with: pip install fastapi uvicorn")
@@ -943,11 +951,11 @@ class CLIInterface:
                 model_config = ConfigDict(extra="ignore")
 
                 task: str
-                model: Optional[str] = "Qwen/Qwen2.5-3B-Instruct"
-                tools: Optional[List[str]] = None
-                preset: Optional[str] = None
-                temperature: Optional[float] = 0.7
-                max_iterations: Optional[int] = 10
+                model: str | None = "Qwen/Qwen2.5-3B-Instruct"
+                tools: list[str] | None = None
+                preset: str | None = None
+                temperature: float | None = 0.7
+                max_iterations: int | None = 10
                 stream: bool = False
 
             class TaskResponse(PydanticBaseModel):
@@ -955,13 +963,13 @@ class CLIInterface:
 
                 output: str
                 success: bool
-                metadata: Dict[str, Any]
+                metadata: dict[str, Any]
 
             # Store reference to self for use in lifespan
             cli_instance = self
 
             # --- Rate limiter (simple in-memory token bucket) ---
-            _rate_buckets: Dict[str, list] = {}
+            _rate_buckets: dict[str, list] = {}
             _rate_limit = int(os.environ.get("EFFGEN_RATE_LIMIT", "60"))  # requests/min
 
             def _check_rate(client_ip: str) -> bool:
@@ -979,7 +987,7 @@ class CLIInterface:
             api_key_header = APIKeyHeader(name=api_key_name, auto_error=False)
             expected_key = os.environ.get("EFFGEN_API_KEY")  # None = auth disabled
 
-            async def verify_api_key(key: Optional[str] = Depends(api_key_header)):
+            async def verify_api_key(key: str | None = Depends(api_key_header)):
                 if expected_key and key != expected_key:
                     raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
@@ -993,7 +1001,7 @@ class CLIInterface:
                 cli_instance.tool_registry.discover_builtin_tools()
                 cli_instance.print_success(f"Discovered {len(cli_instance.tool_registry.list_tools())} tools")
                 if expected_key:
-                    cli_instance.print(f"API key auth enabled (set via EFFGEN_API_KEY)")
+                    cli_instance.print("API key auth enabled (set via EFFGEN_API_KEY)")
                 cli_instance.print(f"Rate limit: {_rate_limit} req/min (set via EFFGEN_RATE_LIMIT)")
                 yield
                 cli_instance.print("Server shutting down...")
@@ -1259,7 +1267,7 @@ class CLIInterface:
             return
 
         try:
-            config = self.config_loader.load_config(args.file, validate=True)
+            self.config_loader.load_config(args.file, validate=True)
             self.print_success(f"Configuration is valid: {args.file}")
         except Exception as e:
             self.print_error(f"Configuration validation failed: {e}")
@@ -1651,7 +1659,7 @@ Examples:
     tools_parser = subparsers.add_parser('tools', help='Tool management')
     tools_subparsers = tools_parser.add_subparsers(dest='tool_command', help='Tools command')
 
-    tools_list = tools_subparsers.add_parser('list', help='List tools')
+    tools_subparsers.add_parser('list', help='List tools')
 
     tools_info = tools_subparsers.add_parser('info', help='Show tool information')
     tools_info.add_argument('name', help='Tool name')
@@ -1664,7 +1672,7 @@ Examples:
     models_parser = subparsers.add_parser('models', help='Model management')
     models_subparsers = models_parser.add_subparsers(dest='model_command', help='Models command')
 
-    models_list = models_subparsers.add_parser('list', help='List models')
+    models_subparsers.add_parser('list', help='List models')
 
     models_info = models_subparsers.add_parser('info', help='Show model information')
     models_info.add_argument('name', help='Model name')
@@ -1673,7 +1681,7 @@ Examples:
     examples_parser = subparsers.add_parser('examples', help='Run example scripts')
     examples_subparsers = examples_parser.add_subparsers(dest='example_command', help='Examples command')
 
-    examples_list = examples_subparsers.add_parser('list', help='List examples')
+    examples_subparsers.add_parser('list', help='List examples')
 
     examples_run = examples_subparsers.add_parser('run', help='Run an example')
     examples_run.add_argument('name', help='Example name')
@@ -1687,7 +1695,7 @@ Examples:
     plugin_parser.add_argument('-o', '--output-dir', default='.', help='Output directory')
 
     # Presets command
-    presets_parser = subparsers.add_parser('presets', help='List available agent presets')
+    subparsers.add_parser('presets', help='List available agent presets')
 
     return parser
 
@@ -1834,7 +1842,7 @@ def main():
             cli.print_header("Available Agent Presets")
             for name, desc in _list_presets().items():
                 cli.print(f"  {name:12s} — {desc}")
-            cli.print(f"\nUsage: effgen run --preset <name> \"your task\"")
+            cli.print("\nUsage: effgen run --preset <name> \"your task\"")
             exit_code = 0
         elif args.command is None:
             # No command - launch interactive wizard

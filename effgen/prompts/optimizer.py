@@ -5,11 +5,11 @@ Implements SLM-specific optimization techniques including prompt compression,
 instruction clarity enhancement, context management, and format optimization.
 """
 
+import logging
 import re
-from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
-import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -95,8 +95,8 @@ class OptimizationResult:
     original_tokens: int
     optimized_tokens: int
     compression_ratio: float
-    techniques_applied: List[str] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    techniques_applied: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def get_savings(self) -> int:
         """Get token savings"""
@@ -165,7 +165,7 @@ class PromptOptimizer:
         r'(?:please\s+)?(?:make sure|ensure|be sure)\s+(?:to\s+)?',  # Redundant politeness
     ]
 
-    def __init__(self, config: Optional[OptimizationConfig] = None):
+    def __init__(self, config: OptimizationConfig | None = None):
         """
         Initialize optimizer
 
@@ -178,7 +178,7 @@ class PromptOptimizer:
     def optimize(
         self,
         prompt: str,
-        context: Optional[str] = None,
+        context: str | None = None,
         preserve_format: bool = False
     ) -> OptimizationResult:
         """
@@ -505,7 +505,7 @@ class PromptOptimizer:
 
         return truncated.strip()
 
-    def ensure_within_context(self, prompt: str, context: Optional[str] = None) -> Tuple[str, Optional[str]]:
+    def ensure_within_context(self, prompt: str, context: str | None = None) -> tuple[str, str | None]:
         """
         Ensure prompt and context fit within model's context window
 
@@ -572,10 +572,10 @@ class PromptOptimizer:
 
     def select_few_shot_examples(
         self,
-        examples: List[Dict[str, str]],
+        examples: list[dict[str, str]],
         task: str,
-        max_examples: Optional[int] = None
-    ) -> List[Dict[str, str]]:
+        max_examples: int | None = None
+    ) -> list[dict[str, str]]:
         """
         Select optimal few-shot examples for task
 

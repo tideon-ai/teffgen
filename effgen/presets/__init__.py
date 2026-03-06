@@ -17,6 +17,6 @@ Usage:
     result = agent.run("What is the square root of 144?")
 """
 
-from effgen.presets.registry import create_agent, get_preset, list_presets, PRESETS
+from effgen.presets.registry import PRESETS, create_agent, get_preset, list_presets
 
 __all__ = ["create_agent", "get_preset", "list_presets", "PRESETS"]

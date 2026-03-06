@@ -5,11 +5,11 @@ This module implements the Agent Card specification for capability advertisement
 in the Agent-to-Agent (A2A) protocol developed by Google.
 """
 
-from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, field, asdict
-from enum import Enum
 import json
+from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum
+from typing import Any
 
 
 class AuthScheme(Enum):
@@ -49,12 +49,12 @@ class Capability:
     name: str
     type: CapabilityType
     description: str
-    inputSchema: Dict[str, Any]
-    outputSchema: Optional[Dict[str, Any]] = None
-    examples: List[Dict[str, Any]] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    inputSchema: dict[str, Any]
+    outputSchema: dict[str, Any] | None = None
+    examples: list[dict[str, Any]] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert capability to dictionary format."""
         result = {
             "name": self.name,
@@ -71,7 +71,7 @@ class Capability:
         return result
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Capability":
+    def from_dict(cls, data: dict[str, Any]) -> "Capability":
         """Create capability from dictionary."""
         return cls(
             name=data["name"],
@@ -99,12 +99,12 @@ class EndpointConfig:
     """
     url: str
     protocol: str = "https"
-    methods: List[str] = field(default_factory=lambda: ["POST"])
-    contentTypes: List[str] = field(default_factory=lambda: ["application/json"])
+    methods: list[str] = field(default_factory=lambda: ["POST"])
+    contentTypes: list[str] = field(default_factory=lambda: ["application/json"])
     maxPayloadSize: int = 10485760  # 10MB
     streaming: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert endpoint config to dictionary format."""
         return {
             "url": self.url,
@@ -116,7 +116,7 @@ class EndpointConfig:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "EndpointConfig":
+    def from_dict(cls, data: dict[str, Any]) -> "EndpointConfig":
         """Create endpoint config from dictionary."""
         return cls(
             url=data["url"],
@@ -153,16 +153,16 @@ class AgentCard:
     name: str
     description: str
     version: str
-    capabilities: List[Capability]
+    capabilities: list[Capability]
     endpoint: EndpointConfig
-    authSchemes: List[AuthScheme] = field(default_factory=lambda: [AuthScheme.NONE])
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    authSchemes: list[AuthScheme] = field(default_factory=lambda: [AuthScheme.NONE])
+    metadata: dict[str, Any] = field(default_factory=dict)
     created: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     updated: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     deprecated: bool = False
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Convert agent card to dictionary format.
 
@@ -184,7 +184,7 @@ class AgentCard:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "AgentCard":
+    def from_dict(cls, data: dict[str, Any]) -> "AgentCard":
         """
         Create agent card from dictionary.
 
@@ -212,7 +212,7 @@ class AgentCard:
             tags=data.get("tags", []),
         )
 
-    def to_json(self, indent: Optional[int] = 2) -> str:
+    def to_json(self, indent: int | None = 2) -> str:
         """
         Convert agent card to JSON string.
 
@@ -238,7 +238,7 @@ class AgentCard:
         data = json.loads(json_str)
         return cls.from_dict(data)
 
-    def validate(self) -> tuple[bool, Optional[str]]:
+    def validate(self) -> tuple[bool, str | None]:
         """
         Validate agent card data.
 
@@ -283,7 +283,7 @@ class AgentCard:
 
         return True, None
 
-    def get_capability(self, name: str) -> Optional[Capability]:
+    def get_capability(self, name: str) -> Capability | None:
         """
         Get a capability by name.
 

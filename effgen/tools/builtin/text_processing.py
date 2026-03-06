@@ -8,14 +8,14 @@ text comparison, and other NLP-lite operations using only the standard library.
 import logging
 import re
 from collections import Counter
-from typing import Any, Dict, Optional
+from typing import Any
 
 from ..base_tool import (
     BaseTool,
-    ToolCategory,
-    ToolMetadata,
     ParameterSpec,
     ParameterType,
+    ToolCategory,
+    ToolMetadata,
 )
 
 logger = logging.getLogger(__name__)
@@ -182,13 +182,13 @@ class TextProcessingTool(BaseTool):
         self,
         operation: str,
         text: str,
-        pattern: Optional[str] = None,
-        replacement: Optional[str] = None,
-        text2: Optional[str] = None,
+        pattern: str | None = None,
+        replacement: str | None = None,
+        text2: str | None = None,
         transform_type: str = "lowercase",
         num_sentences: int = 3,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute text processing operation."""
 
         if operation == "word_count":

@@ -8,10 +8,10 @@ and extracts sections from Wikipedia.
 import json
 import logging
 import re
-from typing import Any, Dict, List, Optional
-from urllib.request import urlopen, Request
-from urllib.parse import urlencode, quote
+from typing import Any
 from urllib.error import URLError
+from urllib.parse import quote, urlencode
+from urllib.request import Request, urlopen
 
 
 def _get_user_agent(tool_name: str = "") -> str:
@@ -25,10 +25,10 @@ def _get_user_agent(tool_name: str = "") -> str:
 
 from ..base_tool import (
     BaseTool,
-    ToolCategory,
-    ToolMetadata,
     ParameterSpec,
     ParameterType,
+    ToolCategory,
+    ToolMetadata,
 )
 
 logger = logging.getLogger(__name__)
@@ -127,7 +127,7 @@ class WikipediaTool(BaseTool):
             )
         )
 
-    def _api_request(self, params: Dict) -> Dict:
+    def _api_request(self, params: dict) -> dict:
         """Make a request to the Wikipedia API."""
         params["format"] = "json"
         url = f"{self._api_url}?{urlencode(params)}"
@@ -138,7 +138,7 @@ class WikipediaTool(BaseTool):
         except URLError as e:
             raise ConnectionError(f"Wikipedia API error: {e}")
 
-    def _search(self, query: str, limit: int = 5) -> List[Dict]:
+    def _search(self, query: str, limit: int = 5) -> list[dict]:
         """Search Wikipedia for articles."""
         data = self._api_request({
             "action": "query",
@@ -159,7 +159,7 @@ class WikipediaTool(BaseTool):
             })
         return results
 
-    def _get_summary(self, title: str, sentences: int = 5) -> Dict:
+    def _get_summary(self, title: str, sentences: int = 5) -> dict:
         """Get article summary using the REST API."""
         # Use the extracts API for summary
         data = self._api_request({
@@ -202,7 +202,7 @@ class WikipediaTool(BaseTool):
         operation: str = "summary",
         sentences: int = 5,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute Wikipedia operation."""
 
         if operation == "search":

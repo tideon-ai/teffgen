@@ -8,25 +8,22 @@ task delegation, and managing agent-to-agent communication using the A2A protoco
 import asyncio
 import json
 import logging
-from typing import Dict, Any, List, Optional, AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
-import httpx
 from datetime import datetime
+from typing import Any
 
+import httpx
+
+from .agent_card import AgentCard
 from .protocol import (
+    A2AMessage,
     A2AProtocolHandler,
     Task,
     TaskRequest,
-    TaskUpdate,
     TaskState,
-    A2AMessage,
-    A2AError,
-    ErrorCode,
-    Artifact,
-    MessagePart,
+    TaskUpdate,
 )
-from .agent_card import AgentCard, AuthScheme
-
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +44,7 @@ class A2AClientConfig:
     max_retries: int = 3
     retry_delay: float = 1.0
     verify_ssl: bool = True
-    headers: Dict[str, str] = None
+    headers: dict[str, str] = None
 
     def __post_init__(self):
         if self.headers is None:
@@ -57,7 +54,7 @@ class A2AClientConfig:
 class AuthHandler:
     """Base class for authentication handlers."""
 
-    async def apply_auth(self, headers: Dict[str, str]) -> Dict[str, str]:
+    async def apply_auth(self, headers: dict[str, str]) -> dict[str, str]:
         """
         Apply authentication to request headers.
 
@@ -82,7 +79,7 @@ class BearerAuthHandler(AuthHandler):
         """
         self.token = token
 
-    async def apply_auth(self, headers: Dict[str, str]) -> Dict[str, str]:
+    async def apply_auth(self, headers: dict[str, str]) -> dict[str, str]:
         """Apply bearer authentication."""
         headers["Authorization"] = f"Bearer {self.token}"
         return headers
@@ -96,7 +93,7 @@ class OAuth2AuthHandler(AuthHandler):
         client_id: str,
         client_secret: str,
         token_url: str,
-        scopes: Optional[List[str]] = None,
+        scopes: list[str] | None = None,
     ):
         """
         Initialize OAuth2 auth handler.
@@ -111,8 +108,8 @@ class OAuth2AuthHandler(AuthHandler):
         self.client_secret = client_secret
         self.token_url = token_url
         self.scopes = scopes or []
-        self._token: Optional[str] = None
-        self._token_expiry: Optional[datetime] = None
+        self._token: str | None = None
+        self._token_expiry: datetime | None = None
 
     async def _fetch_token(self) -> str:
         """Fetch a new OAuth token."""
@@ -135,7 +132,7 @@ class OAuth2AuthHandler(AuthHandler):
                 self._token_expiry = datetime.utcnow() + timedelta(seconds=data["expires_in"])
             return self._token
 
-    async def apply_auth(self, headers: Dict[str, str]) -> Dict[str, str]:
+    async def apply_auth(self, headers: dict[str, str]) -> dict[str, str]:
         """Apply OAuth2 authentication."""
         # Check if token needs refresh
         if not self._token or (
@@ -161,7 +158,7 @@ class APIKeyAuthHandler(AuthHandler):
         self.api_key = api_key
         self.header_name = header_name
 
-    async def apply_auth(self, headers: Dict[str, str]) -> Dict[str, str]:
+    async def apply_auth(self, headers: dict[str, str]) -> dict[str, str]:
         """Apply API key authentication."""
         headers[self.header_name] = self.api_key
         return headers
@@ -183,8 +180,8 @@ class A2AClient:
     def __init__(
         self,
         agent_card: AgentCard,
-        config: Optional[A2AClientConfig] = None,
-        auth_handler: Optional[AuthHandler] = None,
+        config: A2AClientConfig | None = None,
+        auth_handler: AuthHandler | None = None,
     ):
         """
         Initialize A2A client.
@@ -198,7 +195,7 @@ class A2AClient:
         self.config = config or A2AClientConfig()
         self.auth_handler = auth_handler
         self.protocol = A2AProtocolHandler()
-        self.http_client: Optional[httpx.AsyncClient] = None
+        self.http_client: httpx.AsyncClient | None = None
         self._connected = False
 
     async def connect(self) -> None:
@@ -238,8 +235,8 @@ class A2AClient:
         self,
         method: str,
         endpoint: str,
-        data: Optional[Dict[str, Any]] = None,
-        params: Optional[Dict[str, Any]] = None,
+        data: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
     ) -> httpx.Response:
         """
         Make an HTTP request with authentication and retries.
@@ -305,8 +302,8 @@ class A2AClient:
         self,
         instruction: A2AMessage,
         capability: str,
-        context: Optional[Dict[str, Any]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> Task:
         """
         Create a new task on the remote agent.
@@ -401,7 +398,7 @@ class A2AClient:
         self,
         task_id: str,
         poll_interval: float = 1.0,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> Task:
         """
         Wait for task to complete.
@@ -483,9 +480,9 @@ class A2AClient:
         self,
         instruction: A2AMessage,
         capability: str,
-        context: Optional[Dict[str, Any]] = None,
-        timeout: Optional[float] = None,
-        on_progress: Optional[Callable[[float], None]] = None,
+        context: dict[str, Any] | None = None,
+        timeout: float | None = None,
+        on_progress: Callable[[float], None] | None = None,
     ) -> Task:
         """
         Execute a task and wait for completion.
@@ -531,7 +528,7 @@ class A2AClient:
         # Wait for completion
         return await self.wait_for_task(task.id, timeout=timeout)
 
-    async def discover_capabilities(self) -> List[str]:
+    async def discover_capabilities(self) -> list[str]:
         """
         Discover available capabilities from the agent.
 
@@ -552,8 +549,8 @@ class A2AClient:
 
 async def discover_agents(
     discovery_url: str,
-    filters: Optional[Dict[str, Any]] = None,
-) -> List[AgentCard]:
+    filters: dict[str, Any] | None = None,
+) -> list[AgentCard]:
     """
     Discover agents from a discovery service.
 

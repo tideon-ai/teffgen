@@ -16,15 +16,14 @@ Features:
 - Custom validation rules
 """
 
-import os
-import re
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+import re
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
 
 try:
-    import jsonschema
+    import jsonschema  # noqa: F401
     from jsonschema import Draft7Validator, validators
     JSONSCHEMA_AVAILABLE = True
 except ImportError:
@@ -38,7 +37,7 @@ logger = logging.getLogger(__name__)
 class ValidationError(Exception):
     """Configuration validation error."""
 
-    def __init__(self, message: str, errors: Optional[List[str]] = None):
+    def __init__(self, message: str, errors: list[str] | None = None):
         """
         Initialize validation error.
 
@@ -63,8 +62,8 @@ class ValidationResult:
     """Result of configuration validation."""
 
     valid: bool
-    errors: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
     def add_error(self, error: str) -> None:
         """Add an error."""
@@ -86,7 +85,7 @@ class ConfigValidator:
     - Security (no plaintext secrets in non-key files)
     """
 
-    def __init__(self, schema_dir: Optional[Path] = None):
+    def __init__(self, schema_dir: Path | None = None):
         """
         Initialize validator.
 
@@ -97,7 +96,7 @@ class ConfigValidator:
             logger.warning("jsonschema not installed. Validation will be limited.")
 
         self.schema_dir = schema_dir or Path(__file__).parent / "schemas"
-        self._schemas: Dict[str, Dict] = {}
+        self._schemas: dict[str, dict] = {}
         self._load_schemas()
 
     def _load_schemas(self) -> None:
@@ -110,7 +109,7 @@ class ConfigValidator:
 
         for schema_file in self.schema_dir.glob("*.json"):
             try:
-                with open(schema_file, "r") as f:
+                with open(schema_file) as f:
                     schema = json.load(f)
                     schema_name = schema_file.stem
                     self._schemas[schema_name] = schema
@@ -118,7 +117,7 @@ class ConfigValidator:
             except Exception as e:
                 logger.error(f"Failed to load schema {schema_file}: {e}")
 
-    def validate_models(self, models_config: Dict[str, Any]) -> ValidationResult:
+    def validate_models(self, models_config: dict[str, Any]) -> ValidationResult:
         """
         Validate models configuration.
 
@@ -177,7 +176,7 @@ class ConfigValidator:
     def _validate_huggingface_model(
         self,
         model_name: str,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         result: ValidationResult
     ) -> None:
         """Validate HuggingFace model configuration."""
@@ -224,7 +223,7 @@ class ConfigValidator:
     def _validate_openai_model(
         self,
         model_name: str,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         result: ValidationResult
     ) -> None:
         """Validate OpenAI model configuration."""
@@ -241,7 +240,7 @@ class ConfigValidator:
     def _validate_anthropic_model(
         self,
         model_name: str,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         result: ValidationResult
     ) -> None:
         """Validate Anthropic model configuration."""
@@ -258,14 +257,14 @@ class ConfigValidator:
     def _validate_google_model(
         self,
         model_name: str,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         result: ValidationResult
     ) -> None:
         """Validate Google model configuration."""
         if "model_name" not in config:
             result.add_error(f"Model '{model_name}' missing 'model_name' field")
 
-    def validate_tools(self, tools_config: Dict[str, Any]) -> ValidationResult:
+    def validate_tools(self, tools_config: dict[str, Any]) -> ValidationResult:
         """
         Validate tools configuration.
 
@@ -330,7 +329,7 @@ class ConfigValidator:
     def _validate_mcp_server(
         self,
         server_name: str,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         result: ValidationResult
     ) -> None:
         """Validate MCP server configuration."""
@@ -350,7 +349,7 @@ class ConfigValidator:
         if env and not isinstance(env, dict):
             result.add_error(f"MCP server '{server_name}' env must be a dictionary")
 
-    def validate_prompts(self, prompts_config: Dict[str, Any]) -> ValidationResult:
+    def validate_prompts(self, prompts_config: dict[str, Any]) -> ValidationResult:
         """
         Validate prompts configuration.
 
@@ -400,7 +399,7 @@ class ConfigValidator:
     def _validate_chain(
         self,
         chain_name: str,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         result: ValidationResult
     ) -> None:
         """Validate a prompt chain configuration."""
@@ -459,7 +458,7 @@ class ConfigValidator:
     def _validate_template_vars(
         self,
         template: str,
-        available_vars: Set[str],
+        available_vars: set[str],
         context: str,
         result: ValidationResult
     ) -> None:
@@ -475,7 +474,7 @@ class ConfigValidator:
                     f"{context} references undefined variable: {var}"
                 )
 
-    def validate_api_keys(self, api_keys_config: Dict[str, Any]) -> ValidationResult:
+    def validate_api_keys(self, api_keys_config: dict[str, Any]) -> ValidationResult:
         """
         Validate API keys configuration.
 
@@ -543,7 +542,7 @@ class ConfigValidator:
                 current_path = f"{path}[{i}]"
                 self._check_plaintext_secrets(item, current_path, result)
 
-    def validate_agent(self, agent_config: Dict[str, Any]) -> ValidationResult:
+    def validate_agent(self, agent_config: dict[str, Any]) -> ValidationResult:
         """
         Validate agent configuration.
 
@@ -574,9 +573,9 @@ class ConfigValidator:
 
     def _validate_with_schema(
         self,
-        config: Dict[str, Any],
-        schema: Dict[str, Any]
-    ) -> List[str]:
+        config: dict[str, Any],
+        schema: dict[str, Any]
+    ) -> list[str]:
         """
         Validate configuration against JSON schema.
 
@@ -606,8 +605,8 @@ class ConfigValidator:
 
     def validate_all(
         self,
-        config: Dict[str, Any],
-        config_type: Optional[str] = None
+        config: dict[str, Any],
+        config_type: str | None = None
     ) -> ValidationResult:
         """
         Validate a complete configuration.

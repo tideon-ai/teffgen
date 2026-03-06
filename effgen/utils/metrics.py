@@ -33,27 +33,28 @@ Example:
         >>> metrics.export_to_csv("metrics.csv")
 """
 
-import time
-import json
 import csv
-import psutil
-import threading
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Callable
-from collections import defaultdict, deque
-from dataclasses import dataclass, asdict, field
-from contextlib import contextmanager
+import json
 import statistics
+import threading
+import time
+from collections import defaultdict, deque
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+from typing import Any
+
+import psutil
 
 try:
-    import numpy as np
+    import numpy as np  # noqa: F401
     NUMPY_AVAILABLE = True
 except ImportError:
     NUMPY_AVAILABLE = False
 
 try:
-    import pandas as pd
+    import pandas as pd  # noqa: F401
     PANDAS_AVAILABLE = True
 except ImportError:
     PANDAS_AVAILABLE = False
@@ -110,10 +111,10 @@ class ExecutionMetric:
     """
     name: str
     start_time: float
-    end_time: Optional[float] = None
-    duration: Optional[float] = None
+    end_time: float | None = None
+    duration: float | None = None
     success: bool = True
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def finish(self, success: bool = True, **metadata) -> None:
         """
@@ -149,7 +150,7 @@ class TokenMetric:
     total_tokens: int
     cost: float
     timestamp: float = field(default_factory=time.time)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -170,7 +171,7 @@ class ResourceSnapshot:
     memory_percent: float
     memory_used_mb: float
     disk_usage_percent: float
-    gpu_metrics: Optional[List[Dict[str, Any]]] = None
+    gpu_metrics: list[dict[str, Any]] | None = None
 
 
 class MetricsCollector:
@@ -195,18 +196,18 @@ class MetricsCollector:
             resource_sample_interval: Interval for sampling resources (seconds)
             max_history_size: Maximum number of metrics to keep in history
         """
-        self.execution_metrics: List[ExecutionMetric] = []
-        self.token_metrics: List[TokenMetric] = []
+        self.execution_metrics: list[ExecutionMetric] = []
+        self.token_metrics: list[TokenMetric] = []
         self.resource_snapshots: deque = deque(maxlen=max_history_size)
-        self.custom_metrics: Dict[str, List[float]] = defaultdict(list)
+        self.custom_metrics: dict[str, list[float]] = defaultdict(list)
 
         self.enable_resource_monitoring = enable_resource_monitoring
         self.resource_sample_interval = resource_sample_interval
         self.max_history_size = max_history_size
 
-        self._active_executions: Dict[str, ExecutionMetric] = {}
+        self._active_executions: dict[str, ExecutionMetric] = {}
         self._lock = threading.Lock()
-        self._monitoring_thread: Optional[threading.Thread] = None
+        self._monitoring_thread: threading.Thread | None = None
         self._stop_monitoring = threading.Event()
 
         if enable_resource_monitoring:
@@ -234,7 +235,7 @@ class MetricsCollector:
             try:
                 snapshot = self._capture_resource_snapshot()
                 self.resource_snapshots.append(snapshot)
-            except Exception as e:
+            except Exception:
                 # Silently fail to avoid disrupting the main application
                 pass
 
@@ -405,7 +406,7 @@ class MetricsCollector:
 
         return prompt_cost + completion_cost
 
-    def get_total_cost(self, model: Optional[str] = None) -> float:
+    def get_total_cost(self, model: str | None = None) -> float:
         """
         Get total cost across all model calls.
 
@@ -423,7 +424,7 @@ class MetricsCollector:
                 )
             return sum(m.cost for m in self.token_metrics)
 
-    def get_total_tokens(self, model: Optional[str] = None) -> Dict[str, int]:
+    def get_total_tokens(self, model: str | None = None) -> dict[str, int]:
         """
         Get total token usage.
 
@@ -444,7 +445,7 @@ class MetricsCollector:
                 "total_tokens": sum(m.total_tokens for m in metrics),
             }
 
-    def get_execution_stats(self, name: Optional[str] = None) -> Dict[str, Any]:
+    def get_execution_stats(self, name: str | None = None) -> dict[str, Any]:
         """
         Get statistics for execution metrics.
 
@@ -497,7 +498,7 @@ class MetricsCollector:
 
             return stats
 
-    def get_throughput(self, window_seconds: float = 60.0) -> Dict[str, float]:
+    def get_throughput(self, window_seconds: float = 60.0) -> dict[str, float]:
         """
         Calculate throughput metrics over a time window.
 
@@ -532,7 +533,7 @@ class MetricsCollector:
                 "window_seconds": window_seconds,
             }
 
-    def get_resource_stats(self) -> Dict[str, Any]:
+    def get_resource_stats(self) -> dict[str, Any]:
         """
         Get statistics for resource usage.
 
@@ -602,7 +603,7 @@ class MetricsCollector:
 
         return stats
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """
         Get a comprehensive summary of all metrics.
 
@@ -630,7 +631,7 @@ class MetricsCollector:
             },
         }
 
-    def _get_cost_by_model(self) -> Dict[str, float]:
+    def _get_cost_by_model(self) -> dict[str, float]:
         """Get total cost grouped by model."""
         with self._lock:
             cost_by_model = defaultdict(float)
@@ -647,7 +648,7 @@ class MetricsCollector:
             self.custom_metrics.clear()
             self._active_executions.clear()
 
-    def export_to_json(self, filepath: Union[str, Path], pretty: bool = True) -> None:
+    def export_to_json(self, filepath: str | Path, pretty: bool = True) -> None:
         """
         Export metrics to JSON file.
 
@@ -688,7 +689,7 @@ class MetricsCollector:
         with open(filepath, 'w') as f:
             json.dump(data, f, indent=2 if pretty else None)
 
-    def export_to_csv(self, filepath: Union[str, Path], metric_type: str = "execution") -> None:
+    def export_to_csv(self, filepath: str | Path, metric_type: str = "execution") -> None:
         """
         Export metrics to CSV file.
 

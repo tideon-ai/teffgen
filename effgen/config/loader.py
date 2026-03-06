@@ -11,14 +11,15 @@ Features:
 - Thread-safe operations
 """
 
+import logging
 import os
 import re
-import logging
 import threading
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Callable
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Union
 
 import yaml
 
@@ -28,8 +29,8 @@ except ImportError:
     import json
 
 try:
-    from watchdog.observers import Observer
     from watchdog.events import FileSystemEventHandler
+    from watchdog.observers import Observer
     WATCHDOG_AVAILABLE = True
 except ImportError:
     WATCHDOG_AVAILABLE = False
@@ -49,8 +50,8 @@ class Config:
     - config["models"]["phi3_mini"]
     """
 
-    data: Dict[str, Any] = field(default_factory=dict)
-    _source_file: Optional[Path] = None
+    data: dict[str, Any] = field(default_factory=dict)
+    _source_file: Path | None = None
     _loaded_at: datetime = field(default_factory=datetime.now)
 
     def __getitem__(self, key: str) -> Any:
@@ -82,11 +83,11 @@ class Config:
             return value
         raise AttributeError(f"Config has no attribute '{name}'")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return self.data.copy()
 
-    def update(self, other: Union[Dict, "Config"]) -> None:
+    def update(self, other: Union[dict, "Config"]) -> None:
         """Update configuration with another config or dict."""
         if isinstance(other, Config):
             self._merge_recursive(self.data, other.data)
@@ -94,7 +95,7 @@ class Config:
             self._merge_recursive(self.data, other)
 
     @staticmethod
-    def _merge_recursive(base: Dict, update: Dict) -> None:
+    def _merge_recursive(base: dict, update: dict) -> None:
         """Recursively merge update into base."""
         for key, value in update.items():
             if key in base and isinstance(base[key], dict) and isinstance(value, dict):
@@ -108,7 +109,7 @@ class ConfigFileHandler(FileSystemEventHandler if WATCHDOG_AVAILABLE else object
     File system event handler for configuration hot reloading.
     """
 
-    def __init__(self, loader: "ConfigLoader", callback: Optional[Callable] = None):
+    def __init__(self, loader: "ConfigLoader", callback: Callable | None = None):
         """
         Initialize handler.
 
@@ -178,12 +179,12 @@ class ConfigLoader:
 
     def __init__(
         self,
-        config_dir: Optional[Union[str, Path]] = None,
+        config_dir: str | Path | None = None,
         env_prefix: str = "",
         auto_reload: bool = False,
-        reload_callback: Optional[Callable] = None,
+        reload_callback: Callable | None = None,
         use_secret_manager: bool = False,
-        secret_manager_type: Optional[str] = None,
+        secret_manager_type: str | None = None,
     ):
         """
         Initialize ConfigLoader.
@@ -204,9 +205,9 @@ class ConfigLoader:
         self.secret_manager_type = secret_manager_type
 
         self.config = Config()
-        self._config_files: List[Path] = []
+        self._config_files: list[Path] = []
         self._watched_files: set = set()
-        self._observer: Optional[Observer] = None
+        self._observer: Observer | None = None
         self._lock = threading.RLock()
 
         # Initialize secret manager if enabled
@@ -233,8 +234,8 @@ class ConfigLoader:
                 self._secret_manager = hvac.Client(url=vault_addr, token=vault_token)
                 logger.info("HashiCorp Vault initialized")
             elif manager_type == "azure":
-                from azure.keyvault.secrets import SecretClient
                 from azure.identity import DefaultAzureCredential
+                from azure.keyvault.secrets import SecretClient
                 vault_url = os.getenv("AZURE_KEYVAULT_URL")
                 if vault_url:
                     credential = DefaultAzureCredential()
@@ -251,7 +252,7 @@ class ConfigLoader:
 
     def load_config(
         self,
-        config_path: Union[str, Path, List[Union[str, Path]]],
+        config_path: str | Path | list[str | Path],
         merge: bool = True,
         validate: bool = True,
     ) -> Config:
@@ -307,7 +308,7 @@ class ConfigLoader:
 
             return self.config
 
-    def _load_single_config(self, config_path: Union[str, Path]) -> Config:
+    def _load_single_config(self, config_path: str | Path) -> Config:
         """
         Load a single configuration file.
 
@@ -325,7 +326,7 @@ class ConfigLoader:
         logger.info(f"Loading config from: {path}")
 
         # Load file content
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             content = f.read()
 
         # Substitute environment variables
@@ -348,7 +349,7 @@ class ConfigLoader:
 
         return config
 
-    def _resolve_path(self, config_path: Union[str, Path]) -> Path:
+    def _resolve_path(self, config_path: str | Path) -> Path:
         """
         Resolve configuration file path.
 
@@ -417,7 +418,7 @@ class ConfigLoader:
 
         return self.ENV_VAR_PATTERN.sub(replace_var, content)
 
-    def _get_secret(self, secret_name: str) -> Optional[str]:
+    def _get_secret(self, secret_name: str) -> str | None:
         """
         Retrieve secret from secret manager.
 
@@ -523,7 +524,7 @@ class ConfigLoader:
         logger.info("Configuration validation passed")
         return True
 
-    def save_config(self, output_path: Union[str, Path], format: str = "yaml") -> None:
+    def save_config(self, output_path: str | Path, format: str = "yaml") -> None:
         """
         Save current configuration to file.
 

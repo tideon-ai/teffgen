@@ -4,7 +4,7 @@ Preset registry — defines agent presets and the create_agent factory.
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any
 
 from effgen.core.agent import Agent, AgentConfig
 from effgen.models import BaseModel
@@ -18,13 +18,13 @@ class PresetConfig:
 
     name: str
     description: str
-    tool_names: List[str]
+    tool_names: list[str]
     system_prompt: str
     max_iterations: int = 10
     temperature: float = 0.7
     enable_sub_agents: bool = False
     enable_memory: bool = True
-    tags: List[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -114,7 +114,7 @@ _MINIMAL_PRESET = PresetConfig(
 # Registry
 # ---------------------------------------------------------------------------
 
-PRESETS: Dict[str, PresetConfig] = {
+PRESETS: dict[str, PresetConfig] = {
     "math": _MATH_PRESET,
     "research": _RESEARCH_PRESET,
     "coding": _CODING_PRESET,
@@ -123,7 +123,7 @@ PRESETS: Dict[str, PresetConfig] = {
 }
 
 
-def list_presets() -> Dict[str, str]:
+def list_presets() -> dict[str, str]:
     """Return a mapping of preset name → description."""
     return {name: p.description for name, p in PRESETS.items()}
 
@@ -140,7 +140,7 @@ def get_preset(name: str) -> PresetConfig:
     return PRESETS[name]
 
 
-def _instantiate_tools(tool_names: List[str]) -> list:
+def _instantiate_tools(tool_names: list[str]) -> list:
     """Instantiate tool objects from their registry names.
 
     Tools that fail to load are skipped with a warning rather than
@@ -148,22 +148,22 @@ def _instantiate_tools(tool_names: List[str]) -> list:
     (e.g. web_search without API keys) cannot be initialised.
     """
     from effgen.tools.builtin import (
+        AgenticSearch,
+        BashTool,
         Calculator,
         CodeExecutor,
-        PythonREPL,
-        WebSearch,
-        FileOperations,
-        BashTool,
-        JSONTool,
         DateTimeTool,
+        FileOperations,
+        JSONTool,
+        PythonREPL,
+        Retrieval,
         TextProcessingTool,
         URLFetchTool,
+        WebSearch,
         WikipediaTool,
-        AgenticSearch,
-        Retrieval,
     )
 
-    _TOOL_MAP: Dict[str, type] = {
+    _TOOL_MAP: dict[str, type] = {
         "calculator": Calculator,
         "python_repl": PythonREPL,
         "web_search": WebSearch,
@@ -194,14 +194,14 @@ def _instantiate_tools(tool_names: List[str]) -> list:
 
 def create_agent(
     preset: str,
-    model: Union[BaseModel, str],
+    model: BaseModel | str,
     *,
-    agent_name: Optional[str] = None,
-    extra_tools: Optional[list] = None,
-    system_prompt: Optional[str] = None,
-    max_iterations: Optional[int] = None,
-    temperature: Optional[float] = None,
-    enable_memory: Optional[bool] = None,
+    agent_name: str | None = None,
+    extra_tools: list | None = None,
+    system_prompt: str | None = None,
+    max_iterations: int | None = None,
+    temperature: float | None = None,
+    enable_memory: bool | None = None,
     **config_overrides: Any,
 ) -> Agent:
     """Create an agent from a named preset.

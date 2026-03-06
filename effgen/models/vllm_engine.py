@@ -11,16 +11,11 @@ This module provides high-performance inference using vLLM with features includi
 """
 
 import logging
-from typing import Iterator, Optional, List
+from collections.abc import Iterator
+
 import torch
 
-from effgen.models.base import (
-    BatchModel,
-    ModelType,
-    GenerationConfig,
-    GenerationResult,
-    TokenCount
-)
+from effgen.models.base import BatchModel, GenerationConfig, GenerationResult, ModelType, TokenCount
 
 logger = logging.getLogger(__name__)
 
@@ -67,18 +62,18 @@ class VLLMEngine(BatchModel):
         self,
         model_name: str,
         tensor_parallel_size: int = 1,
-        quantization: Optional[str] = None,
-        max_model_len: Optional[int] = None,
+        quantization: str | None = None,
+        max_model_len: int | None = None,
         gpu_memory_utilization: float = 0.90,
         trust_remote_code: bool = True,
-        download_dir: Optional[str] = None,
+        download_dir: str | None = None,
         dtype: str = "auto",
         seed: int = 0,
         max_num_seqs: int = 256,
-        max_num_batched_tokens: Optional[int] = None,
+        max_num_batched_tokens: int | None = None,
         use_tqdm: bool = True,
         apply_chat_template: bool = True,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
         **kwargs
     ):
         """
@@ -139,8 +134,7 @@ class VLLMEngine(BatchModel):
             ValueError: If configuration is invalid
         """
         try:
-            from vllm import LLM
-            from vllm import SamplingParams
+            from vllm import LLM, SamplingParams  # noqa: F401
         except ImportError as e:
             raise RuntimeError(
                 "vLLM is not installed. Please install it with: "
@@ -266,7 +260,7 @@ class VLLMEngine(BatchModel):
     def _format_prompt_with_chat_template(
         self,
         prompt: str,
-        system_prompt: Optional[str] = None
+        system_prompt: str | None = None
     ) -> str:
         """
         Format a prompt using the model's chat template.
@@ -327,8 +321,8 @@ class VLLMEngine(BatchModel):
 
     def _create_sampling_params(
         self,
-        config: Optional[GenerationConfig] = None
-    ) -> "SamplingParams":
+        config: GenerationConfig | None = None
+    ) -> "SamplingParams":  # noqa: F821
         """
         Create vLLM SamplingParams from GenerationConfig.
 
@@ -358,8 +352,8 @@ class VLLMEngine(BatchModel):
     def generate(
         self,
         prompt: str,
-        config: Optional[GenerationConfig] = None,
-        system_prompt: Optional[str] = None,
+        config: GenerationConfig | None = None,
+        system_prompt: str | None = None,
         skip_chat_template: bool = False,
         **kwargs
     ) -> GenerationResult:
@@ -422,8 +416,8 @@ class VLLMEngine(BatchModel):
             # Provide helpful error for CUDA OOM during generation
             if _is_cuda_oom_error(e):
                 logger.error(
-                    f"CUDA out of memory during generation. "
-                    f"Try reducing max_tokens in GenerationConfig or use a smaller prompt."
+                    "CUDA out of memory during generation. "
+                    "Try reducing max_tokens in GenerationConfig or use a smaller prompt."
                 )
 
             raise RuntimeError(f"Generation failed: {error_msg}") from e
@@ -431,8 +425,8 @@ class VLLMEngine(BatchModel):
     def generate_stream(
         self,
         prompt: str,
-        config: Optional[GenerationConfig] = None,
-        system_prompt: Optional[str] = None,
+        config: GenerationConfig | None = None,
+        system_prompt: str | None = None,
         skip_chat_template: bool = False,
         **kwargs
     ) -> Iterator[str]:
@@ -479,12 +473,12 @@ class VLLMEngine(BatchModel):
 
     def generate_batch(
         self,
-        prompts: List[str],
-        config: Optional[GenerationConfig] = None,
-        system_prompt: Optional[str] = None,
+        prompts: list[str],
+        config: GenerationConfig | None = None,
+        system_prompt: str | None = None,
         skip_chat_template: bool = False,
         **kwargs
-    ) -> List[GenerationResult]:
+    ) -> list[GenerationResult]:
         """
         Generate text for multiple prompts in a batch.
 

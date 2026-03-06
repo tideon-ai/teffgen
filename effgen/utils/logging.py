@@ -33,20 +33,18 @@ Example:
         ...     logger.info("Processing task")
 """
 
+import json
 import logging
 import logging.handlers
-import os
 import sys
-import json
+import threading
 import traceback
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional, Union, List
-from contextlib import contextmanager
-import threading
 
 try:
-    from rich.console import Console
+    from rich.console import Console  # noqa: F401
     from rich.logging import RichHandler
     from rich.traceback import install as install_rich_traceback
     RICH_AVAILABLE = True
@@ -54,7 +52,7 @@ except ImportError:
     RICH_AVAILABLE = False
 
 try:
-    from loguru import logger as loguru_logger
+    from loguru import logger as loguru_logger  # noqa: F401
     LOGURU_AVAILABLE = True
 except ImportError:
     LOGURU_AVAILABLE = False
@@ -155,7 +153,7 @@ class ColoredFormatter(logging.Formatter):
         'RESET': '\033[0m'        # Reset
     }
 
-    def __init__(self, fmt: Optional[str] = None, use_colors: bool = True):
+    def __init__(self, fmt: str | None = None, use_colors: bool = True):
         """
         Initialize the colored formatter.
 
@@ -210,17 +208,17 @@ class LoggerManager:
         if self._initialized:
             return
 
-        self.loggers: Dict[str, logging.Logger] = {}
-        self.handlers: List[logging.Handler] = []
-        self.log_dir: Optional[Path] = None
+        self.loggers: dict[str, logging.Logger] = {}
+        self.handlers: list[logging.Handler] = []
+        self.log_dir: Path | None = None
         self.level: int = logging.INFO
         self.structured: bool = False
         self._initialized = True
 
     def setup(
         self,
-        level: Union[str, int] = "INFO",
-        log_dir: Optional[Union[str, Path]] = None,
+        level: str | int = "INFO",
+        log_dir: str | Path | None = None,
         log_file: str = "effgen.log",
         console_output: bool = True,
         file_output: bool = True,
@@ -228,7 +226,7 @@ class LoggerManager:
         use_rich: bool = True,
         max_file_size: int = 10 * 1024 * 1024,  # 10 MB
         backup_count: int = 5,
-        format_string: Optional[str] = None,
+        format_string: str | None = None,
     ) -> None:
         """
         Setup logging configuration for the application.
@@ -364,7 +362,7 @@ class LoggerManager:
         self.loggers[name] = logger
         return logger
 
-    def set_level(self, level: Union[str, int]) -> None:
+    def set_level(self, level: str | int) -> None:
         """
         Change the logging level for all loggers.
 
@@ -388,8 +386,8 @@ _logger_manager = LoggerManager()
 
 
 def setup_logger(
-    level: Union[str, int] = "INFO",
-    log_dir: Optional[Union[str, Path]] = None,
+    level: str | int = "INFO",
+    log_dir: str | Path | None = None,
     log_file: str = "effgen.log",
     console_output: bool = True,
     file_output: bool = True,
@@ -397,7 +395,7 @@ def setup_logger(
     use_rich: bool = True,
     max_file_size: int = 10 * 1024 * 1024,
     backup_count: int = 5,
-    format_string: Optional[str] = None,
+    format_string: str | None = None,
 ) -> None:
     """
     Setup logging configuration for the application.
@@ -455,7 +453,7 @@ def get_logger(name: str) -> logging.Logger:
     return _logger_manager.get_logger(name)
 
 
-def set_log_level(level: Union[str, int]) -> None:
+def set_log_level(level: str | int) -> None:
     """
     Change the logging level for all loggers.
 
@@ -543,7 +541,7 @@ class PerformanceLogger:
     function execution times.
     """
 
-    def __init__(self, logger: Optional[logging.Logger] = None, level: int = logging.INFO):
+    def __init__(self, logger: logging.Logger | None = None, level: int = logging.INFO):
         """
         Initialize the performance logger.
 
@@ -553,7 +551,7 @@ class PerformanceLogger:
         """
         self.logger = logger or get_logger(__name__)
         self.level = level
-        self.start_time: Optional[float] = None
+        self.start_time: float | None = None
 
     def __call__(self, func):
         """

@@ -6,14 +6,15 @@ iterative, and parallel execution patterns optimized for Small Language Models.
 """
 
 import asyncio
-from typing import Dict, List, Optional, Any, Callable, Union, Tuple
+import logging
+import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-import logging
-import yaml
 from pathlib import Path
-import re
-import json
+from typing import Any
+
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -42,22 +43,22 @@ class ChainStep:
 
     name: str
     type: str = "prompt"  # prompt, tool, function, parallel_group
-    prompt: Optional[str] = None
-    tool: Optional[str] = None
-    function: Optional[Callable] = None
-    output_var: Optional[str] = None
-    condition: Optional[str] = None
+    prompt: str | None = None
+    tool: str | None = None
+    function: Callable | None = None
+    output_var: str | None = None
+    condition: str | None = None
     max_retries: int = 0
     retry_delay: float = 0.0
-    timeout: Optional[float] = None
-    dependencies: List[str] = field(default_factory=list)
-    parallel_steps: List['ChainStep'] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    timeout: float | None = None
+    dependencies: list[str] = field(default_factory=list)
+    parallel_steps: list['ChainStep'] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     # Runtime state
     status: StepStatus = StepStatus.PENDING
     result: Any = None
-    error: Optional[str] = None
+    error: str | None = None
     retries: int = 0
 
     def reset(self):
@@ -67,7 +68,7 @@ class ChainStep:
         self.error = None
         self.retries = 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             'name': self.name,
@@ -85,7 +86,7 @@ class ChainStep:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'ChainStep':
+    def from_dict(cls, data: dict[str, Any]) -> 'ChainStep':
         """Create from dictionary"""
         # Remove runtime state if present
         data = {k: v for k, v in data.items() if k not in ['status', 'result', 'error', 'retries']}
@@ -104,9 +105,9 @@ class ChainStep:
 class ChainState:
     """Manages state during chain execution"""
 
-    variables: Dict[str, Any] = field(default_factory=dict)
-    step_results: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    variables: dict[str, Any] = field(default_factory=dict)
+    step_results: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     iteration_count: int = 0
 
     def set_variable(self, name: str, value: Any):
@@ -185,7 +186,7 @@ class ChainState:
             logger.error(f"Failed to evaluate condition '{condition}': {e}")
             return False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             'variables': self.variables,
@@ -200,18 +201,18 @@ class PromptChain:
     """Represents a complete prompt chain"""
 
     name: str
-    description: Optional[str] = None
+    description: str | None = None
     chain_type: ChainType = ChainType.SEQUENTIAL
-    steps: List[ChainStep] = field(default_factory=list)
+    steps: list[ChainStep] = field(default_factory=list)
     max_iterations: int = 10
-    early_stopping_condition: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    early_stopping_condition: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def add_step(self, step: ChainStep):
         """Add a step to the chain"""
         self.steps.append(step)
 
-    def get_step(self, name: str) -> Optional[ChainStep]:
+    def get_step(self, name: str) -> ChainStep | None:
         """Get a step by name"""
         for step in self.steps:
             if step.name == name:
@@ -223,7 +224,7 @@ class PromptChain:
         for step in self.steps:
             step.reset()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary"""
         return {
             'name': self.name,
@@ -236,7 +237,7 @@ class PromptChain:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'PromptChain':
+    def from_dict(cls, data: dict[str, Any]) -> 'PromptChain':
         """Create from dictionary"""
         chain_type = ChainType(data.get('chain_type', 'sequential'))
         steps = [ChainStep.from_dict(s) for s in data.get('steps', [])]
@@ -262,17 +263,17 @@ class ChainManager:
     - Hybrid chains (combination of above)
     """
 
-    def __init__(self, executor: Optional[Callable] = None):
+    def __init__(self, executor: Callable | None = None):
         """
         Initialize chain manager
 
         Args:
             executor: Function to execute prompts/tools (receives prompt, returns result)
         """
-        self.chains: Dict[str, PromptChain] = {}
+        self.chains: dict[str, PromptChain] = {}
         self.executor = executor or self._default_executor
-        self.tool_registry: Dict[str, Callable] = {}
-        self.function_registry: Dict[str, Callable] = {}
+        self.tool_registry: dict[str, Callable] = {}
+        self.function_registry: dict[str, Callable] = {}
 
         logger.info("ChainManager initialized")
 
@@ -296,7 +297,7 @@ class ChainManager:
         self.function_registry[name] = func
         logger.debug(f"Registered function: {name}")
 
-    def load_chain_from_yaml(self, filepath: Union[str, Path]) -> PromptChain:
+    def load_chain_from_yaml(self, filepath: str | Path) -> PromptChain:
         """
         Load chain definition from YAML file
 
@@ -309,7 +310,7 @@ class ChainManager:
         filepath = Path(filepath)
 
         try:
-            with open(filepath, 'r') as f:
+            with open(filepath) as f:
                 data = yaml.safe_load(f)
 
             chain = PromptChain.from_dict(data)
@@ -327,15 +328,15 @@ class ChainManager:
         self.chains[chain.name] = chain
         logger.debug(f"Added chain: {chain.name}")
 
-    def get_chain(self, name: str) -> Optional[PromptChain]:
+    def get_chain(self, name: str) -> PromptChain | None:
         """Get a chain by name"""
         return self.chains.get(name)
 
     async def execute_chain(
         self,
-        chain: Union[str, PromptChain],
-        initial_state: Optional[Dict[str, Any]] = None,
-        callbacks: Optional[Dict[str, Callable]] = None
+        chain: str | PromptChain,
+        initial_state: dict[str, Any] | None = None,
+        callbacks: dict[str, Callable] | None = None
     ) -> ChainState:
         """
         Execute a prompt chain
@@ -388,7 +389,7 @@ class ChainManager:
         self,
         chain: PromptChain,
         state: ChainState,
-        callbacks: Optional[Dict[str, Callable]] = None
+        callbacks: dict[str, Callable] | None = None
     ):
         """Execute steps sequentially"""
         for step in chain.steps:
@@ -404,7 +405,7 @@ class ChainManager:
         self,
         chain: PromptChain,
         state: ChainState,
-        callbacks: Optional[Dict[str, Callable]] = None
+        callbacks: dict[str, Callable] | None = None
     ):
         """Execute steps with conditional branching"""
         for step in chain.steps:
@@ -421,7 +422,7 @@ class ChainManager:
         self,
         chain: PromptChain,
         state: ChainState,
-        callbacks: Optional[Dict[str, Callable]] = None
+        callbacks: dict[str, Callable] | None = None
     ):
         """Execute steps iteratively with refinement"""
         for iteration in range(chain.max_iterations):
@@ -446,7 +447,7 @@ class ChainManager:
         self,
         chain: PromptChain,
         state: ChainState,
-        callbacks: Optional[Dict[str, Callable]] = None
+        callbacks: dict[str, Callable] | None = None
     ):
         """Execute steps in parallel"""
         tasks = [
@@ -460,7 +461,7 @@ class ChainManager:
         self,
         chain: PromptChain,
         state: ChainState,
-        callbacks: Optional[Dict[str, Callable]] = None
+        callbacks: dict[str, Callable] | None = None
     ):
         """Execute hybrid chain with mixed patterns"""
         for step in chain.steps:
@@ -480,7 +481,7 @@ class ChainManager:
         self,
         step: ChainStep,
         state: ChainState,
-        callbacks: Optional[Dict[str, Callable]] = None
+        callbacks: dict[str, Callable] | None = None
     ):
         """Execute a single chain step"""
         callbacks = callbacks or {}
@@ -616,9 +617,9 @@ class ChainManager:
 
     def execute_chain_sync(
         self,
-        chain: Union[str, PromptChain],
-        initial_state: Optional[Dict[str, Any]] = None,
-        callbacks: Optional[Dict[str, Callable]] = None
+        chain: str | PromptChain,
+        initial_state: dict[str, Any] | None = None,
+        callbacks: dict[str, Callable] | None = None
     ) -> ChainState:
         """
         Synchronous wrapper for execute_chain
@@ -636,8 +637,8 @@ class ChainManager:
     def create_sequential_chain(
         self,
         name: str,
-        prompts: List[Union[str, Tuple[str, str]]],
-        description: Optional[str] = None
+        prompts: list[str | tuple[str, str]],
+        description: str | None = None
     ) -> PromptChain:
         """
         Create a simple sequential chain from a list of prompts
@@ -677,7 +678,7 @@ class ChainManager:
         self.add_chain(chain)
         return chain
 
-    def save_chain(self, chain: PromptChain, filepath: Union[str, Path]):
+    def save_chain(self, chain: PromptChain, filepath: str | Path):
         """
         Save chain to YAML file
 
@@ -693,7 +694,7 @@ class ChainManager:
         logger.info(f"Saved chain '{chain.name}' to {filepath}")
 
 
-def create_default_chain_manager(executor: Optional[Callable] = None) -> ChainManager:
+def create_default_chain_manager(executor: Callable | None = None) -> ChainManager:
     """Create chain manager with default configuration"""
     manager = ChainManager(executor=executor)
     logger.info("Created default chain manager")

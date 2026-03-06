@@ -6,20 +6,19 @@ expression evaluation, and unit conversions.
 """
 
 import ast
-import operator
-import math
-from typing import Dict, Any, Union, Optional
 import logging
+import math
+import operator
 import re
+from typing import Any
 
 from ..base_tool import (
     BaseTool,
-    ToolMetadata,
-    ToolCategory,
     ParameterSpec,
     ParameterType,
+    ToolCategory,
+    ToolMetadata,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -221,11 +220,11 @@ class Calculator(BaseTool):
         self,
         expression: str,
         operation: str = "calculate",
-        from_unit: Optional[str] = None,
-        to_unit: Optional[str] = None,
-        precision: Optional[int] = None,
+        from_unit: str | None = None,
+        to_unit: str | None = None,
+        precision: int | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute calculator operation.
 
@@ -269,7 +268,7 @@ class Calculator(BaseTool):
             logger.debug(f"Calculator error: {e}")
             raise ValueError(f"Calculation failed: {str(e)}")
 
-    def _evaluate_expression(self, expression: str) -> Union[int, float]:
+    def _evaluate_expression(self, expression: str) -> int | float:
         """
         Safely evaluate a mathematical expression using AST.
 
@@ -332,14 +331,14 @@ class Calculator(BaseTool):
         # Parse expression
         try:
             node = ast.parse(expr, mode='eval').body
-        except SyntaxError as e:
+        except SyntaxError:
             # Try to provide helpful error message
             raise ValueError(f"Invalid expression syntax. Input was: '{expression}'. Please use mathematical operators like +, -, *, /, **, sqrt(), etc.")
 
         # Evaluate AST
         return self._eval_node(node)
 
-    def _eval_node(self, node: ast.AST) -> Union[int, float, list, tuple]:
+    def _eval_node(self, node: ast.AST) -> int | float | list | tuple:
         """
         Recursively evaluate an AST node.
 
@@ -399,7 +398,7 @@ class Calculator(BaseTool):
             raise ValueError(f"Unsupported expression type: {type(node).__name__}")
 
     def _convert_units(
-        self, value: Union[int, float], from_unit: str, to_unit: str
+        self, value: int | float, from_unit: str, to_unit: str
     ) -> float:
         """
         Convert value between units.
@@ -459,7 +458,7 @@ class Calculator(BaseTool):
         else:
             raise ValueError(f"Unknown temperature unit: {to_unit}")
 
-    def _calculate_statistics(self, expression: str) -> Dict[str, float]:
+    def _calculate_statistics(self, expression: str) -> dict[str, float]:
         """
         Calculate statistics for a list of numbers.
 

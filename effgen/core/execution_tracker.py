@@ -11,12 +11,12 @@ Tracks all execution events including:
 - Errors and retries
 """
 
-import time
-from datetime import datetime
-from typing import Dict, List, Optional, Any, Union
-from dataclasses import dataclass, field
-from enum import Enum
 import json
+import time
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any
 
 
 class EventType(Enum):
@@ -57,13 +57,13 @@ class ExecutionEvent:
     """
     type: EventType
     timestamp: float = field(default_factory=time.time)
-    agent_id: Optional[str] = None
+    agent_id: str | None = None
     message: str = ""
-    data: Dict[str, Any] = field(default_factory=dict)
-    parent_event_id: Optional[str] = None
+    data: dict[str, Any] = field(default_factory=dict)
+    parent_event_id: str | None = None
     event_id: str = field(default_factory=lambda: f"evt_{int(time.time()*1000)}")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "type": self.type.value,
@@ -92,17 +92,17 @@ class ExecutionStatus:
         elapsed_time: Time elapsed since start
         estimated_remaining: Estimated time remaining
     """
-    active_agents: List[str] = field(default_factory=list)
+    active_agents: list[str] = field(default_factory=list)
     completed_subtasks: int = 0
     total_subtasks: int = 0
     pending_subtasks: int = 0
     failed_subtasks: int = 0
-    current_operations: List[str] = field(default_factory=list)
+    current_operations: list[str] = field(default_factory=list)
     progress_percentage: float = 0.0
     elapsed_time: float = 0.0
-    estimated_remaining: Optional[float] = None
+    estimated_remaining: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "active_agents": self.active_agents,
@@ -128,13 +128,13 @@ class ExecutionNode:
     node_type: str  # "agent", "subtask", "tool"
     name: str
     status: str  # "pending", "running", "completed", "failed"
-    started_at: Optional[float] = None
-    completed_at: Optional[float] = None
-    parent_id: Optional[str] = None
-    children: List["ExecutionNode"] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    started_at: float | None = None
+    completed_at: float | None = None
+    parent_id: str | None = None
+    children: list["ExecutionNode"] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def get_duration(self) -> Optional[float]:
+    def get_duration(self) -> float | None:
         """Get execution duration in seconds."""
         if self.started_at and self.completed_at:
             return self.completed_at - self.started_at
@@ -142,7 +142,7 @@ class ExecutionNode:
             return time.time() - self.started_at
         return None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "node_id": self.node_id,
@@ -172,7 +172,7 @@ class ExecutionTracker:
     - Final synthesis
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, config: dict[str, Any] | None = None):
         """
         Initialize execution tracker.
 
@@ -180,11 +180,11 @@ class ExecutionTracker:
             config: Optional configuration
         """
         self.config = config or {}
-        self.events: List[ExecutionEvent] = []
-        self.nodes: Dict[str, ExecutionNode] = {}
-        self.root_node_id: Optional[str] = None
-        self.start_time: Optional[float] = None
-        self.end_time: Optional[float] = None
+        self.events: list[ExecutionEvent] = []
+        self.nodes: dict[str, ExecutionNode] = {}
+        self.root_node_id: str | None = None
+        self.start_time: float | None = None
+        self.end_time: float | None = None
         self.active_agents: set = set()
         self.active_tools: set = set()
 
@@ -358,7 +358,7 @@ class ExecutionTracker:
             estimated_remaining=estimated_remaining
         )
 
-    def generate_execution_tree(self) -> Dict[str, Any]:
+    def generate_execution_tree(self) -> dict[str, Any]:
         """
         Generate visual execution tree.
 
@@ -369,7 +369,7 @@ class ExecutionTracker:
             return self.nodes[self.root_node_id].to_dict()
         return {}
 
-    def get_trace(self) -> List[Dict[str, Any]]:
+    def get_trace(self) -> list[dict[str, Any]]:
         """
         Get full execution trace.
 
@@ -474,7 +474,7 @@ class ExecutionTracker:
         }
         return icons.get(event_type, "•")
 
-    def get_summary(self) -> Dict[str, Any]:
+    def get_summary(self) -> dict[str, Any]:
         """
         Get execution summary.
 
@@ -515,7 +515,7 @@ class ExecutionTracker:
         self.active_agents = set()
         self.active_tools = set()
 
-    def get_performance_metrics(self) -> Dict[str, Any]:
+    def get_performance_metrics(self) -> dict[str, Any]:
         """
         Get detailed performance metrics from execution.
 
@@ -535,7 +535,7 @@ class ExecutionTracker:
 
         return metrics
 
-    def _calculate_timing_metrics(self) -> Dict[str, Any]:
+    def _calculate_timing_metrics(self) -> dict[str, Any]:
         """Calculate timing-related metrics."""
         status = self.get_live_status()
 
@@ -567,7 +567,7 @@ class ExecutionTracker:
             }
         }
 
-    def _calculate_throughput_metrics(self) -> Dict[str, Any]:
+    def _calculate_throughput_metrics(self) -> dict[str, Any]:
         """Calculate throughput metrics."""
         status = self.get_live_status()
 
@@ -580,7 +580,7 @@ class ExecutionTracker:
             "tool_calls_per_second": len([e for e in self.events if e.type == EventType.TOOL_CALL_START]) / status.elapsed_time if status.elapsed_time > 0 else 0
         }
 
-    def _calculate_resource_usage(self) -> Dict[str, Any]:
+    def _calculate_resource_usage(self) -> dict[str, Any]:
         """Calculate resource usage metrics."""
         # Count different resource types
         tool_calls = sum(1 for e in self.events if e.type == EventType.TOOL_CALL_START)
@@ -603,7 +603,7 @@ class ExecutionTracker:
             "total_events_tracked": len(self.events)
         }
 
-    def _calculate_efficiency_metrics(self) -> Dict[str, Any]:
+    def _calculate_efficiency_metrics(self) -> dict[str, Any]:
         """Calculate efficiency metrics."""
         status = self.get_live_status()
 
@@ -631,7 +631,7 @@ class ExecutionTracker:
             "avg_time_per_subtask": round(status.elapsed_time / status.completed_subtasks, 2) if status.completed_subtasks > 0 else 0
         }
 
-    def _identify_bottlenecks(self) -> List[Dict[str, Any]]:
+    def _identify_bottlenecks(self) -> list[dict[str, Any]]:
         """Identify performance bottlenecks."""
         bottlenecks = []
 
@@ -683,8 +683,8 @@ class ExecutionTracker:
             filepath: Path to save trace
             format: Export format (json, csv, html)
         """
-        import json
         import csv
+        import json
 
         if format == "json":
             data = {
@@ -745,7 +745,7 @@ class ExecutionTracker:
         # Add summary
         status = self.get_live_status()
         html_parts.append('<div class="summary">')
-        html_parts.append(f"<h2>Summary</h2>")
+        html_parts.append("<h2>Summary</h2>")
         html_parts.append(f"<p>Total Events: {len(self.events)}</p>")
         html_parts.append(f"<p>Completed: {status.completed_subtasks}/{status.total_subtasks}</p>")
         html_parts.append(f"<p>Elapsed Time: {status.elapsed_time:.2f}s</p>")
@@ -756,7 +756,7 @@ class ExecutionTracker:
         html_parts.append("<h2>Events</h2>")
         for event in self.events:
             timestamp = datetime.fromtimestamp(event.timestamp).strftime("%H:%M:%S.%f")[:-3]
-            css_class = event.type.value.replace("_", " ")
+            event.type.value.replace("_", " ")
             html_parts.append(f'<div class="event {event.type.value}">')
             html_parts.append(f'<span class="timestamp">{timestamp}</span> ')
             html_parts.append(f'<strong>{event.type.value}</strong>: {event.message}')
@@ -768,7 +768,7 @@ class ExecutionTracker:
 
         return "\n".join(html_parts)
 
-    def get_critical_path(self) -> List[Dict[str, Any]]:
+    def get_critical_path(self) -> list[dict[str, Any]]:
         """
         Identify the critical path in execution (longest dependency chain).
 
@@ -778,7 +778,7 @@ class ExecutionTracker:
         if not self.root_node_id or self.root_node_id not in self.nodes:
             return []
 
-        def calculate_path_length(node_id: str, memo: Dict[str, float]) -> float:
+        def calculate_path_length(node_id: str, memo: dict[str, float]) -> float:
             if node_id in memo:
                 return memo[node_id]
 
@@ -802,7 +802,7 @@ class ExecutionTracker:
 
         # Find critical path
         memo = {}
-        def find_critical_path(node_id: str) -> List[Dict[str, Any]]:
+        def find_critical_path(node_id: str) -> list[dict[str, Any]]:
             if node_id not in self.nodes:
                 return []
 

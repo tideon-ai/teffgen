@@ -7,24 +7,23 @@ allowing them to be used by MCP clients like Claude Desktop.
 
 import asyncio
 import json
-import sys
 import logging
-from typing import Dict, Any, List, Optional, Callable
+import sys
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
+from ...base_tool import ToolMetadata
+from ...registry import ToolRegistry
 from .protocol import (
-    MCPProtocolHandler,
-    MCPTool,
-    MCPResource,
+    ErrorCode,
     MCPCapabilities,
+    MCPNotification,
+    MCPProtocolHandler,
     MCPRequest,
     MCPResponse,
-    MCPNotification,
-    ErrorCode,
+    MCPTool,
 )
-from ...base_tool import BaseTool, ToolMetadata
-from ...registry import ToolRegistry
-
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +34,7 @@ class MCPServerConfig:
     name: str
     version: str
     capabilities: MCPCapabilities
-    tools_registry: Optional[ToolRegistry] = None
+    tools_registry: ToolRegistry | None = None
 
 
 class MCPServer:
@@ -67,7 +66,7 @@ class MCPServer:
         self,
         name: str,
         version: str,
-        tools_registry: Optional[ToolRegistry] = None,
+        tools_registry: ToolRegistry | None = None,
         enable_sampling: bool = False,
     ):
         """
@@ -90,7 +89,7 @@ class MCPServer:
             sampling=enable_sampling,
         )
         self._initialized = False
-        self._methods: Dict[str, Callable] = {
+        self._methods: dict[str, Callable] = {
             "initialize": self._handle_initialize,
             "tools/list": self._handle_tools_list,
             "tools/call": self._handle_tool_call,
@@ -98,7 +97,7 @@ class MCPServer:
             "resources/read": self._handle_resource_read,
         }
 
-    async def _handle_initialize(self, params: Dict[str, Any]) -> Dict[str, Any]:
+    async def _handle_initialize(self, params: dict[str, Any]) -> dict[str, Any]:
         """
         Handle initialize request.
 
@@ -108,8 +107,8 @@ class MCPServer:
         Returns:
             Initialization response
         """
-        protocol_version = params.get("protocolVersion")
-        client_capabilities = MCPCapabilities.from_dict(
+        params.get("protocolVersion")
+        MCPCapabilities.from_dict(
             params.get("capabilities", {})
         )
         client_info = params.get("clientInfo", {})
@@ -133,7 +132,7 @@ class MCPServer:
             },
         }
 
-    async def _handle_tools_list(self, params: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    async def _handle_tools_list(self, params: dict[str, Any] | None) -> dict[str, Any]:
         """
         Handle tools list request.
 
@@ -153,7 +152,7 @@ class MCPServer:
 
         return {"tools": tools}
 
-    async def _handle_tool_call(self, params: Dict[str, Any]) -> Any:
+    async def _handle_tool_call(self, params: dict[str, Any]) -> Any:
         """
         Handle tool call request.
 
@@ -200,7 +199,7 @@ class MCPServer:
                 "isError": True,
             }
 
-    async def _handle_resources_list(self, params: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    async def _handle_resources_list(self, params: dict[str, Any] | None) -> dict[str, Any]:
         """
         Handle resources list request.
 
@@ -214,7 +213,7 @@ class MCPServer:
         # This can be extended to expose agent state, logs, etc.
         return {"resources": []}
 
-    async def _handle_resource_read(self, params: Dict[str, Any]) -> Any:
+    async def _handle_resource_read(self, params: dict[str, Any]) -> Any:
         """
         Handle resource read request.
 
@@ -436,7 +435,7 @@ class MCPServer:
 def create_server(
     name: str = "effgen-tools",
     version: str = "1.0.0",
-    tools_registry: Optional[ToolRegistry] = None,
+    tools_registry: ToolRegistry | None = None,
 ) -> MCPServer:
     """
     Create an MCP server instance.

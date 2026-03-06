@@ -12,22 +12,24 @@ with features including:
 
 import logging
 import warnings
-from typing import Iterator, Optional, List, Dict, Any
+from collections.abc import Iterator
+
 import torch
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
     BitsAndBytesConfig,
+)
+from transformers import (
     GenerationConfig as HFGenerationConfig,
 )
 
 from effgen.models.base import (
-    BaseModel,
     BatchModel,
-    ModelType,
     GenerationConfig,
     GenerationResult,
-    TokenCount
+    ModelType,
+    TokenCount,
 )
 
 # Suppress common warnings
@@ -63,14 +65,14 @@ class TransformersEngine(BatchModel):
     def __init__(
         self,
         model_name: str,
-        quantization_bits: Optional[int] = None,
+        quantization_bits: int | None = None,
         device_map: str = "auto",
         use_flash_attention: bool = True,
-        torch_dtype: Optional[torch.dtype] = None,
+        torch_dtype: torch.dtype | None = None,
         trust_remote_code: bool = False,
         low_cpu_mem_usage: bool = True,
-        max_memory: Optional[Dict[int, str]] = None,
-        offload_folder: Optional[str] = None,
+        max_memory: dict[int, str] | None = None,
+        offload_folder: str | None = None,
         **kwargs
     ):
         """
@@ -294,7 +296,7 @@ class TransformersEngine(BatchModel):
 
     def _create_generation_config(
         self,
-        config: Optional[GenerationConfig] = None
+        config: GenerationConfig | None = None
     ) -> tuple[HFGenerationConfig, list[str]]:
         """
         Create HuggingFace GenerationConfig from our GenerationConfig.
@@ -331,7 +333,7 @@ class TransformersEngine(BatchModel):
     def generate(
         self,
         prompt: str,
-        config: Optional[GenerationConfig] = None,
+        config: GenerationConfig | None = None,
         **kwargs
     ) -> GenerationResult:
         """
@@ -462,7 +464,7 @@ class TransformersEngine(BatchModel):
     def generate_stream(
         self,
         prompt: str,
-        config: Optional[GenerationConfig] = None,
+        config: GenerationConfig | None = None,
         **kwargs
     ) -> Iterator[str]:
         """
@@ -501,8 +503,9 @@ class TransformersEngine(BatchModel):
                 inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
 
             # Use TextIteratorStreamer for streaming
-            from transformers import TextIteratorStreamer
             from threading import Thread
+
+            from transformers import TextIteratorStreamer
 
             streamer = TextIteratorStreamer(
                 self.tokenizer,
@@ -525,8 +528,7 @@ class TransformersEngine(BatchModel):
             thread.start()
 
             # Yield tokens as they're generated
-            for text in streamer:
-                yield text
+            yield from streamer
 
             thread.join()
 
@@ -536,10 +538,10 @@ class TransformersEngine(BatchModel):
 
     def generate_batch(
         self,
-        prompts: List[str],
-        config: Optional[GenerationConfig] = None,
+        prompts: list[str],
+        config: GenerationConfig | None = None,
         **kwargs
-    ) -> List[GenerationResult]:
+    ) -> list[GenerationResult]:
         """
         Generate text for multiple prompts in a batch.
 

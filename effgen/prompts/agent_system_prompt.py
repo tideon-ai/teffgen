@@ -7,7 +7,6 @@ Designed for Small Language Models (1B-7B parameters).
 """
 
 import logging
-from typing import Dict, List, Optional, Set
 
 from ..tools.base_tool import BaseTool, ToolCategory
 
@@ -15,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 # Tool-category-specific instructions
-CATEGORY_INSTRUCTIONS: Dict[ToolCategory, str] = {
+CATEGORY_INSTRUCTIONS: dict[ToolCategory, str] = {
     ToolCategory.COMPUTATION: (
         "- For calculations and math, always use the calculator or code execution tools first.\n"
         "- Do NOT try to compute numbers in your head — use tools for accuracy."
@@ -60,7 +59,7 @@ class AgentSystemPromptBuilder:
     6. Fallback instructions
     """
 
-    def __init__(self, model_name: Optional[str] = None):
+    def __init__(self, model_name: str | None = None):
         """
         Initialize the prompt builder.
 
@@ -71,9 +70,9 @@ class AgentSystemPromptBuilder:
 
     def build(
         self,
-        tools: List[BaseTool],
+        tools: list[BaseTool],
         agent_name: str = "assistant",
-        base_system_prompt: Optional[str] = None,
+        base_system_prompt: str | None = None,
         enable_fallback: bool = True,
         verbose: bool = True,
     ) -> str:
@@ -110,7 +109,7 @@ class AgentSystemPromptBuilder:
         return "\n\n".join(s for s in sections if s)
 
     def _build_role_section(
-        self, agent_name: str, base_prompt: Optional[str]
+        self, agent_name: str, base_prompt: str | None
     ) -> str:
         """Build the role definition section."""
         if base_prompt:
@@ -122,7 +121,7 @@ class AgentSystemPromptBuilder:
             "Always think carefully before acting, and use the most appropriate tool for each task."
         )
 
-    def _get_tool_categories(self, tools: List[BaseTool]) -> Set[ToolCategory]:
+    def _get_tool_categories(self, tools: list[BaseTool]) -> set[ToolCategory]:
         """Get unique tool categories from the tool list."""
         categories = set()
         for tool in tools:
@@ -130,7 +129,7 @@ class AgentSystemPromptBuilder:
                 categories.add(tool.category)
         return categories
 
-    def _build_category_tips(self, categories: Set[ToolCategory]) -> str:
+    def _build_category_tips(self, categories: set[ToolCategory]) -> str:
         """Build category-specific tips."""
         tips = []
         for cat in sorted(categories, key=lambda c: c.value):
@@ -143,7 +142,7 @@ class AgentSystemPromptBuilder:
 
         return "Tool Usage Tips:\n" + "\n".join(tips)
 
-    def _build_mistakes_section(self, tools: List[BaseTool]) -> str:
+    def _build_mistakes_section(self, tools: list[BaseTool]) -> str:
         """Build common mistakes to avoid."""
         tool_names = [t.name for t in tools]
 

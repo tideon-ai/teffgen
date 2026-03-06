@@ -13,16 +13,15 @@ Usage:
 """
 
 import logging
-import time
-from typing import Optional, Dict, Any
 from contextlib import contextmanager
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 try:
     from opentelemetry import trace
     from opentelemetry.sdk.trace import TracerProvider
-    from opentelemetry.sdk.trace.export import SimpleSpanProcessor, ConsoleSpanExporter
+    from opentelemetry.sdk.trace.export import ConsoleSpanExporter, SimpleSpanProcessor
     OTEL_AVAILABLE = True
 except ImportError:
     OTEL_AVAILABLE = False
@@ -34,7 +33,7 @@ class NoOpSpan:
     def set_attribute(self, key: str, value: Any) -> None:
         pass
 
-    def add_event(self, name: str, attributes: Optional[Dict[str, Any]] = None) -> None:
+    def add_event(self, name: str, attributes: dict[str, Any] | None = None) -> None:
         pass
 
     def set_status(self, status: Any) -> None:

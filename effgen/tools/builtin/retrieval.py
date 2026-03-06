@@ -13,27 +13,27 @@ Features:
 """
 
 import csv
+import hashlib
+import json
+import logging
 import math
 import os
-import json
 import pickle
-import logging
-import hashlib
 import re
 from collections import Counter
-from pathlib import Path
-from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
 import numpy as np
 
 from ..base_tool import (
     BaseTool,
-    ToolMetadata,
-    ToolCategory,
     ParameterSpec,
     ParameterType,
+    ToolCategory,
+    ToolMetadata,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -43,8 +43,8 @@ class Document:
     """A document in the knowledge base."""
     id: str
     content: str
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    embedding: Optional[np.ndarray] = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+    embedding: np.ndarray | None = None
 
 
 @dataclass
@@ -62,7 +62,7 @@ class RetrievalResult:
 class EmbeddingProvider:
     """Base class for embedding providers."""
 
-    def embed(self, texts: List[str]) -> np.ndarray:
+    def embed(self, texts: list[str]) -> np.ndarray:
         """Embed a list of texts."""
         raise NotImplementedError
 
@@ -91,7 +91,7 @@ class SentenceTransformerEmbedding(EmbeddingProvider):
                 )
         return self._model
 
-    def embed(self, texts: List[str]) -> np.ndarray:
+    def embed(self, texts: list[str]) -> np.ndarray:
         model = self._load_model()
         embeddings = model.encode(texts, convert_to_numpy=True)
         return embeddings
@@ -120,12 +120,12 @@ class SimpleEmbedding(EmbeddingProvider):
                 )
         return self._vectorizer
 
-    def fit(self, texts: List[str]):
+    def fit(self, texts: list[str]):
         vectorizer = self._get_vectorizer()
         vectorizer.fit(texts)
         self._fitted = True
 
-    def embed(self, texts: List[str]) -> np.ndarray:
+    def embed(self, texts: list[str]) -> np.ndarray:
         vectorizer = self._get_vectorizer()
         if not self._fitted:
             embeddings = vectorizer.fit_transform(texts).toarray()
@@ -142,7 +142,7 @@ class SimpleEmbedding(EmbeddingProvider):
 class ChunkingStrategy:
     """Base chunking strategy."""
 
-    def chunk(self, text: str, doc_id: str) -> List[Document]:
+    def chunk(self, text: str, doc_id: str) -> list[Document]:
         raise NotImplementedError
 
 
@@ -153,7 +153,7 @@ class FixedSizeChunker(ChunkingStrategy):
         self.chunk_size = chunk_size
         self.overlap = overlap
 
-    def chunk(self, text: str, doc_id: str) -> List[Document]:
+    def chunk(self, text: str, doc_id: str) -> list[Document]:
         chunks = []
         start = 0
         chunk_num = 0
@@ -198,16 +198,16 @@ class SentenceChunker(ChunkingStrategy):
         self.max_chunk_size = max_chunk_size
         self.overlap_sentences = overlap_sentences
 
-    def _split_sentences(self, text: str) -> List[str]:
+    def _split_sentences(self, text: str) -> list[str]:
         return re.split(r'(?<=[.!?])\s+', text.strip())
 
-    def chunk(self, text: str, doc_id: str) -> List[Document]:
+    def chunk(self, text: str, doc_id: str) -> list[Document]:
         sentences = self._split_sentences(text)
         if not sentences:
             return [Document(id=f"{doc_id}_chunk_0", content=text, metadata={"parent_doc_id": doc_id, "chunking": "sentence"})]
 
         chunks = []
-        current_sents: List[str] = []
+        current_sents: list[str] = []
         current_len = 0
         chunk_num = 0
 
@@ -248,13 +248,13 @@ class ParagraphChunker(ChunkingStrategy):
     def __init__(self, max_chunk_size: int = 1000):
         self.max_chunk_size = max_chunk_size
 
-    def chunk(self, text: str, doc_id: str) -> List[Document]:
+    def chunk(self, text: str, doc_id: str) -> list[Document]:
         paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
         if not paragraphs:
             return [Document(id=f"{doc_id}_chunk_0", content=text, metadata={"parent_doc_id": doc_id, "chunking": "paragraph"})]
 
         chunks = []
-        current_paras: List[str] = []
+        current_paras: list[str] = []
         current_len = 0
         chunk_num = 0
 
@@ -286,12 +286,12 @@ class RecursiveChunker(ChunkingStrategy):
     """Recursive character text splitter: tries multiple separators in order."""
 
     def __init__(self, chunk_size: int = 500, overlap: int = 100,
-                 separators: Optional[List[str]] = None):
+                 separators: list[str] | None = None):
         self.chunk_size = chunk_size
         self.overlap = overlap
         self.separators = separators or ["\n\n", "\n", ". ", " ", ""]
 
-    def _split(self, text: str, separators: List[str]) -> List[str]:
+    def _split(self, text: str, separators: list[str]) -> list[str]:
         if not text:
             return []
 
@@ -328,7 +328,7 @@ class RecursiveChunker(ChunkingStrategy):
 
         return result
 
-    def chunk(self, text: str, doc_id: str) -> List[Document]:
+    def chunk(self, text: str, doc_id: str) -> list[Document]:
         pieces = self._split(text, self.separators)
         chunks = []
         for i, piece in enumerate(pieces):
@@ -344,23 +344,23 @@ class RecursiveChunker(ChunkingStrategy):
 # Document Loaders
 # ---------------------------------------------------------------------------
 
-def load_txt(path: Path) -> List[Dict[str, Any]]:
+def load_txt(path: Path) -> list[dict[str, Any]]:
     """Load plain text file."""
     content = path.read_text(encoding="utf-8")
     return [{"content": content, "id": path.stem, "metadata": {"source": str(path), "type": "txt"}}]
 
 
-def load_markdown(path: Path) -> List[Dict[str, Any]]:
+def load_markdown(path: Path) -> list[dict[str, Any]]:
     """Load markdown file, preserving structure."""
     content = path.read_text(encoding="utf-8")
     return [{"content": content, "id": path.stem, "metadata": {"source": str(path), "type": "markdown"}}]
 
 
-def load_csv(path: Path, text_columns: Optional[List[str]] = None) -> List[Dict[str, Any]]:
+def load_csv(path: Path, text_columns: list[str] | None = None) -> list[dict[str, Any]]:
     """Load CSV/TSV file, treating each row as a document."""
     delimiter = '\t' if path.suffix.lower() in ('.tsv',) else ','
     documents = []
-    with open(path, "r", encoding="utf-8", newline="") as f:
+    with open(path, encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f, delimiter=delimiter)
         for i, row in enumerate(reader):
             if text_columns:
@@ -376,7 +376,7 @@ def load_csv(path: Path, text_columns: Optional[List[str]] = None) -> List[Dict[
     return documents
 
 
-def load_json_file(path: Path) -> List[Dict[str, Any]]:
+def load_json_file(path: Path) -> list[dict[str, Any]]:
     """Load JSON file."""
     data = json.loads(path.read_text(encoding="utf-8"))
     documents = []
@@ -403,10 +403,10 @@ def load_json_file(path: Path) -> List[Dict[str, Any]]:
     return documents
 
 
-def load_jsonl(path: Path) -> List[Dict[str, Any]]:
+def load_jsonl(path: Path) -> list[dict[str, Any]]:
     """Load JSONL file."""
     documents = []
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         for i, line in enumerate(f):
             line = line.strip()
             if not line:
@@ -424,11 +424,11 @@ def load_jsonl(path: Path) -> List[Dict[str, Any]]:
     return documents
 
 
-def load_pdf(path: Path) -> List[Dict[str, Any]]:
+def load_pdf(path: Path) -> list[dict[str, Any]]:
     """
     Load PDF file. Tries pymupdf (fitz), then pdfplumber, then falls back gracefully.
     """
-    text_pages: List[str] = []
+    text_pages: list[str] = []
 
     # Try pymupdf first
     try:
@@ -487,17 +487,17 @@ class SimpleBM25:
     def __init__(self, k1: float = 1.5, b: float = 0.75):
         self.k1 = k1
         self.b = b
-        self._doc_freqs: Dict[str, int] = Counter()
-        self._doc_lens: List[int] = []
+        self._doc_freqs: dict[str, int] = Counter()
+        self._doc_lens: list[int] = []
         self._avg_dl: float = 0
         self._n_docs: int = 0
-        self._tokenized_docs: List[List[str]] = []
+        self._tokenized_docs: list[list[str]] = []
 
     @staticmethod
-    def _tokenize(text: str) -> List[str]:
+    def _tokenize(text: str) -> list[str]:
         return re.findall(r'\b\w+\b', text.lower())
 
-    def index(self, documents: List[str]):
+    def index(self, documents: list[str]):
         """Index a list of document strings."""
         self._tokenized_docs = [self._tokenize(d) for d in documents]
         self._n_docs = len(documents)
@@ -564,12 +564,12 @@ class Retrieval(BaseTool):
 
     def __init__(
         self,
-        embedding_provider: Optional[EmbeddingProvider] = None,
+        embedding_provider: EmbeddingProvider | None = None,
         chunk_size: int = 500,
         chunk_overlap: int = 100,
         chunking_strategy: str = "fixed",
-        index_path: Optional[str] = None,
-        knowledge_base_path: Optional[str] = None,
+        index_path: str | None = None,
+        knowledge_base_path: str | None = None,
         enable_hybrid_search: bool = True,
         hybrid_alpha: float = 0.7,
     ):
@@ -704,12 +704,12 @@ class Retrieval(BaseTool):
                 self.embedding_provider = SimpleEmbedding()
 
         # Document storage
-        self.documents: Dict[str, Document] = {}
-        self.embeddings_matrix: Optional[np.ndarray] = None
-        self.doc_ids: List[str] = []
+        self.documents: dict[str, Document] = {}
+        self.embeddings_matrix: np.ndarray | None = None
+        self.doc_ids: list[str] = []
 
         # BM25 index for hybrid search
-        self._bm25: Optional[SimpleBM25] = None
+        self._bm25: SimpleBM25 | None = None
 
         # Load existing index if available
         if index_path and os.path.exists(index_path):
@@ -739,13 +739,13 @@ class Retrieval(BaseTool):
         await super().initialize()
         logger.info("Retrieval tool initialized")
 
-    def _chunk_text(self, text: str, doc_id: str) -> List[Document]:
+    def _chunk_text(self, text: str, doc_id: str) -> list[Document]:
         """Split text into chunks using the configured strategy."""
         return self._chunker.chunk(text, doc_id)
 
     def add_documents(
         self,
-        documents: List[Dict[str, Any]],
+        documents: list[dict[str, Any]],
         chunk: bool = True,
     ) -> int:
         """
@@ -876,9 +876,9 @@ class Retrieval(BaseTool):
         query: str,
         top_k: int = 5,
         score_threshold: float = 0.0,
-        filter_metadata: Optional[Dict[str, Any]] = None,
+        filter_metadata: dict[str, Any] | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Execute retrieval query.
 
@@ -947,7 +947,7 @@ class Retrieval(BaseTool):
             "query": query,
         }
 
-    def save_index(self, path: Optional[str] = None):
+    def save_index(self, path: str | None = None):
         """Save the index to disk."""
         path = path or self.index_path
         if not path:

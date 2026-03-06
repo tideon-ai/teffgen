@@ -9,10 +9,9 @@ The router analyzes tasks and makes intelligent decisions about:
 """
 
 import logging
-import re
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 
 from .complexity_analyzer import ComplexityAnalyzer, ComplexityScore
 from .decomposition_engine import DecompositionEngine, TaskStructure
@@ -49,14 +48,14 @@ class RoutingDecision:
     use_sub_agents: bool
     strategy: RoutingStrategy
     num_sub_agents: int = 0
-    specializations: List[str] = field(default_factory=list)
-    decomposition: List[SubTask] = field(default_factory=list)
+    specializations: list[str] = field(default_factory=list)
+    decomposition: list[SubTask] = field(default_factory=list)
     confidence_score: float = 0.0
-    complexity_score: Optional[ComplexityScore] = None
+    complexity_score: ComplexityScore | None = None
     reasoning: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "use_sub_agents": self.use_sub_agents,
@@ -114,8 +113,8 @@ class SubAgentRouter:
         ]
     }
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None,
-                 llm_client: Optional[Any] = None):
+    def __init__(self, config: dict[str, Any] | None = None,
+                 llm_client: Any | None = None):
         """
         Initialize router.
 
@@ -136,7 +135,7 @@ class SubAgentRouter:
         )
         self.history = []  # Track routing decisions for learning
 
-    def should_use_sub_agents(self, task: str, context: Optional[Dict[str, Any]] = None) -> RoutingDecision:
+    def should_use_sub_agents(self, task: str, context: dict[str, Any] | None = None) -> RoutingDecision:
         """
         Public API to determine if sub-agents should be used.
 
@@ -180,7 +179,7 @@ class SubAgentRouter:
             confidence_score=0.8 if use_sub_agents else 0.9
         )
 
-    def route(self, task: str, context: Optional[Dict[str, Any]] = None) -> RoutingDecision:
+    def route(self, task: str, context: dict[str, Any] | None = None) -> RoutingDecision:
         """
         Main routing decision function.
 
@@ -320,7 +319,7 @@ class SubAgentRouter:
         triggers = self.config["keyword_triggers"]
         return any(trigger in task_lower for trigger in triggers)
 
-    def _get_matched_triggers(self, task: str) -> List[str]:
+    def _get_matched_triggers(self, task: str) -> list[str]:
         """Get list of matched keyword triggers."""
         task_lower = task.lower()
         triggers = self.config["keyword_triggers"]
@@ -371,7 +370,7 @@ class SubAgentRouter:
         # Default to sequential for complex single tasks
         return RoutingStrategy.SEQUENTIAL_SUB_AGENTS
 
-    def _identify_specializations(self, decomposition: List[SubTask]) -> List[str]:
+    def _identify_specializations(self, decomposition: list[SubTask]) -> list[str]:
         """
         Identify which specialized sub-agents are needed.
 
@@ -411,12 +410,12 @@ class SubAgentRouter:
         if not specializations:
             specializations.add("general")
 
-        return sorted(list(specializations))
+        return sorted(specializations)
 
     def _calculate_confidence(self,
                              structure: TaskStructure,
                              complexity: ComplexityScore,
-                             decomposition: List[SubTask]) -> float:
+                             decomposition: list[SubTask]) -> float:
         """
         Calculate confidence in routing decision.
 
@@ -514,7 +513,7 @@ class SubAgentRouter:
         if len(self.history) > max_history:
             self.history = self.history[-max_history:]
 
-    def get_decision_history(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+    def get_decision_history(self, limit: int | None = None) -> list[dict[str, Any]]:
         """
         Get routing decision history.
 
@@ -528,7 +527,7 @@ class SubAgentRouter:
             return self.history[-limit:]
         return self.history
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get statistics about routing decisions.
 
@@ -572,7 +571,7 @@ class SubAgentRouter:
             ) / max(sub_agent_count, 1)
         }
 
-    def analyze_routing_patterns(self) -> Dict[str, Any]:
+    def analyze_routing_patterns(self) -> dict[str, Any]:
         """
         Analyze historical routing patterns to identify trends.
 
@@ -595,7 +594,7 @@ class SubAgentRouter:
 
         return patterns
 
-    def _identify_trends(self) -> Dict[str, Any]:
+    def _identify_trends(self) -> dict[str, Any]:
         """Identify trends in routing decisions."""
         if len(self.history) < 5:
             return {"message": "Insufficient data for trend analysis"}
@@ -622,7 +621,7 @@ class SubAgentRouter:
             "sample_size": len(recent_decisions)
         }
 
-    def _calculate_trend_direction(self, values: List[float]) -> str:
+    def _calculate_trend_direction(self, values: list[float]) -> str:
         """Calculate if trend is increasing, decreasing, or stable."""
         if len(values) < 3:
             return "insufficient_data"
@@ -639,7 +638,7 @@ class SubAgentRouter:
         else:
             return "decreasing"
 
-    def _calculate_accuracy_metrics(self) -> Dict[str, Any]:
+    def _calculate_accuracy_metrics(self) -> dict[str, Any]:
         """Calculate routing accuracy metrics."""
         # Placeholder for actual accuracy calculation
         # Would require ground truth or feedback data
@@ -651,7 +650,7 @@ class SubAgentRouter:
             ) / len(self.history) if self.history else 0
         }
 
-    def _generate_optimization_suggestions(self) -> List[str]:
+    def _generate_optimization_suggestions(self) -> list[str]:
         """Generate suggestions for optimizing routing decisions."""
         suggestions = []
         stats = self.get_statistics()
@@ -704,8 +703,8 @@ class SubAgentRouter:
             filepath: Path to export file
             format: Export format (json, csv)
         """
-        import json
         import csv
+        import json
 
         if format == "json":
             with open(filepath, 'w') as f:
@@ -746,7 +745,7 @@ class SubAgentRouter:
         else:
             self.history = []
 
-    def get_strategy_recommendations(self, task_characteristics: Dict[str, Any]) -> List[str]:
+    def get_strategy_recommendations(self, task_characteristics: dict[str, Any]) -> list[str]:
         """
         Get strategy recommendations based on task characteristics.
 
@@ -804,7 +803,7 @@ class SubAgentRouter:
 
         return recommendations
 
-    def simulate_routing(self, task: str, override_config: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def simulate_routing(self, task: str, override_config: dict[str, Any] | None = None) -> dict[str, Any]:
         """
         Simulate routing decision without recording to history.
 

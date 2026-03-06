@@ -20,9 +20,7 @@ import importlib
 import importlib.util
 import logging
 import os
-import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Type
 
 from effgen.tools.base_tool import BaseTool
 from effgen.tools.registry import ToolRegistry, get_registry
@@ -47,14 +45,14 @@ class ToolPlugin:
     name: str = ""
     version: str = "0.1.0"
     description: str = ""
-    tools: List[Type[BaseTool]] = []
+    tools: list[type[BaseTool]] = []
 
     def __init__(
         self,
-        name: Optional[str] = None,
-        version: Optional[str] = None,
-        description: Optional[str] = None,
-        tools: Optional[List[Type[BaseTool]]] = None,
+        name: str | None = None,
+        version: str | None = None,
+        description: str | None = None,
+        tools: list[type[BaseTool]] | None = None,
     ):
         # Constructor args take priority, then class-level attrs, then defaults
         if name is not None:
@@ -74,13 +72,13 @@ class ToolPlugin:
         elif not self.tools and type(self).tools:
             self.tools = list(type(self).tools)
 
-    def register(self, registry: ToolRegistry) -> List[str]:
+    def register(self, registry: ToolRegistry) -> list[str]:
         """Register all tools from this plugin into *registry*.
 
         Returns:
             List of registered tool names.
         """
-        registered: List[str] = []
+        registered: list[str] = []
         for tool_cls in self.tools:
             try:
                 registry.register_tool(tool_cls)
@@ -100,12 +98,12 @@ class ToolPlugin:
 class PluginManager:
     """Discovers and loads tool plugins from multiple sources."""
 
-    def __init__(self, registry: Optional[ToolRegistry] = None):
+    def __init__(self, registry: ToolRegistry | None = None):
         self.registry = registry or get_registry()
-        self._loaded: Dict[str, ToolPlugin] = {}
+        self._loaded: dict[str, ToolPlugin] = {}
 
     @property
-    def loaded_plugins(self) -> Dict[str, ToolPlugin]:
+    def loaded_plugins(self) -> dict[str, ToolPlugin]:
         """Return mapping of loaded plugin name → ToolPlugin."""
         return dict(self._loaded)
 
@@ -113,25 +111,20 @@ class PluginManager:
     # Discovery
     # ------------------------------------------------------------------
 
-    def discover_all(self) -> List[str]:
+    def discover_all(self) -> list[str]:
         """Run all discovery methods and return names of loaded plugins."""
-        loaded: List[str] = []
+        loaded: list[str] = []
         loaded.extend(self.discover_entry_points())
         loaded.extend(self.discover_user_dir())
         loaded.extend(self.discover_env_dir())
         return loaded
 
-    def discover_entry_points(self) -> List[str]:
+    def discover_entry_points(self) -> list[str]:
         """Load plugins from the ``effgen.plugins`` entry-point group."""
-        loaded: List[str] = []
+        loaded: list[str] = []
         try:
-            if sys.version_info >= (3, 10):
-                from importlib.metadata import entry_points
-                eps = entry_points(group="effgen.plugins")
-            else:
-                from importlib.metadata import entry_points as _ep
-                all_eps = _ep()
-                eps = all_eps.get("effgen.plugins", [])
+            from importlib.metadata import entry_points
+            eps = entry_points(group="effgen.plugins")
         except Exception:
             logger.debug("No entry points found for effgen.plugins")
             return loaded
@@ -151,21 +144,21 @@ class PluginManager:
                 logger.warning("Failed to load entry-point plugin '%s': %s", ep.name, exc)
         return loaded
 
-    def discover_user_dir(self) -> List[str]:
+    def discover_user_dir(self) -> list[str]:
         """Load plugins from ``~/.effgen/plugins/``."""
         user_dir = Path.home() / ".effgen" / "plugins"
         return self._discover_directory(user_dir)
 
-    def discover_env_dir(self) -> List[str]:
+    def discover_env_dir(self) -> list[str]:
         """Load plugins from ``EFFGEN_PLUGINS_DIR`` environment variable."""
         env_path = os.environ.get("EFFGEN_PLUGINS_DIR")
         if not env_path:
             return []
         return self._discover_directory(Path(env_path))
 
-    def _discover_directory(self, directory: Path) -> List[str]:
+    def _discover_directory(self, directory: Path) -> list[str]:
         """Scan *directory* for Python files containing ToolPlugin subclasses."""
-        loaded: List[str] = []
+        loaded: list[str] = []
         if not directory.is_dir():
             return loaded
 
@@ -203,14 +196,14 @@ class PluginManager:
         spec.loader.exec_module(module)
         return module
 
-    def load_plugin(self, plugin: ToolPlugin) -> List[str]:
+    def load_plugin(self, plugin: ToolPlugin) -> list[str]:
         """Manually load and register a single plugin instance."""
         registered = plugin.register(self.registry)
         self._loaded[plugin.name] = plugin
         return registered
 
 
-def discover_plugins(registry: Optional[ToolRegistry] = None) -> List[str]:
+def discover_plugins(registry: ToolRegistry | None = None) -> list[str]:
     """Convenience function: discover and load all available plugins."""
     mgr = PluginManager(registry)
     return mgr.discover_all()

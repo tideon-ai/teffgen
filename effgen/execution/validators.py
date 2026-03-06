@@ -7,7 +7,6 @@ detecting dangerous patterns and ensuring safe execution practices.
 
 import ast
 import re
-from typing import List, Dict, Tuple, Optional, Set
 from dataclasses import dataclass
 from enum import Enum
 
@@ -25,16 +24,16 @@ class ValidationIssue:
     """Represents a security or safety issue in code."""
     severity: ValidationSeverity
     message: str
-    line_number: Optional[int] = None
-    code_snippet: Optional[str] = None
-    rule: Optional[str] = None
+    line_number: int | None = None
+    code_snippet: str | None = None
+    rule: str | None = None
 
 
 @dataclass
 class ValidationResult:
     """Result of code validation."""
     is_safe: bool
-    issues: List[ValidationIssue]
+    issues: list[ValidationIssue]
     language: str
 
     @property
@@ -72,7 +71,7 @@ class PythonValidator:
     }
 
     def __init__(self,
-                 allow_imports: Optional[Set[str]] = None,
+                 allow_imports: set[str] | None = None,
                  allow_file_ops: bool = False,
                  allow_network: bool = False):
         """
@@ -97,7 +96,7 @@ class PythonValidator:
         Returns:
             ValidationResult with detected issues
         """
-        issues: List[ValidationIssue] = []
+        issues: list[ValidationIssue] = []
 
         # Check for syntax errors
         try:
@@ -126,7 +125,7 @@ class PythonValidator:
 
         return ValidationResult(is_safe=is_safe, issues=issues, language="python")
 
-    def _check_imports(self, tree: ast.AST) -> List[ValidationIssue]:
+    def _check_imports(self, tree: ast.AST) -> list[ValidationIssue]:
         """Check for dangerous imports."""
         issues = []
 
@@ -169,7 +168,7 @@ class PythonValidator:
 
         return issues
 
-    def _check_function_calls(self, tree: ast.AST) -> List[ValidationIssue]:
+    def _check_function_calls(self, tree: ast.AST) -> list[ValidationIssue]:
         """Check for dangerous function calls."""
         issues = []
 
@@ -192,7 +191,7 @@ class PythonValidator:
 
         return issues
 
-    def _check_attributes(self, tree: ast.AST) -> List[ValidationIssue]:
+    def _check_attributes(self, tree: ast.AST) -> list[ValidationIssue]:
         """Check for dangerous attribute access."""
         issues = []
 
@@ -208,7 +207,7 @@ class PythonValidator:
 
         return issues
 
-    def _check_file_operations(self, tree: ast.AST) -> List[ValidationIssue]:
+    def _check_file_operations(self, tree: ast.AST) -> list[ValidationIssue]:
         """Check for file operations."""
         issues = []
 
@@ -225,7 +224,7 @@ class PythonValidator:
 
         return issues
 
-    def _check_dangerous_patterns(self, code: str) -> List[ValidationIssue]:
+    def _check_dangerous_patterns(self, code: str) -> list[ValidationIssue]:
         """Check for dangerous patterns using regex."""
         issues = []
 
@@ -293,7 +292,7 @@ class JavaScriptValidator:
         Returns:
             ValidationResult with detected issues
         """
-        issues: List[ValidationIssue] = []
+        issues: list[ValidationIssue] = []
 
         # Check for dangerous patterns
         for pattern in self.DANGEROUS_PATTERNS:
@@ -360,7 +359,7 @@ class BashValidator:
         Returns:
             ValidationResult with detected issues
         """
-        issues: List[ValidationIssue] = []
+        issues: list[ValidationIssue] = []
 
         # Split into lines and check each command
         lines = code.split('\n')
@@ -417,7 +416,7 @@ class CodeValidator:
     def __init__(self,
                  allow_network: bool = False,
                  allow_file_ops: bool = False,
-                 custom_allow_imports: Optional[Set[str]] = None):
+                 custom_allow_imports: set[str] | None = None):
         """
         Initialize code validator.
 

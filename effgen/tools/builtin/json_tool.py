@@ -8,14 +8,14 @@ without any external dependencies beyond the Python standard library.
 import json
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from ..base_tool import (
     BaseTool,
-    ToolCategory,
-    ToolMetadata,
     ParameterSpec,
     ParameterType,
+    ToolCategory,
+    ToolMetadata,
 )
 
 logger = logging.getLogger(__name__)
@@ -166,9 +166,9 @@ class JSONTool(BaseTool):
         self,
         data: str,
         operation: str = "query",
-        query: Optional[str] = None,
+        query: str | None = None,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Execute JSON operation."""
         # Parse JSON
         try:

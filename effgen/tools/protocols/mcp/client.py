@@ -8,26 +8,21 @@ servers, discovering tools, and executing tool calls.
 import asyncio
 import json
 import logging
-from typing import Dict, Any, List, Optional, Union
-from pathlib import Path
-import subprocess
 from dataclasses import dataclass
-import httpx
-from enum import Enum
+from typing import Any
 
+import httpx
+
+from ...base_tool import BaseTool, ParameterSpec, ParameterType, ToolCategory, ToolMetadata
 from .protocol import (
-    MCPProtocolHandler,
-    MCPTool,
-    MCPResource,
     MCPCapabilities,
+    MCPProtocolHandler,
     MCPRequest,
+    MCPResource,
     MCPResponse,
-    MCPError,
-    ErrorCode,
+    MCPTool,
     TransportType,
 )
-from ...base_tool import BaseTool, ToolMetadata, ToolCategory, ParameterSpec, ParameterType
-
 
 logger = logging.getLogger(__name__)
 
@@ -37,10 +32,10 @@ class MCPServerConfig:
     """Configuration for an MCP server."""
     name: str
     transport: TransportType
-    command: Optional[str] = None
-    args: Optional[List[str]] = None
-    env: Optional[Dict[str, str]] = None
-    url: Optional[str] = None
+    command: str | None = None
+    args: list[str] | None = None
+    env: dict[str, str] | None = None
+    url: str | None = None
     timeout: int = 30
 
 
@@ -67,7 +62,7 @@ class MCPTransport:
 class StdioTransport(MCPTransport):
     """STDIO transport for MCP (subprocess communication)."""
 
-    def __init__(self, command: str, args: List[str], env: Optional[Dict[str, str]] = None):
+    def __init__(self, command: str, args: list[str], env: dict[str, str] | None = None):
         """
         Initialize STDIO transport.
 
@@ -79,7 +74,7 @@ class StdioTransport(MCPTransport):
         self.command = command
         self.args = args
         self.env = env
-        self.process: Optional[asyncio.subprocess.Process] = None
+        self.process: asyncio.subprocess.Process | None = None
         self._read_lock = asyncio.Lock()
         self._write_lock = asyncio.Lock()
 
@@ -153,7 +148,7 @@ class HTTPTransport(MCPTransport):
         """
         self.url = url
         self.timeout = timeout
-        self.client: Optional[httpx.AsyncClient] = None
+        self.client: httpx.AsyncClient | None = None
 
     async def connect(self) -> None:
         """Create HTTP client."""
@@ -206,7 +201,7 @@ class SSETransport(MCPTransport):
         """
         self.url = url
         self.timeout = timeout
-        self.client: Optional[httpx.AsyncClient] = None
+        self.client: httpx.AsyncClient | None = None
         self._event_queue: asyncio.Queue = asyncio.Queue()
 
     async def connect(self) -> None:
@@ -349,13 +344,13 @@ class MCPClient:
             health_check_interval: Interval for health checks (seconds, 0 = disabled)
         """
         self.config = config
-        self.transport: Optional[MCPTransport] = None
+        self.transport: MCPTransport | None = None
         self.protocol = MCPProtocolHandler()
-        self.capabilities: Optional[MCPCapabilities] = None
-        self.tools: Dict[str, MCPTool] = {}
-        self.resources: Dict[str, MCPResource] = {}
+        self.capabilities: MCPCapabilities | None = None
+        self.tools: dict[str, MCPTool] = {}
+        self.resources: dict[str, MCPResource] = {}
         self._connected = False
-        self._pending_requests: Dict[Union[str, int], asyncio.Future] = {}
+        self._pending_requests: dict[str | int, asyncio.Future] = {}
 
         # Reconnection settings
         self._max_reconnect_attempts = max_reconnect_attempts
@@ -364,15 +359,15 @@ class MCPClient:
 
         # Health monitoring
         self._health_check_interval = health_check_interval
-        self._health_task: Optional[asyncio.Task] = None
+        self._health_task: asyncio.Task | None = None
         self._state = ConnectionState.DISCONNECTED
-        self._last_healthy: Optional[float] = None
+        self._last_healthy: float | None = None
 
         # Tool bridge cache
-        self._bridged_tools: Dict[str, MCPToolBridge] = {}
+        self._bridged_tools: dict[str, MCPToolBridge] = {}
 
         # Resource context cache
-        self._resource_context: Dict[str, Any] = {}
+        self._resource_context: dict[str, Any] = {}
 
     @property
     def state(self) -> str:
@@ -614,7 +609,7 @@ class MCPClient:
 
         logger.info(f"Discovered {len(self.resources)} resources")
 
-    async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Any:
+    async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> Any:
         """
         Call a tool on the MCP server.
 
@@ -657,17 +652,17 @@ class MCPClient:
 
         return response.result
 
-    def get_tools(self) -> List[MCPTool]:
+    def get_tools(self) -> list[MCPTool]:
         """Get list of available MCP tools."""
         return list(self.tools.values())
 
-    def get_resources(self) -> List[MCPResource]:
+    def get_resources(self) -> list[MCPResource]:
         """Get list of available resources."""
         return list(self.resources.values())
 
     # --- MCP Tool → effGen Tool Bridge (3.2.2) ---
 
-    def get_effgen_tools(self) -> List[BaseTool]:
+    def get_effgen_tools(self) -> list[BaseTool]:
         """
         Get MCP tools as effGen BaseTool instances.
 
@@ -686,7 +681,7 @@ class MCPClient:
 
     # --- MCP Resource → Context Bridge (3.2.3) ---
 
-    async def load_resources_as_context(self) -> Dict[str, Any]:
+    async def load_resources_as_context(self) -> dict[str, Any]:
         """
         Load all MCP resources into a context dictionary.
 
@@ -723,13 +718,13 @@ class MCPClient:
         if callback:
             callback(uri, current)
 
-    def get_resource_context(self) -> Dict[str, Any]:
+    def get_resource_context(self) -> dict[str, Any]:
         """Get cached resource context."""
         return dict(self._resource_context)
 
     # --- Health info ---
 
-    def get_health_info(self) -> Dict[str, Any]:
+    def get_health_info(self) -> dict[str, Any]:
         """
         Get connection health information.
 

@@ -11,16 +11,16 @@ This module provides integration with Anthropic's Claude API, supporting:
 """
 
 import logging
-from typing import Iterator, Optional, List, Dict, Any
 import os
+from collections.abc import Iterator
+from typing import Any
 
 from effgen.models.base import (
-    BaseModel,
     FunctionCallingModel,
-    ModelType,
     GenerationConfig,
     GenerationResult,
-    TokenCount
+    ModelType,
+    TokenCount,
 )
 
 logger = logging.getLogger(__name__)
@@ -70,7 +70,7 @@ class AnthropicAdapter(FunctionCallingModel):
     def __init__(
         self,
         model_name: str = "claude-3-5-sonnet-20241022",
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         max_retries: int = 3,
         timeout: int = 60,
         **kwargs
@@ -181,8 +181,8 @@ class AnthropicAdapter(FunctionCallingModel):
     def generate(
         self,
         prompt: str,
-        config: Optional[GenerationConfig] = None,
-        system_prompt: Optional[str] = None,
+        config: GenerationConfig | None = None,
+        system_prompt: str | None = None,
         **kwargs
     ) -> GenerationResult:
         """
@@ -286,8 +286,8 @@ class AnthropicAdapter(FunctionCallingModel):
     def generate_stream(
         self,
         prompt: str,
-        config: Optional[GenerationConfig] = None,
-        system_prompt: Optional[str] = None,
+        config: GenerationConfig | None = None,
+        system_prompt: str | None = None,
         **kwargs
     ) -> Iterator[str]:
         """
@@ -336,8 +336,7 @@ class AnthropicAdapter(FunctionCallingModel):
 
             # Make streaming API call
             with self.client.messages.stream(**request_params) as stream:
-                for text in stream.text_stream:
-                    yield text
+                yield from stream.text_stream
 
         except Exception as e:
             logger.error(f"Anthropic streaming failed: {e}")
@@ -346,9 +345,9 @@ class AnthropicAdapter(FunctionCallingModel):
     def generate_with_tools(
         self,
         prompt: str,
-        tools: List[Dict[str, Any]],
-        config: Optional[GenerationConfig] = None,
-        system_prompt: Optional[str] = None,
+        tools: list[dict[str, Any]],
+        config: GenerationConfig | None = None,
+        system_prompt: str | None = None,
         **kwargs
     ) -> GenerationResult:
         """

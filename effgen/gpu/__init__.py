@@ -15,26 +15,23 @@ Author: effGen Team
 License: Apache-2.0
 """
 
+from effgen.gpu import utils as gpu_utils
 from effgen.gpu.allocator import (
-    GPUAllocator,
-    AllocationStrategy,
-    ParallelismType,
-    GPUInfo,
-    AllocationRequest,
     Allocation,
+    AllocationRequest,
+    AllocationStrategy,
+    GPUAllocator,
+    GPUInfo,
+    ParallelismType,
 )
-
 from effgen.gpu.monitor import (
-    GPUMonitor,
-    MonitorConfig,
-    GPUMetrics,
     Alert,
     AlertLevel,
+    GPUMetrics,
+    GPUMonitor,
     MetricType,
+    MonitorConfig,
 )
-
-from effgen.gpu import utils as gpu_utils
-
 
 __all__ = [
     # Allocator classes

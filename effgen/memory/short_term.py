@@ -8,11 +8,10 @@ and token counting.
 
 import json
 import time
-from typing import List, Dict, Any, Optional, Tuple
-from dataclasses import dataclass, field, asdict
-from enum import Enum
 from collections import deque
-from datetime import datetime
+from dataclasses import asdict, dataclass, field
+from enum import Enum
+from typing import Any
 
 
 class MessageRole(Enum):
@@ -38,10 +37,10 @@ class Message:
     role: MessageRole
     content: str
     timestamp: float = field(default_factory=time.time)
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    tokens: Optional[int] = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+    tokens: int | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert message to dictionary format."""
         return {
             "role": self.role.value,
@@ -52,7 +51,7 @@ class Message:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Message":
+    def from_dict(cls, data: dict[str, Any]) -> "Message":
         """Create message from dictionary."""
         return cls(
             role=MessageRole(data["role"]),
@@ -92,14 +91,14 @@ class ConversationSummary:
     message_count: int
     token_count: int
     timestamp: float = field(default_factory=time.time)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert summary to dictionary."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ConversationSummary":
+    def from_dict(cls, data: dict[str, Any]) -> "ConversationSummary":
         """Create summary from dictionary."""
         return cls(**data)
 
@@ -145,7 +144,7 @@ class ShortTermMemory:
 
         # Storage
         self.messages: deque[Message] = deque(maxlen=max_messages)
-        self.summaries: List[ConversationSummary] = []
+        self.summaries: list[ConversationSummary] = []
 
         # Statistics
         self.total_messages_added = 0
@@ -155,8 +154,8 @@ class ShortTermMemory:
     def add_message(self,
                    role: MessageRole,
                    content: str,
-                   metadata: Optional[Dict[str, Any]] = None,
-                   tokens: Optional[int] = None) -> Message:
+                   metadata: dict[str, Any] | None = None,
+                   tokens: int | None = None) -> Message:
         """
         Add a message to short-term memory.
 
@@ -206,7 +205,7 @@ class ShortTermMemory:
         """Convenience method to add tool message."""
         return self.add_message(MessageRole.TOOL, content, **kwargs)
 
-    def get_recent_messages(self, n: Optional[int] = None) -> List[Message]:
+    def get_recent_messages(self, n: int | None = None) -> list[Message]:
         """
         Get the n most recent messages.
 
@@ -220,7 +219,7 @@ class ShortTermMemory:
             return list(self.messages)
         return list(self.messages)[-n:]
 
-    def get_messages_by_role(self, role: MessageRole) -> List[Message]:
+    def get_messages_by_role(self, role: MessageRole) -> list[Message]:
         """
         Get all messages by a specific role.
 
@@ -233,7 +232,7 @@ class ShortTermMemory:
         return [msg for msg in self.messages if msg.role == role]
 
     def get_conversation_context(self,
-                                max_tokens: Optional[int] = None) -> List[Dict[str, Any]]:
+                                max_tokens: int | None = None) -> list[dict[str, Any]]:
         """
         Get conversation context suitable for LLM input.
 
@@ -271,7 +270,7 @@ class ShortTermMemory:
 
         return context
 
-    def search_messages(self, query: str, case_sensitive: bool = False) -> List[Message]:
+    def search_messages(self, query: str, case_sensitive: bool = False) -> list[Message]:
         """
         Search messages by content.
 
@@ -366,7 +365,7 @@ class ShortTermMemory:
         self.total_summarizations += 1
         self._current_token_count = self.get_token_count()
 
-    def _generate_summary(self, messages: List[Message]) -> str:
+    def _generate_summary(self, messages: list[Message]) -> str:
         """
         Generate a summary of messages.
 
@@ -410,7 +409,7 @@ class ShortTermMemory:
         self.summaries.clear()
         self._current_token_count = 0
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         """
         Get memory statistics.
 
@@ -427,7 +426,7 @@ class ShortTermMemory:
             "summaries_count": len(self.summaries),
         }
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Serialize memory to dictionary.
 
@@ -448,7 +447,7 @@ class ShortTermMemory:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ShortTermMemory":
+    def from_dict(cls, data: dict[str, Any]) -> "ShortTermMemory":
         """
         Deserialize memory from dictionary.
 
@@ -500,6 +499,6 @@ class ShortTermMemory:
         Returns:
             ShortTermMemory instance
         """
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             data = json.load(f)
         return cls.from_dict(data)

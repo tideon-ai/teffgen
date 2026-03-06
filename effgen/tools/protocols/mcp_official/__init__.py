@@ -93,20 +93,19 @@ except ImportError:
 
 # Only import if MCP is available
 if MCP_AVAILABLE:
-    from .server import (
-        EffGenMCPServer,
-        EffGenMCPServerConfig,
-        create_server,
-        main_stdio,
-        main_http,
-    )
-
     from .client import (
         EffGenMCPClient,
         MCPServerConfig,
         create_client,
-        create_stdio_client,
         create_http_client,
+        create_stdio_client,
+    )
+    from .server import (
+        EffGenMCPServer,
+        EffGenMCPServerConfig,
+        create_server,
+        main_http,
+        main_stdio,
     )
 
     __all__ = [

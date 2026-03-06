@@ -11,15 +11,14 @@ import logging
 import os
 import re
 import shlex
-import subprocess
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 from ..base_tool import (
     BaseTool,
-    ToolCategory,
-    ToolMetadata,
     ParameterSpec,
     ParameterType,
+    ToolCategory,
+    ToolMetadata,
 )
 
 logger = logging.getLogger(__name__)
@@ -112,11 +111,11 @@ class BashTool(BaseTool):
 
     def __init__(
         self,
-        allowed_commands: Optional[List[str]] = None,
-        blocked_commands: Optional[List[str]] = None,
+        allowed_commands: list[str] | None = None,
+        blocked_commands: list[str] | None = None,
         timeout: int = 30,
-        working_directory: Optional[str] = None,
-        strip_env_vars: Optional[Set[str]] = None,
+        working_directory: str | None = None,
+        strip_env_vars: set[str] | None = None,
         allow_command_substitution: bool = False,
     ):
         """
@@ -208,7 +207,7 @@ class BashTool(BaseTool):
                 # Allow command substitution if explicitly enabled
                 if self.allow_command_substitution and pattern in (r"`.*`", r"\$\(.*\)"):
                     continue
-                return False, f"Command blocked: matches dangerous pattern"
+                return False, "Command blocked: matches dangerous pattern"
 
         # Whitelist mode: only allowed commands
         if self.allowed_commands is not None:
@@ -226,14 +225,14 @@ class BashTool(BaseTool):
 
         return True, ""
 
-    def _get_safe_env(self) -> Dict[str, str]:
+    def _get_safe_env(self) -> dict[str, str]:
         """Get environment with sensitive variables stripped."""
         env = os.environ.copy()
         for var in self.strip_env_vars:
             env.pop(var, None)
         return env
 
-    async def _execute(self, command: str, **kwargs) -> Dict[str, Any]:
+    async def _execute(self, command: str, **kwargs) -> dict[str, Any]:
         """
         Execute a shell command.
 

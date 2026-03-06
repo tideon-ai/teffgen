@@ -8,10 +8,10 @@ Optional backend: OpenWeatherMap (free tier, needs API key)
 import json
 import logging
 import time
-from typing import Any, Dict, Optional
-from urllib.request import urlopen, Request
-from urllib.parse import urlencode, quote_plus
+from typing import Any
 from urllib.error import URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 
 def _get_user_agent() -> str:
@@ -23,10 +23,10 @@ def _get_user_agent() -> str:
 
 from ..base_tool import (
     BaseTool,
-    ToolCategory,
-    ToolMetadata,
     ParameterSpec,
     ParameterType,
+    ToolCategory,
+    ToolMetadata,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,7 +64,7 @@ class WeatherTool(BaseTool):
     def __init__(
         self,
         backend: str = "open_meteo",
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         cache_ttl: int = 3600,
     ):
         """
@@ -134,7 +134,7 @@ class WeatherTool(BaseTool):
         self.backend = backend
         self.api_key = api_key
         self.cache_ttl = cache_ttl
-        self._cache: Dict[str, tuple] = {}  # key -> (timestamp, data)
+        self._cache: dict[str, tuple] = {}  # key -> (timestamp, data)
 
         if backend == "openweathermap" and api_key:
             logger.warning(
@@ -142,7 +142,7 @@ class WeatherTool(BaseTool):
                 "    Using Open-Meteo (free, no key required) as default."
             )
 
-    def _get_cached(self, key: str) -> Optional[Dict]:
+    def _get_cached(self, key: str) -> dict | None:
         """Get cached result if not expired."""
         if key in self._cache:
             ts, data = self._cache[key]
@@ -151,11 +151,11 @@ class WeatherTool(BaseTool):
             del self._cache[key]
         return None
 
-    def _set_cache(self, key: str, data: Dict):
+    def _set_cache(self, key: str, data: dict):
         """Cache a result."""
         self._cache[key] = (time.time(), data)
 
-    def _fetch_url(self, url: str) -> Dict:
+    def _fetch_url(self, url: str) -> dict:
         """Fetch JSON from a URL."""
         req = Request(url, headers={"User-Agent": _get_user_agent()})
         try:
@@ -193,7 +193,7 @@ class WeatherTool(BaseTool):
         self._set_cache(cache_key, {"lat": lat, "lon": lon, "name": display_name})
         return lat, lon, display_name
 
-    def _fetch_open_meteo(self, lat: float, lon: float, units: str) -> Dict:
+    def _fetch_open_meteo(self, lat: float, lon: float, units: str) -> dict:
         """Fetch weather from Open-Meteo API."""
         temp_unit = "fahrenheit" if units == "imperial" else "celsius"
         wind_unit = "mph" if units == "imperial" else "kmh"
@@ -214,7 +214,7 @@ class WeatherTool(BaseTool):
         location: str,
         units: str = "metric",
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Get weather for a location.
 
