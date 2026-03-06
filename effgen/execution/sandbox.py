@@ -5,6 +5,8 @@ This module provides a secure sandbox environment for executing code
 with resource limits, security validation, and output capture.
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import tempfile

@@ -6,6 +6,8 @@ with automatic summarization when approaching context limits, efficient retrieva
 and token counting.
 """
 
+from __future__ import annotations
+
 import json
 import time
 from collections import deque

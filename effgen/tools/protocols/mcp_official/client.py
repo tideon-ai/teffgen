@@ -5,6 +5,8 @@ This module provides a standards-compliant MCP client for connecting to
 MCP servers and using their tools and resources.
 """
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
 from typing import Any

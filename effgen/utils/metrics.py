@@ -33,6 +33,8 @@ Example:
         >>> metrics.export_to_csv("metrics.csv")
 """
 
+from __future__ import annotations
+
 import csv
 import json
 import statistics

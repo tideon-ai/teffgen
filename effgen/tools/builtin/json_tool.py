@@ -5,6 +5,8 @@ Provides JSONPath-like querying, validation, and transformation
 without any external dependencies beyond the Python standard library.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import re

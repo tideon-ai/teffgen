@@ -5,6 +5,8 @@ This module provides a client for initiating requests to remote agents,
 task delegation, and managing agent-to-agent communication using the A2A protocol.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import logging

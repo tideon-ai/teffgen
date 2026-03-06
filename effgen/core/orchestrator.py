@@ -8,6 +8,8 @@ Coordinates multiple agents using various patterns:
 - Competitive: Multiple agents solve same task, select best
 """
 
+from __future__ import annotations
+
 import asyncio
 import time
 from dataclasses import dataclass, field
@@ -379,7 +381,7 @@ Provide subtasks as a numbered list."""
 
         # Assign to workers
         responses = []
-        for i, (subtask, agent) in enumerate(zip(subtasks, team.agents)):
+        for _i, (subtask, agent) in enumerate(zip(subtasks, team.agents)):
             response = agent.run(subtask, mode=AgentMode.AUTO, context=context)
             responses.append({
                 "agent_name": agent.name,

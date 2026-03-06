@@ -1,3 +1,27 @@
+# effGen Release Notes
+
+## v0.1.1 — March 6, 2026
+
+v0.1.1 is a stabilization release that fixes metadata inconsistencies, improves error handling, adds 6 new examples, and expands the test suite.
+
+### What's Fixed
+- License references now consistently say Apache-2.0 everywhere (was MIT in some files)
+- `setup.py` entry points, Development Status, and dependency versions now match `pyproject.toml`
+- 5 bare `except:` handlers in GPU monitoring replaced with specific exception types
+- 15+ stray `print()` calls converted to structured logging
+
+### What's New
+- 6 example scripts: presets, streaming, memory, multi-tool, weather, and plugin usage
+- 50+ new tests covering CLI, API server, plugins, presets, fallback chains, and circuit breakers
+- Top-level convenience imports for `ToolFallbackChain`, `CircuitBreaker`, `ToolPromptGenerator`, `AgentSystemPromptBuilder`
+- `NEWS.md` for user-friendly release summaries
+
+### What's Changed
+- Error handlers across execution modules now log exceptions instead of silently swallowing them
+- Comprehensive lint cleanup via ruff (2200+ auto-fixes)
+
+---
+
 # effGen v0.1.0 Release Notes
 
 **Release Date:** March 1, 2026

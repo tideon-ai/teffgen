@@ -9,6 +9,8 @@ Manages the lifecycle of specialized sub-agents including:
 - Resource management
 """
 
+from __future__ import annotations
+
 import asyncio
 import time
 import traceback

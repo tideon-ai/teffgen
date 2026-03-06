@@ -16,6 +16,8 @@ Writing a plugin
        my_tools = "my_package.plugin:MyPlugin"
 """
 
+from __future__ import annotations
+
 import importlib
 import importlib.util
 import logging
@@ -42,8 +44,10 @@ class ToolPlugin:
             tools = [MyCustomTool, AnotherTool]
     """
 
+    _DEFAULT_VERSION = "0.0.0"
+
     name: str = ""
-    version: str = "0.1.0"
+    version: str = _DEFAULT_VERSION
     description: str = ""
     tools: list[type[BaseTool]] = []
 
@@ -61,7 +65,7 @@ class ToolPlugin:
             self.name = type(self).name
         if version is not None:
             self.version = version
-        elif self.version == "0.1.0" and type(self).version != "0.1.0":
+        elif self.version == self._DEFAULT_VERSION and type(self).version != self._DEFAULT_VERSION:
             self.version = type(self).version
         if description is not None:
             self.description = description

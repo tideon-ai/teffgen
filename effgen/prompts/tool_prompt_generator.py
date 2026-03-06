@@ -6,6 +6,8 @@ parameter format examples, and common mistakes guidance,
 optimized for Small Language Models (1B-7B parameters).
 """
 
+from __future__ import annotations
+
 import logging
 from typing import Any
 

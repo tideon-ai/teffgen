@@ -2,6 +2,8 @@
 Preset registry — defines agent presets and the create_agent factory.
 """
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass, field
 from typing import Any

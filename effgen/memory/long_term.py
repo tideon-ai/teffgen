@@ -5,6 +5,8 @@ This module provides long-term memory with multiple backend support (JSON, SQLit
 session management, memory consolidation, and efficient retrieval of historical data.
 """
 
+from __future__ import annotations
+
 import json
 import sqlite3
 import time

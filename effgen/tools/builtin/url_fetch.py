@@ -5,18 +5,12 @@ Fetches and extracts text from web pages using requests + BeautifulSoup
 (both free/open source). Falls back to stdlib urllib if packages unavailable.
 """
 
+from __future__ import annotations
+
 import logging
 import re
 from html.parser import HTMLParser
 from typing import Any
-
-
-def _get_user_agent() -> str:
-    try:
-        from effgen import __version__
-    except ImportError:
-        __version__ = "dev"
-    return f"effGen/{__version__} (URL Fetch Tool)"
 
 from ..base_tool import (
     BaseTool,
@@ -25,6 +19,14 @@ from ..base_tool import (
     ToolCategory,
     ToolMetadata,
 )
+
+
+def _get_user_agent() -> str:
+    try:
+        from effgen import __version__
+    except ImportError:
+        __version__ = "dev"
+    return f"effGen/{__version__} (URL Fetch Tool)"
 
 logger = logging.getLogger(__name__)
 

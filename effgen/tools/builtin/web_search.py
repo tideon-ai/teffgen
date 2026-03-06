@@ -5,6 +5,8 @@ This module provides web search capabilities with support for multiple
 search backends including DuckDuckGo, SerpAPI, and Google Custom Search.
 """
 
+from __future__ import annotations
+
 import asyncio
 import hashlib
 import logging

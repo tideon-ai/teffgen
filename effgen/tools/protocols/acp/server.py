@@ -6,6 +6,8 @@ through IBM's Agent Communication Protocol (ACP), including BeeAI platform
 integration and manifest generation.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable

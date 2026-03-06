@@ -5,6 +5,8 @@ This module provides a standards-compliant MCP server that exposes effGen
 tools using the official Model Context Protocol Python SDK.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 from dataclasses import dataclass

@@ -5,6 +5,8 @@ Provides word count, text summarization (extractive), regex operations,
 text comparison, and other NLP-lite operations using only the standard library.
 """
 
+from __future__ import annotations
+
 import logging
 import re
 from collections import Counter

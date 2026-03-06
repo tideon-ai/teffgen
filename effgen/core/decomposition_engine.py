@@ -5,6 +5,8 @@ Uses LLM to intelligently decompose complex tasks into subtasks based on
 task structure and chosen strategy.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import re

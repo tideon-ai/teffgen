@@ -5,6 +5,8 @@ This module provides a server that exposes effGen tools as MCP tools,
 allowing them to be used by MCP clients like Claude Desktop.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import logging

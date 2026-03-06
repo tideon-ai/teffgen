@@ -10,6 +10,8 @@ This module provides high-performance inference using vLLM with features includi
 - Automatic chat template application for instruction-tuned models
 """
 
+from __future__ import annotations
+
 import logging
 from collections.abc import Iterator
 

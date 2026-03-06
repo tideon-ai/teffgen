@@ -40,6 +40,8 @@ Interactive mode guides you through:
     - Task prompt input
 """
 
+from __future__ import annotations
+
 import argparse
 import asyncio
 import importlib.util
@@ -1757,7 +1759,7 @@ from {plugin_name}.tools import ExampleTool
 
 class {plugin_name.title().replace("_", "")}Plugin(ToolPlugin):
     name = "{plugin_name}"
-    version = "0.1.0"
+    version = "{__version__}"
     description = "A custom effGen tool plugin."
     tools = [ExampleTool]
 '''
@@ -1770,7 +1772,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "effgen-plugin-{plugin_name}"
-version = "0.1.0"
+version = "{__version__}"
 description = "An effGen tool plugin"
 requires-python = ">=3.9"
 dependencies = ["effgen"]

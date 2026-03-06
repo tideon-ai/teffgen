@@ -9,26 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-- **License consistency**: Changed all `MIT` license references to `Apache-2.0` across 6 files (`effgen/__init__.py`, `pyproject.toml`, `effgen/gpu/utils.py`, `effgen/gpu/__init__.py`, `effgen/gpu/allocator.py`, `effgen/gpu/monitor.py`)
-- **Entry point mismatch**: Fixed `setup.py` entry point `effgen-agent` to point to `effgen.cli:agent_main` (was `effgen.cli:main`), matching `pyproject.toml`
-- **Development status**: Changed `setup.py` classifier from `Alpha` to `Beta` to match `pyproject.toml`
-- **Dependency version mismatch**: Fixed `duckduckgo-search` version in `setup.py` from `>=3.9.0` to `>=8.1.0` to match `pyproject.toml`
-- **Dependency group sync**: Synced all `setup.py` extras_require with `pyproject.toml` optional-dependencies (added missing `cloud-secrets` and `monitoring` groups)
-- **Bare except handlers**: Replaced 5 bare `except:` in `effgen/gpu/monitor.py` with specific exception types and debug logging
-- **Silent error swallowing**: Added `logger.debug()` to silent `except Exception: pass` handlers in `docker_sandbox.py`, `sandbox.py`, and `code_executor.py`
+## [0.1.1] - 2026-03-06
 
-### Changed
-- **Logging cleanup**: Converted 15+ `print()` calls to proper `logger` calls in `docker_sandbox.py`, `decomposition_engine.py`, `router.py`, `complexity_analyzer.py`, and `gpu/utils.py`
-- **Error handling**: Tightened critical `except Exception:` handlers in execution modules with specific exception types where possible
-- **Top-level exports**: Added `ToolFallbackChain`, `CircuitBreaker`, `ToolPromptGenerator`, `AgentSystemPromptBuilder` to `effgen/__init__.py`
-- **Lint cleanup**: Fixed 2200+ linting issues via ruff (unused imports, whitespace, style)
+### Fixed
+- Fixed license inconsistency: all files now correctly reference Apache-2.0 (was MIT in some files)
+- Fixed `setup.py` entry point mismatch: `effgen-agent` now correctly points to `agent_main` (was `main`)
+- Fixed `setup.py` Development Status: now correctly says Beta (was Alpha)
+- Fixed `setup.py` dependency version mismatches with `pyproject.toml` (duckduckgo-search, cloud-secrets, monitoring groups)
+- Fixed missing `fastapi` and `uvicorn` in `pyproject.toml` dependencies (`effgen serve` now works out of the box with `pip install effgen`)
+- Replaced 5 bare `except:` in `gpu/monitor.py` with specific exception handlers
+- Replaced 15+ `print()` calls with proper logger calls in `docker_sandbox`, `decomposition_engine`, `router`, `complexity_analyzer`, `gpu/utils`
+- Added logging to silent `except Exception:` handlers in execution modules (`docker_sandbox.py`, `sandbox.py`, `code_executor.py`)
 
 ### Added
-- **NEWS.md**: User-friendly summary of v0.1.0 changes (was referenced but never created)
-- **Example scripts**: 6 new examples — `preset_agents.py`, `streaming_agent.py`, `memory_agent.py`, `multi_tool_agent.py`, `weather_agent.py`, `plugin_example.py`
-- **Test suite**: 50+ new tests — CLI smoke tests, API server tests, plugin tests, preset tests, fallback chain tests, circuit breaker tests
-- **Benchmark baseline**: Stored performance baseline in `tests/benchmarks/baseline.json`
+- `NEWS.md` with user-friendly release summaries
+- 6 new example scripts: `preset_agents`, `streaming_agent`, `memory_agent`, `multi_tool_agent`, `weather_agent`, `plugin_example`
+- Updated `examples/README.md` with descriptions for all examples
+- Top-level imports for `ToolFallbackChain`, `CircuitBreaker`, `ToolPromptGenerator`, `AgentSystemPromptBuilder`
+- CLI smoke tests (`tests/integration/test_cli.py`)
+- API server tests (`tests/integration/test_api_server.py`)
+- Plugin system tests (`tests/unit/test_plugin.py`)
+- Preset tests (`tests/unit/test_presets.py`)
+- Fallback chain tests (`tests/unit/test_fallback.py`)
+- Circuit breaker tests (`tests/unit/test_circuit_breaker.py`)
+- Benchmark baseline (`tests/benchmarks/baseline.json`)
+
+### Changed
+- All error handlers in `gpu/monitor.py` now catch specific exceptions instead of bare `except:`
+- Diagnostic output in `docker_sandbox`, `decomposition_engine`, `router`, `complexity_analyzer`, and `gpu/utils` now uses structured logging
+
+### Internal
+- Lint cleanup via ruff (2200+ auto-fixes)
+- mypy fixes on modified files
+- Validated all GitHub Actions YAML files
 
 ---
 
@@ -279,7 +292,8 @@ Thank you to all contributors who helped make effGen possible!
 
 ---
 
-[Unreleased]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/ctrl-gaurav/effGen/compare/v0.0.2...v0.1.0
 [0.0.2]: https://github.com/ctrl-gaurav/effGen/compare/v0.0.1...v0.0.2
 [0.0.1]: https://github.com/ctrl-gaurav/effGen/releases/tag/v0.0.1

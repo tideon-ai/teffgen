@@ -5,6 +5,8 @@ This module implements the MCP protocol specification for tool and resource
 communication between AI models and external servers.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 from dataclasses import asdict, dataclass, field
@@ -451,9 +453,9 @@ class MCPProtocolHandler:
             ValueError: If schema is invalid
         """
         required_fields = ["name", "description", "inputSchema"]
-        for field in required_fields:
-            if field not in schema:
-                raise ValueError(f"Missing required field: {field}")
+        for req_field in required_fields:
+            if req_field not in schema:
+                raise ValueError(f"Missing required field: {req_field}")
 
         # Validate input schema is valid JSON Schema
         input_schema = schema["inputSchema"]

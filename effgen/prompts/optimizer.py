@@ -5,6 +5,8 @@ Implements SLM-specific optimization techniques including prompt compression,
 instruction clarity enhancement, context management, and format optimization.
 """
 
+from __future__ import annotations
+
 import logging
 import re
 from dataclasses import dataclass, field

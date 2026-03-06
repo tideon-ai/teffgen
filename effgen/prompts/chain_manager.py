@@ -5,6 +5,8 @@ Orchestrates complex prompt chains with support for sequential, conditional,
 iterative, and parallel execution patterns optimized for Small Language Models.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import re

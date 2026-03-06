@@ -5,6 +5,8 @@ This module provides file operations including read, write, search,
 and format conversion with comprehensive security measures.
 """
 
+from __future__ import annotations
+
 import asyncio
 import csv
 import json

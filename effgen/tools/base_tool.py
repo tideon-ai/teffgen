@@ -5,6 +5,8 @@ This module provides the abstract base class that all tools must inherit from,
 ensuring consistent interfaces for tool metadata, parameter validation, and execution.
 """
 
+from __future__ import annotations
+
 import json
 import time
 from abc import ABC, abstractmethod

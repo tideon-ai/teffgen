@@ -5,6 +5,8 @@ Tracks tool failure rates and temporarily disables tools that
 fail too frequently, preventing repeated wasteful calls.
 """
 
+from __future__ import annotations
+
 import logging
 import time
 from dataclasses import dataclass

@@ -5,6 +5,8 @@ This module implements the Agent Card specification for capability advertisement
 in the Agent-to-Agent (A2A) protocol developed by Google.
 """
 
+from __future__ import annotations
+
 import json
 from dataclasses import dataclass, field
 from datetime import datetime

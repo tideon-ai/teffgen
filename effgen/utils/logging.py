@@ -33,6 +33,8 @@ Example:
         ...     logger.info("Processing task")
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import logging.handlers

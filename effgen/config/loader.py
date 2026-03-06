@@ -11,6 +11,8 @@ Features:
 - Thread-safe operations
 """
 
+from __future__ import annotations
+
 import logging
 import os
 import re
@@ -19,7 +21,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 import yaml
 
@@ -87,7 +89,7 @@ class Config:
         """Convert to dictionary."""
         return self.data.copy()
 
-    def update(self, other: Union[dict, "Config"]) -> None:
+    def update(self, other: dict | Config) -> None:
         """Update configuration with another config or dict."""
         if isinstance(other, Config):
             self._merge_recursive(self.data, other.data)

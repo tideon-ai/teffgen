@@ -5,6 +5,8 @@ This module defines the interface that all model engines must implement,
 ensuring consistent behavior across vLLM, Transformers, and API adapters.
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass

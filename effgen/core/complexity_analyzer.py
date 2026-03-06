@@ -5,6 +5,8 @@ Analyzes task complexity to determine if sub-agent decomposition is warranted.
 Uses multiple weighted factors to score complexity on a 0-10 scale.
 """
 
+from __future__ import annotations
+
 import logging
 import re
 from dataclasses import dataclass

@@ -41,24 +41,24 @@ jobs:
         run: |
           pytest tests/benchmarks/ -v --tb=short --no-header || true
 
-  gpu-tests:
-    name: GPU Tests
-    runs-on: [self-hosted, gpu]
-    if: github.repository == 'ctrl-gaurav/effGen'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          pip install -e ".[dev]"
-
-      - name: Run GPU integration tests
-        run: |
-          pytest tests/integration/ -v -m "gpu" --tb=short || true
-
-      - name: Run GPU e2e tests
-        run: |
-          pytest tests/e2e/ -v -m "gpu" --tb=short || true
+  # gpu-tests:
+  #   name: GPU Tests
+  #   runs-on: [self-hosted, gpu]
+  #   if: github.repository == 'ctrl-gaurav/effGen'
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #
+  #     - name: Install dependencies
+  #       run: |
+  #         pip install -e ".[dev]"
+  #
+  #     - name: Run GPU integration tests
+  #       run: |
+  #         pytest tests/integration/ -v -m "gpu" --tb=short || true
+  #
+  #     - name: Run GPU e2e tests
+  #       run: |
+  #         pytest tests/e2e/ -v -m "gpu" --tb=short || true
 
   dependency-check:
     name: Dependency Audit

@@ -20,6 +20,8 @@ well for:
 - Large knowledge bases where indexing is impractical
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import os

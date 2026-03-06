@@ -5,6 +5,8 @@ Primary backend: Open-Meteo API (100% free, no API key required)
 Optional backend: OpenWeatherMap (free tier, needs API key)
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import time
@@ -13,14 +15,6 @@ from urllib.error import URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-
-def _get_user_agent() -> str:
-    try:
-        from effgen import __version__
-    except ImportError:
-        __version__ = "dev"
-    return f"effGen/{__version__}"
-
 from ..base_tool import (
     BaseTool,
     ParameterSpec,
@@ -28,6 +22,14 @@ from ..base_tool import (
     ToolCategory,
     ToolMetadata,
 )
+
+
+def _get_user_agent() -> str:
+    try:
+        from effgen import __version__
+    except ImportError:
+        __version__ = "dev"
+    return f"effGen/{__version__}"
 
 logger = logging.getLogger(__name__)
 

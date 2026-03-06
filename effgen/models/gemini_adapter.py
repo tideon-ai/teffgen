@@ -10,6 +10,8 @@ This module provides integration with Google's Gemini API, supporting:
 - Streaming responses
 """
 
+from __future__ import annotations
+
 import logging
 import os
 from collections.abc import Iterator

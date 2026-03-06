@@ -10,6 +10,8 @@ with features including:
 - CPU fallback support
 """
 
+from __future__ import annotations
+
 import logging
 import warnings
 from collections.abc import Iterator

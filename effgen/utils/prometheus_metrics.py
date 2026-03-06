@@ -12,6 +12,8 @@ Usage:
     print(metrics.export())
 """
 
+from __future__ import annotations
+
 import threading
 from collections import defaultdict
 from dataclasses import dataclass, field

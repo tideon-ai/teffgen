@@ -5,6 +5,8 @@ Provides comprehensive template management with Jinja2 support, dynamic example 
 template optimization for SLMs, and versioning capabilities.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import os

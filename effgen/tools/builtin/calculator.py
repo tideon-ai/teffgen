@@ -5,6 +5,8 @@ This module provides a calculator tool for mathematical operations,
 expression evaluation, and unit conversions.
 """
 
+from __future__ import annotations
+
 import ast
 import logging
 import math

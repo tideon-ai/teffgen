@@ -5,6 +5,8 @@ This module provides Docker-based isolation for executing code with
 strong security guarantees and resource limits.
 """
 
+from __future__ import annotations
+
 import os
 import tempfile
 import time
@@ -98,7 +100,7 @@ class DockerSandbox(BaseSandbox):
 
         Pulls images if they don't exist locally.
         """
-        for language, image in self.images.items():
+        for _language, image in self.images.items():
             try:
                 self.docker_client.images.get(image)
             except ImageNotFound:

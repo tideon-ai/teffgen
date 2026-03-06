@@ -5,6 +5,8 @@ This module provides a client for connecting to Model Context Protocol (MCP)
 servers, discovering tools, and executing tool calls.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import logging

@@ -5,6 +5,8 @@ Provides current date/time, timezone conversions, date arithmetic,
 and formatting — all using the Python standard library.
 """
 
+from __future__ import annotations
+
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any

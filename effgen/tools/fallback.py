@@ -5,6 +5,8 @@ When a tool fails, the fallback chain automatically tries alternative tools
 in a defined order, improving agent robustness.
 """
 
+from __future__ import annotations
+
 import logging
 
 logger = logging.getLogger(__name__)

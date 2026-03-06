@@ -16,6 +16,8 @@ Features:
 - Custom validation rules
 """
 
+from __future__ import annotations
+
 import logging
 import re
 from dataclasses import dataclass, field
@@ -565,9 +567,9 @@ class ConfigValidator:
 
         # Validate required fields
         required_fields = ["name", "model"]
-        for field in required_fields:
-            if field not in agent_config:
-                result.add_error(f"Agent config missing required field: {field}")
+        for req_field in required_fields:
+            if req_field not in agent_config:
+                result.add_error(f"Agent config missing required field: {req_field}")
 
         return result
 

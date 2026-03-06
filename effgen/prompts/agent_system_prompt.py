@@ -6,6 +6,8 @@ including tool-specific instructions, tips, and ReAct format guidance.
 Designed for Small Language Models (1B-7B parameters).
 """
 
+from __future__ import annotations
+
 import logging
 
 from ..tools.base_tool import BaseTool, ToolCategory

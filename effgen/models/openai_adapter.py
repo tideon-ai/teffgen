@@ -10,6 +10,8 @@ This module provides integration with OpenAI's API, supporting:
 - Rate limiting
 """
 
+from __future__ import annotations
+
 import logging
 import os
 from collections.abc import Iterator

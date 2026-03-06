@@ -2,6 +2,8 @@
 Agent state management for effGen framework.
 """
 
+from __future__ import annotations
+
 import json
 import pickle
 from dataclasses import asdict, dataclass, field

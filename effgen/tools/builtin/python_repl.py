@@ -5,6 +5,8 @@ This module provides a Python REPL (Read-Eval-Print Loop) tool with
 persistent session state, safe evaluation, and comprehensive error handling.
 """
 
+from __future__ import annotations
+
 import ast
 import builtins
 import io

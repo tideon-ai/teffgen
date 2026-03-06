@@ -6,6 +6,8 @@ communication, including task lifecycle management, message protocols, and
 context passing between agents.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import uuid

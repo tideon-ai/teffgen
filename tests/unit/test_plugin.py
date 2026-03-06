@@ -25,7 +25,7 @@ class TestToolPluginBase:
     def test_default_attributes(self):
         plugin = ToolPlugin()
         assert plugin.name == ""
-        assert plugin.version == "0.1.0"
+        assert plugin.version == "0.0.0"
         assert plugin.description == ""
         assert plugin.tools == []
 

@@ -6,6 +6,8 @@ communication, including agent manifests, synchronous/asynchronous requests,
 task tracking, and OpenTelemetry instrumentation.
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import uuid

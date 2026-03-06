@@ -4,6 +4,8 @@ Task abstraction for effGen framework.
 This module provides task representation and management.
 """
 
+from __future__ import annotations
+
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime

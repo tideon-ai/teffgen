@@ -5,6 +5,8 @@ This module provides a central registry for tool registration, discovery,
 lazy loading, and dependency management.
 """
 
+from __future__ import annotations
+
 import asyncio
 import importlib
 import inspect
@@ -372,7 +374,7 @@ class ToolRegistry:
                 spec.loader.exec_module(module)
 
                 # Find all BaseTool subclasses in the module
-                for name, obj in inspect.getmembers(module, inspect.isclass):
+                for _name, obj in inspect.getmembers(module, inspect.isclass):
                     if issubclass(obj, BaseTool) and obj is not BaseTool:
                         self.register_tool(obj)
 

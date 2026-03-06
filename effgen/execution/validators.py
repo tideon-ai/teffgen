@@ -5,6 +5,8 @@ This module provides validators to analyze code before execution,
 detecting dangerous patterns and ensuring safe execution practices.
 """
 
+from __future__ import annotations
+
 import ast
 import re
 from dataclasses import dataclass

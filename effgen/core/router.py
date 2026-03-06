@@ -8,6 +8,8 @@ The router analyzes tasks and makes intelligent decisions about:
 - Optimal execution strategy (parallel/sequential/hierarchical/hybrid)
 """
 
+from __future__ import annotations
+
 import logging
 from dataclasses import dataclass, field
 from enum import Enum

@@ -6,6 +6,8 @@ configurable security: allowed/blocked command lists, timeout,
 environment variable filtering, and working directory control.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import os

@@ -6,6 +6,8 @@ Communication Protocol (ACP), including discovery service integration,
 capability tokens, and BeeAI platform support.
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
 import logging

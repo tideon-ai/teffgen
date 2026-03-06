@@ -5,6 +5,8 @@ This module provides vector-based memory storage using FAISS or Chroma,
 supporting semantic search, similarity retrieval, and periodic consolidation.
 """
 
+from __future__ import annotations
+
 import json
 import time
 from abc import ABC, abstractmethod

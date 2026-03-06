@@ -13,6 +13,14 @@ from urllib.error import URLError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 
+from ..base_tool import (
+    BaseTool,
+    ParameterSpec,
+    ParameterType,
+    ToolCategory,
+    ToolMetadata,
+)
+
 
 def _get_user_agent(tool_name: str = "") -> str:
     """Build User-Agent string with current effGen version."""
@@ -22,14 +30,6 @@ def _get_user_agent(tool_name: str = "") -> str:
         __version__ = "dev"
     suffix = f" ({tool_name})" if tool_name else ""
     return f"effGen/{__version__}{suffix}"
-
-from ..base_tool import (
-    BaseTool,
-    ParameterSpec,
-    ParameterType,
-    ToolCategory,
-    ToolMetadata,
-)
 
 logger = logging.getLogger(__name__)
 

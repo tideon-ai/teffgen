@@ -14,6 +14,8 @@ Usage:
     results = checker.check_all()
 """
 
+from __future__ import annotations
+
 import logging
 import socket
 import ssl

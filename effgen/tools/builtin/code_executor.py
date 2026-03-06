@@ -6,6 +6,8 @@ multiple languages (Python, JavaScript, Bash) with Docker isolation,
 resource limits, and comprehensive security measures.
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import shutil
