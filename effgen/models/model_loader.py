@@ -334,6 +334,18 @@ class ModelLoader:
         """
         logger.info(f"Loading with Transformers: {model_name}")
 
+        # Convert shorthand quantization="4bit"/"8bit" to quantization_bits
+        if "quantization" in params and "quantization_bits" not in params:
+            q = params.pop("quantization")
+            if q in ("4bit", "4"):
+                params["quantization_bits"] = 4
+            elif q in ("8bit", "8"):
+                params["quantization_bits"] = 8
+            elif q is not None:
+                logger.warning(
+                    "Unknown quantization value '%s' for Transformers engine, ignoring.", q
+                )
+
         # Determine quantization if not specified
         if "quantization_bits" not in params:
             params["quantization_bits"] = self._auto_select_quantization_bits()

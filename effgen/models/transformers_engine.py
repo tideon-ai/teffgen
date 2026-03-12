@@ -293,6 +293,13 @@ class TransformersEngine(BatchModel):
             if hasattr(config, attr):
                 return getattr(config, attr)
 
+        # Some models (e.g. gemma-3) nest config inside text_config
+        if hasattr(config, "text_config"):
+            text_config = config.text_config
+            for attr in ["max_position_embeddings", "n_positions", "seq_length"]:
+                if hasattr(text_config, attr):
+                    return getattr(text_config, attr)
+
         logger.warning("Could not determine max length from config, using 2048")
         return 2048
 
