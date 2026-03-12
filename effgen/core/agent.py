@@ -1749,16 +1749,22 @@ Provide a well-structured, comprehensive response that integrates all findings."
                     hit_stop = False
                     for stop_seq in default_stop_sequences:
                         if stop_seq in accumulated:
-                            # Trim at stop sequence
+                            # Trim at stop sequence — only yield text before it
                             idx = accumulated.index(stop_seq)
-                            accumulated = accumulated[:idx]
+                            # Calculate how much of this token to yield
+                            pre_stop = accumulated[:idx]
+                            already_yielded = accumulated[:len(accumulated) - len(token)]
+                            remaining = pre_stop[len(already_yielded):]
+                            if remaining:
+                                yield remaining
+                            accumulated = pre_stop
                             hit_stop = True
                             break
 
-                    yield token
-
                     if hit_stop:
                         break
+
+                    yield token
 
             except Exception as e:
                 logger.error(f"Streaming generation failed: {e}")
