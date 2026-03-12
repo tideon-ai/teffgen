@@ -925,12 +925,39 @@ Question: {task}
                         # Check if action is actually "Final Answer" - treat it as final answer, not tool
                         if action.lower() in ["final answer", "finalanswer", "answer"]:
                             logger.debug(f"Action '{action}' detected as Final Answer indicator")
-                            # Extract what comes after "Action: Final Answer"
-                            final_match = re.search(r"Action:\s*Final\s*Answer[:\s]+(.+)", text, re.IGNORECASE | re.DOTALL)
-                            if final_match:
-                                parsed["final_answer"] = final_match.group(1).strip()
-                                logger.debug("Extracted final answer from Action line")
-                                return parsed  # Return early since we have final answer
+                            # When model writes "Action: Final Answer", the answer may be:
+                            # 1. On the same line: "Action: Final Answer: The answer is 42"
+                            # 2. On the Action Input line: "Action Input: The answer is 42"
+                            # But NOT if Action Input is JSON (model repeating tool input)
+
+                            # Try same-line first — [: \t]+ excludes newlines
+                            same_line = re.search(
+                                r"Action:\s*Final\s*Answer[: \t]+([^\n]+)", text, re.IGNORECASE,
+                            )
+                            if same_line:
+                                answer_text = same_line.group(1).strip()
+                                if answer_text:
+                                    parsed["final_answer"] = answer_text
+                                    logger.debug("Extracted final answer from Action line")
+                                    return parsed
+
+                            # Try Action Input line (only if it's natural language, not JSON)
+                            ai_match = re.search(
+                                r"Action\s*Input:\s*(.+?)(?:\n|$)",
+                                text, re.IGNORECASE,
+                            )
+                            if ai_match:
+                                answer_text = ai_match.group(1).strip()
+                                if answer_text and not answer_text.startswith(("{", "[")):
+                                    parsed["final_answer"] = answer_text
+                                    logger.debug("Extracted final answer from Action Input line")
+                                    return parsed
+
+                            # If we get here, the model wrote "Action: Final Answer"
+                            # but didn't provide a proper answer text. Don't extract
+                            # anything — let the loop continue for another iteration.
+                            logger.debug("Action: Final Answer detected but no answer text found")
+                            break
 
                         # Handle function-call format: tool_name(args) or tool_name("args")
                         # Extract just the tool name and put args into action_input

@@ -314,11 +314,18 @@ class BaseTool(ABC):
         Returns:
             tuple: (is_valid, error_message)
         """
-        # Check for unknown parameters
+        # Check for unknown parameters — warn and strip rather than reject,
+        # since SLMs often hallucinate extra parameters
         known_params = {p.name for p in self._metadata.parameters}
         unknown = set(kwargs.keys()) - known_params
         if unknown:
-            return False, f"Unknown parameters: {unknown}"
+            import logging
+            _logger = logging.getLogger(__name__)
+            _logger.warning(
+                f"Tool '{self._metadata.name}': ignoring unknown parameters {unknown}"
+            )
+            for k in unknown:
+                del kwargs[k]
 
         # Validate each parameter
         for param_spec in self._metadata.parameters:

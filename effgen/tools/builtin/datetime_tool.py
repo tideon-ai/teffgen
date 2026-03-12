@@ -181,6 +181,18 @@ class DateTimeTool(BaseTool):
         tz = self._get_tz(tz_name)
 
         if operation == "now":
+            # If a date is provided, return info about that date instead of "now"
+            if date:
+                dt = self._parse_date(date).replace(tzinfo=tz)
+                return {
+                    "datetime": dt.strftime("%Y-%m-%d %H:%M:%S"),
+                    "date": dt.strftime("%Y-%m-%d"),
+                    "time": dt.strftime("%H:%M:%S"),
+                    "timezone": tz_name.upper(),
+                    "day_of_week": dt.strftime("%A"),
+                    "week_number": dt.isocalendar()[1],
+                    "timestamp": int(dt.timestamp()),
+                }
             now = datetime.now(tz)
             return {
                 "datetime": now.strftime("%Y-%m-%d %H:%M:%S"),
