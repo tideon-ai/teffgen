@@ -1144,6 +1144,15 @@ Question: {task}
                     logger.warning(f"Error parsing tool input, using as plain text: {e}")
                     input_dict = self._map_input_to_parameters(tool, tool_input)
 
+            # Strip markdown code fences from 'code' param even after JSON parse
+            if isinstance(input_dict, dict) and 'code' in input_dict and isinstance(input_dict['code'], str):
+                code_val = input_dict['code']
+                if '```' in code_val:
+                    import re as _re
+                    code_val = _re.sub(r'^```(?:python|py|javascript|js|bash|sh)?\n?', '', code_val, flags=_re.MULTILINE)
+                    code_val = _re.sub(r'\n?```$', '', code_val, flags=_re.MULTILINE)
+                    input_dict['code'] = code_val.strip()
+
             logger.debug(f"Executing tool '{tool_name}' with input: {input_dict}")
 
             # Execute tool (handle both sync and async)
@@ -1173,8 +1182,29 @@ Question: {task}
                     output = result.output
                     if isinstance(output, dict):
                         # Try common result keys: result, output, data, message
-                        if 'result' in output:
+                        # BUG-012 fix: PythonREPL returns {result: None, stdout: "..."}
+                        # when code uses print(). Prefer stdout over a None result.
+                        if 'result' in output and output['result'] is not None:
                             result_str = str(output['result'])
+                        elif 'stdout' in output and output['stdout']:
+                            # PythonREPL/CodeExecutor: stdout has the printed output
+                            parts = []
+                            parts.append(output['stdout'].rstrip())
+                            if output.get('stderr'):
+                                parts.append(f"stderr: {output['stderr'].rstrip()}")
+                            if output.get('error'):
+                                parts.append(f"Error: {output['error']}")
+                            result_str = '\n'.join(parts)
+                        elif 'stderr' in output and output['stderr']:
+                            # CodeExecutor error: stdout empty but stderr has traceback
+                            result_str = f"Error: {output['stderr'].rstrip()}"
+                            if output.get('exit_code'):
+                                result_str += f"\n(exit code: {output['exit_code']})"
+                        elif 'error' in output and output['error']:
+                            result_str = f"Error: {output['error']}"
+                        elif 'exit_code' in output:
+                            # CodeExecutor: ran successfully but no output
+                            result_str = f"Code executed successfully (exit code {output['exit_code']})"
                         elif 'output' in output:
                             result_str = str(output['output'])
                         elif 'data' in output and 'success' in output:

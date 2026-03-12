@@ -297,10 +297,14 @@ class PythonREPL(BaseTool):
                         session["locals"],
                     )
 
-                    # Check if last statement was an expression
+                    # Check if last statement was a bare expression (not a
+                    # function call).  Re-evaluating Call nodes like print()
+                    # would execute the call a second time, producing
+                    # duplicate output — BUG-011.
                     if (
                         tree.body
                         and isinstance(tree.body[-1], ast.Expr)
+                        and not isinstance(tree.body[-1].value, ast.Call)
                     ):
                         last_expr = tree.body[-1].value
                         result = eval(
