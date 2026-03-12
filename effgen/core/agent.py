@@ -545,11 +545,16 @@ Question: {task}
                 action_input = parsed["action_input"]
 
                 # Loop detection: check if we've seen this exact (action, input) before
+                # Also detect fuzzy loops: same tool called 3+ times with different inputs
+                # (SLMs like Llama produce slightly different formatting each time)
                 current_pair = (action, action_input)
-                if current_pair in previous_actions and action in self.tools:
+                action_call_count = sum(1 for a, _ in previous_actions if a == action)
+                is_exact_loop = current_pair in previous_actions and action in self.tools
+                is_fuzzy_loop = action_call_count >= 5 and action in self.tools
+                if is_exact_loop or is_fuzzy_loop:
+                    loop_type = "exact" if is_exact_loop else f"fuzzy ({action_call_count + 1} calls)"
                     logger.info(
-                        f"[Loop detected] Repeated action '{action}' with same input "
-                        f"(seen {previous_actions.count(current_pair) + 1} times) — "
+                        f"[Loop detected] Repeated action '{action}' ({loop_type}) — "
                         f"breaking loop and returning last observation"
                     )
                     # Extract the last successful observation from scratchpad
@@ -782,7 +787,7 @@ Question: {task}
 
                 gen_config = GenerationConfig(
                     temperature=retry_temperature,
-                    max_tokens=kwargs.get('max_tokens', 512),
+                    max_tokens=kwargs.get('max_tokens', 1024),
                     top_p=kwargs.get('top_p', 0.9),
                     stop_sequences=kwargs.get('stop_sequences', default_stop_sequences)
                 )
@@ -1142,8 +1147,19 @@ Question: {task}
                         # JSON parsed but not a dict - need to intelligently map to tool parameters
                         input_dict = self._map_input_to_parameters(tool, input_dict)
                 except json.JSONDecodeError:
-                    # Not valid JSON - use as plain text and intelligently map to parameters
-                    input_dict = self._map_input_to_parameters(tool, tool_input)
+                    # Not valid JSON — SLMs often produce Python-style dicts with
+                    # single-quoted strings (e.g. {"data": '{"key": "val"}'}).
+                    # Try ast.literal_eval as a fallback before plain-text mapping.
+                    try:
+                        import ast
+                        parsed = ast.literal_eval(tool_input)
+                        if isinstance(parsed, dict):
+                            input_dict = parsed
+                        else:
+                            input_dict = self._map_input_to_parameters(tool, tool_input)
+                    except (ValueError, SyntaxError):
+                        # Not valid Python either — use plain text mapping
+                        input_dict = self._map_input_to_parameters(tool, tool_input)
                 except Exception as e:
                     logger.warning(f"Error parsing tool input, using as plain text: {e}")
                     input_dict = self._map_input_to_parameters(tool, tool_input)
@@ -1697,7 +1713,7 @@ Provide a well-structured, comprehensive response that integrates all findings."
 
         gen_config = GenerationConfig(
             temperature=kwargs.get("temperature", self.config.temperature),
-            max_tokens=kwargs.get("max_tokens", 512),
+            max_tokens=kwargs.get("max_tokens", 1024),
             top_p=kwargs.get("top_p", 0.9),
             stop_sequences=kwargs.get("stop_sequences", default_stop_sequences),
         )
