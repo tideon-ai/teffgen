@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (v0.1.2 — Phase 10)
+- User-explicit sub-agent trigger detection in `SubAgentRouter` — regex-based fuzzy matching for phrases like "use sub-agents", "launch 3 agents", "spawn agents", etc. (router.py)
+- Phase 10 example: `examples/v012_phase10_multi_agent_pipeline.py` — manual pipeline (A→B→C) and sub-agent system tests
+
 ## [0.1.1] - 2026-03-06
 
 ### Fixed

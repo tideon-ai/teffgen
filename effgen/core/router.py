@@ -11,6 +11,7 @@ The router analyzes tasks and makes intelligent decisions about:
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -276,10 +277,11 @@ class SubAgentRouter:
         Decision criteria for using sub-agents.
 
         Factors considered:
-        1. Complexity score vs threshold
-        2. Presence of keyword triggers
-        3. Task length and structure
-        4. Number of requirements
+        1. User-explicit request (always honored)
+        2. Complexity score vs threshold
+        3. Presence of keyword triggers
+        4. Task length and structure
+        5. Number of requirements
 
         Args:
             complexity_score: Calculated complexity score
@@ -288,6 +290,11 @@ class SubAgentRouter:
         Returns:
             True if sub-agents should be used
         """
+        # User-explicit trigger check — always honor user's request
+        if self._check_user_explicit_triggers(task):
+            logger.info("User explicitly requested sub-agents — honoring request.")
+            return True
+
         # Complexity threshold check
         threshold = self.config["complexity_threshold"]
         if complexity_score.overall < threshold:
@@ -321,11 +328,61 @@ class SubAgentRouter:
         triggers = self.config["keyword_triggers"]
         return any(trigger in task_lower for trigger in triggers)
 
+    def _check_user_explicit_triggers(self, task: str) -> bool:
+        """
+        Check if user explicitly requested sub-agents in their prompt.
+
+        Uses fuzzy regex matching to handle spelling variations, hyphenation,
+        and different phrasings. Matches patterns like:
+        - "use sub-agents" / "use subagents" / "use sub agents"
+        - "launch 3 more agents" / "launch two agents"
+        - "enable sub-agent mode" / "enable subagent routing"
+        - "split into sub-tasks" / "break into subtasks"
+        - "deploy multiple agents" / "spawn agents"
+        """
+        task_lower = task.lower()
+
+        # Action verbs that indicate user intent to use sub-agents
+        action_verbs = r"(?:use|enable|launch|spawn|deploy|activate|start|trigger|run|create)"
+        # Agent-related nouns (flexible hyphenation/spacing)
+        agent_nouns = r"(?:sub[\s\-]?agents?|subagents?|multiple\s+agents?|more\s+agents?|additional\s+agents?)"
+        # Number patterns (for "use 2 agents", "launch three agents")
+        num_pattern = r"(?:\d+|two|three|four|five|several|a\s+few|some)\s+"
+
+        # Pattern 1: action verb + (optional number +) agent noun (sub-agents or multiple agents)
+        # e.g., "use sub-agents", "enable subagent", "deploy multiple agents"
+        pattern1 = rf"\b{action_verbs}\s+(?:{num_pattern})?{agent_nouns}\b"
+
+        # Pattern 2: action verb + number + bare "agents" (e.g., "launch 3 agents", "use 2 agents")
+        pattern2 = rf"\b{action_verbs}\s+{num_pattern}agents?\b"
+
+        # Pattern 3: split/break/decompose into sub-tasks/agents
+        pattern3 = r"\b(?:split|break|decompose|divide)\s+(?:\w+\s+)?(?:into|to)\s+(?:sub[\s\-]?tasks?|subtasks?|sub[\s\-]?agents?|agents?|parts?)"
+
+        # Pattern 4: "sub-agent mode/routing/system"
+        pattern4 = r"\bsub[\s\-]?agent\s+(?:mode|routing|system|execution)"
+
+        # Pattern 5: explicit number of agents ("with 3 agents", "using two agents")
+        pattern5 = rf"\b(?:with|using)\s+{num_pattern}agents?\b"
+
+        # Pattern 6: action verb + bare "agents" (e.g., "spawn agents")
+        pattern6 = rf"\b{action_verbs}\s+agents?\b"
+
+        for pattern in [pattern1, pattern2, pattern3, pattern4, pattern5, pattern6]:
+            if re.search(pattern, task_lower):
+                return True
+
+        return False
+
     def _get_matched_triggers(self, task: str) -> list[str]:
         """Get list of matched keyword triggers."""
         task_lower = task.lower()
         triggers = self.config["keyword_triggers"]
-        return [trigger for trigger in triggers if trigger in task_lower]
+        matched = [trigger for trigger in triggers if trigger in task_lower]
+        # Also check user-explicit triggers
+        if self._check_user_explicit_triggers(task):
+            matched.append("[user-explicit] sub-agent request detected")
+        return matched
 
     def _determine_strategy(self,
                            structure: TaskStructure,
