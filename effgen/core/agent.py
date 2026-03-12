@@ -454,6 +454,7 @@ Question: {task}
         conversation_history = self._format_conversation_history()
 
         # ReAct loop
+        previous_actions: list[tuple[str, str]] = []  # Track (action, input) pairs for loop detection
         while iterations < max_iterations:
             iterations += 1
 
@@ -538,6 +539,37 @@ Question: {task}
             if parsed.get("action") and parsed.get("action_input"):
                 action = parsed["action"]
                 action_input = parsed["action_input"]
+
+                # Loop detection: check if we've seen this exact (action, input) before
+                current_pair = (action, action_input)
+                if current_pair in previous_actions and action in self.tools:
+                    logger.info(
+                        f"[Loop detected] Repeated action '{action}' with same input "
+                        f"(seen {previous_actions.count(current_pair) + 1} times) — "
+                        f"breaking loop and returning last observation"
+                    )
+                    # Extract the last successful observation from scratchpad
+                    partial = self._extract_partial_answer(scratchpad)
+                    if partial:
+                        return AgentResponse(
+                            output=partial,
+                            success=True,
+                            mode=AgentMode.SINGLE,
+                            iterations=iterations,
+                            tool_calls=tool_calls,
+                            tokens_used=tokens_used,
+                            metadata={"reason": "loop_detected", "repeated_action": action}
+                        )
+                    # If no partial answer, add a hint to the scratchpad and continue
+                    scratchpad += (
+                        f"\nAction: {action}"
+                        f"\nAction Input: {action_input}"
+                        "\nObservation: You already computed this. "
+                        "Please provide your final response using 'Final Answer:' now."
+                    )
+                    continue
+
+                previous_actions.append(current_pair)
 
                 # Check if tool is available (handle no-tool mode gracefully)
                 if not self.tools or action not in self.tools:
@@ -828,19 +860,28 @@ Question: {task}
 
         try:
             # Check for final answer first (highest priority)
+            # NOTE: "Answer:" must be at the start of a line to avoid greedy
+            # mid-text matches (e.g. "The answer is 42" should NOT match here).
             final_patterns = [
                 r"Final Answer:\s*(.+)",
-                r"Answer:\s*(.+)",
-                r"The answer is:\s*(.+)"
+                r"^Answer:\s*(.+)",
+                r"^The answer is:\s*(.+)"
             ]
 
             for pattern in final_patterns:
                 try:
-                    final_match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+                    final_match = re.search(pattern, text, re.IGNORECASE | re.DOTALL | re.MULTILINE)
                     if final_match:
                         answer = final_match.group(1).strip()
                         # Stop at next section marker or observation
                         answer = re.split(r'\n(?:Question|Thought|Action):', answer, maxsplit=1)[0].strip()
+                        # Strip trailing unrelated content (e.g. Phi-4 generating
+                        # follow-up questions after the answer like "...is 42.What year...")
+                        # Match sentence boundary (.!?) followed by a new sentence
+                        # that itself contains a question mark — likely a hallucinated follow-up.
+                        trailing = re.search(r'([.!?])[\s]*[A-Z][^.!?]*\?', answer)
+                        if trailing:
+                            answer = answer[:trailing.start() + 1].strip()
                         parsed["final_answer"] = answer
                         logger.debug(f"Extracted final answer: {answer[:100]}...")
                         return parsed
