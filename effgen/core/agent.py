@@ -272,9 +272,13 @@ Question: {task}
 
         # Memory system
         mem_cfg = config.memory_config or {}
+        stm_max_tokens = mem_cfg.get("short_term_max_tokens", 4096)
+        stm_max_messages = mem_cfg.get("short_term_max_messages", 100)
         self.short_term_memory = ShortTermMemory(
-            max_tokens=mem_cfg.get("short_term_max_tokens", 4096),
-            max_messages=mem_cfg.get("short_term_max_messages", 100),
+            max_tokens=stm_max_tokens,
+            max_messages=stm_max_messages,
+            summarization_threshold=mem_cfg.get("summarization_threshold", 0.8),
+            keep_recent_messages=mem_cfg.get("keep_recent_messages", 4),
         )
 
         # Long-term memory (optional, requires persist path)
@@ -1473,11 +1477,12 @@ Question: {task}
         use_verbose = verbose if verbose is not None else self._verbose_tools
         return self._tool_prompt_generator.generate_tools_section(verbose=use_verbose)
 
-    def _format_conversation_history(self, max_turns: int = 5) -> str:
+    def _format_conversation_history(self, max_turns: int = 25) -> str:
         """
         Format conversation history for inclusion in prompt.
 
-        Uses ShortTermMemory to retrieve recent messages.
+        Uses ShortTermMemory to retrieve recent messages, including
+        summaries of older messages when available.
 
         Args:
             max_turns: Maximum number of previous turns (user+assistant pairs)
@@ -1485,11 +1490,19 @@ Question: {task}
         Returns:
             Formatted conversation history string
         """
+        # Include summaries of older messages first
+        summaries = self.short_term_memory.summaries
         messages = self.short_term_memory.get_recent_messages(n=max_turns * 2)
-        if not messages:
+        if not messages and not summaries:
             return ""
 
         history = "\n\n=== Previous Conversation Context ===\n"
+
+        # Add summaries if they exist (these cover older, summarized turns)
+        if summaries:
+            for summary in summaries:
+                history += f"[Earlier context summary: {summary.summary}]\n\n"
+
         turn_num = 0
         i = 0
         while i < len(messages):
@@ -1500,7 +1513,11 @@ Question: {task}
                 history += f"User: {msg.content}\n"
                 # Check if next message is assistant
                 if i + 1 < len(messages) and messages[i + 1].role == MessageRole.ASSISTANT:
-                    history += f"Assistant: {messages[i + 1].content}\n\n"
+                    # Truncate long assistant responses to save tokens
+                    assistant_content = messages[i + 1].content
+                    if len(assistant_content) > 300:
+                        assistant_content = assistant_content[:300] + "..."
+                    history += f"Assistant: {assistant_content}\n\n"
                     i += 2
                     continue
                 else:
@@ -1508,7 +1525,7 @@ Question: {task}
             i += 1
 
         history += "=== End of Previous Context ===\n"
-        return history if turn_num > 0 else ""
+        return history if turn_num > 0 or summaries else ""
 
     def add_tool(self, tool: BaseTool):
         """
