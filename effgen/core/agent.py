@@ -1172,7 +1172,23 @@ Question: {task}
                 else:
                     output = result.output
                     if isinstance(output, dict):
-                        result_str = str(output.get('result', output.get('output', output)))
+                        # Try common result keys: result, output, data, message
+                        if 'result' in output:
+                            result_str = str(output['result'])
+                        elif 'output' in output:
+                            result_str = str(output['output'])
+                        elif 'data' in output and 'success' in output:
+                            # FileOperations-style: {success, data, message}
+                            if output.get('success'):
+                                result_str = str(output['data']) if output['data'] is not None else output.get('message', str(output))
+                            else:
+                                result_str = f"Operation failed: {output.get('message', str(output))}"
+                        elif 'data' in output:
+                            result_str = str(output['data'])
+                        elif 'message' in output:
+                            result_str = str(output['message'])
+                        else:
+                            result_str = str(output)
                     else:
                         result_str = str(output)
             elif hasattr(result, 'result'):
@@ -1334,13 +1350,15 @@ Question: {task}
                         cleaned_path = cleaned_path.replace(op_word, "").replace(op_word.upper(), "")
                     result["path"] = cleaned_path.strip()
 
-            # Clean up path - remove leading/trailing slashes that might be artifacts
+            # Clean up path - remove trailing whitespace but preserve absolute paths
             if result.get("path"):
-                result["path"] = result["path"].strip().lstrip('/')
-                # If path doesn't start with / or ./ or ../, it's relative to current dir
-                if not result["path"].startswith(('//', './', '../')):
-                    # It's just a filename, keep as is
-                    pass
+                result["path"] = result["path"].strip()
+                # Remove file:// prefix if still present after earlier cleanup
+                if result["path"].startswith("file://"):
+                    result["path"] = result["path"][7:]
+                    # Ensure we keep at least one leading /
+                    if not result["path"].startswith("/"):
+                        result["path"] = "/" + result["path"]
 
             return result
 
