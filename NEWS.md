@@ -1,5 +1,50 @@
 # effGen Release Notes
 
+## v0.1.2 — March 12, 2026
+
+v0.1.2 is a test-driven hardening release. Every feature was built by creating a real agent, testing it across multiple models (0.5B to 8B), watching what breaks, and fixing the framework.
+
+### Highlights
+
+- **10 comprehensive example agents** — Q&A, calculator, multi-tool, file operations, code execution, conversational memory, error recovery, data processing, streaming, and multi-agent pipeline orchestration
+- **19 framework bugs fixed** — discovered through real inference testing, not unit tests. Fixes cover tool parsing, answer extraction, memory management, and model-specific edge cases
+- **Cross-model compatibility matrix** — 11 models tested across all 10 agents. 73% pass rate (80 PASS, 23 PARTIAL, 7 FAIL out of 110 combinations)
+- **Top models (10/10 PASS):** Qwen2.5-1.5B-Instruct, Qwen2.5-3B-Instruct, Phi-4-mini-instruct
+
+### What's New
+
+- 10 example agents in `examples/` with full documentation, model recommendations, and interactive modes
+- Compatibility matrix at `examples/compatibility_matrix.md` with per-agent model recommendations
+- User-explicit sub-agent trigger detection (e.g., "use 3 agents to parallelize this")
+- Sweep runner (`examples/sweep_model.py`) for automated cross-model testing
+
+### What's Improved
+
+- ReAct loop is more robust — better loop detection, answer extraction, and error recovery
+- Tool input parsing handles single-quoted JSON, non-JSON inputs, and markdown fences
+- Conversation history is better managed — configurable turn limits, auto-summarization, response truncation
+- Tool results are properly formatted for the model (no more raw dicts)
+
+### What's Fixed
+
+- 4-bit quantization now works correctly with TransformersEngine
+- gemma-3 context length detection fixed for nested config
+- DateTimeTool `now` operation respects date parameter
+- PythonREPL no longer double-prints output
+- Absolute file paths no longer get their leading slash stripped
+- Many more — see [CHANGELOG.md](CHANGELOG.md) for the full list
+
+### Model Recommendations
+
+| Use Case | Minimum | Recommended |
+|----------|---------|-------------|
+| Q&A (no tools) | 0.5B | 1.5B+ |
+| Tool calling | 1.5B | 3B |
+| Multi-turn conversation | 1.5B | 3B |
+| Multi-agent pipeline | 1.5B | 3B |
+
+---
+
 ## v0.1.1 — March 6, 2026
 
 v0.1.1 is a stabilization release that fixes metadata inconsistencies, improves error handling, adds 6 new examples, and expands the test suite.

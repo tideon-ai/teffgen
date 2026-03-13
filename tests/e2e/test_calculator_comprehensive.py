@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Phase 2 Calculator Agent Test Script.
-Tests P2-T1 through P2-T7 on a single model (specified via --model / CUDA_VISIBLE_DEVICES).
+Calculator Agent Comprehensive Test Script.
+Tests T1 through T7 on a single model (specified via --model / CUDA_VISIBLE_DEVICES).
 """
 from __future__ import annotations
 
@@ -106,13 +106,13 @@ def run_test(agent, test_id, question, expected_answer=None, expect_tool=None, d
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Phase 2 Calculator Agent Tests")
+    parser = argparse.ArgumentParser(description="Calculator Agent Comprehensive Tests")
     parser.add_argument("--model", default="Qwen/Qwen2.5-3B-Instruct")
     parser.add_argument("--tests", default="all", help="Comma-separated test IDs or 'all'")
     args = parser.parse_args()
 
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-    print(f"Phase 2 Calculator Agent Tests")
+    print("Calculator Agent Comprehensive Tests")
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 

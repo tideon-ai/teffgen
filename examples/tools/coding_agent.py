@@ -1,35 +1,24 @@
 #!/usr/bin/env python3
 """
-effGen v0.1.2 — Phase 5: Code Execution Agent (Write + Run + Iterate)
+effGen — Code Execution Agent (Write + Run + Iterate)
 
 A coding agent that writes Python code, executes it, reads output, and iterates
-on errors. Tests PythonREPL and CodeExecutor tools, markdown fence stripping,
+on errors. Demonstrates PythonREPL and CodeExecutor tools, markdown fence stripping,
 and multi-iteration reasoning.
 
-Tested models (post-fix results):
-  - Qwen/Qwen2.5-1.5B-Instruct (1.5B)  — 6/6 PASS, surprisingly strong
-  - Qwen/Qwen2.5-3B-Instruct (3B)      — 5/6 PASS, T5 f-string quoting in bash
-  - Qwen/Qwen2.5-7B-Instruct (7B)      — 6/6 PASS, best quality + fastest
-  - meta-llama/Llama-3.2-3B-Instruct    — 4/6 PASS, T4/T6 model doesn't relay output
-  - microsoft/Phi-4-mini-instruct       — 5/6 PASS, T3 omits print() sometimes
-
-Framework bugs fixed in this phase:
-  - BUG-011: PythonREPL _execute() re-evaluates last ast.Call expression, causing
-    print() to run twice — fixed to skip re-eval of Call nodes (python_repl.py)
-  - BUG-012: _execute_tool_once result extraction returns str(None) when PythonREPL
-    result is None but stdout has printed output — now prefers stdout (agent.py)
-  - BUG-013: CodeExecutor result dict {stdout, stderr, exit_code} shown raw to model
-    when stdout empty — now extracts stderr for errors (agent.py)
-  - Enhanced markdown fence stripping in post-JSON-parse path (agent.py)
+Recommended models:
+  - Qwen/Qwen2.5-7B-Instruct (7B)      — best quality, fastest
+  - Qwen/Qwen2.5-3B-Instruct (3B)      — excellent quality (default)
+  - Qwen/Qwen2.5-1.5B-Instruct (1.5B)  — surprisingly strong for code tasks
+  - microsoft/Phi-4-mini-instruct       — very accurate
 
 Tools used: CodeExecutor, PythonREPL, FileOperations, BashTool
 Preset: coding
-Path: Agent.run() → _run_single_agent() → ReAct loop → _execute_tool()
 
 Usage:
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase05_coding_agent.py
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase05_coding_agent.py --model Qwen/Qwen2.5-7B-Instruct
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase05_coding_agent.py --interactive
+  CUDA_VISIBLE_DEVICES=0 python examples/coding_agent.py
+  CUDA_VISIBLE_DEVICES=0 python examples/coding_agent.py --model Qwen/Qwen2.5-7B-Instruct
+  CUDA_VISIBLE_DEVICES=0 python examples/coding_agent.py --interactive
 """
 from __future__ import annotations
 
@@ -128,47 +117,47 @@ def run_test(agent, test_id, description, question, expected_keywords=None,
 
 
 def run_all_tests(agent, model_name="unknown"):
-    """Run all Phase 5 tests."""
+    """Run all code execution tests."""
     results = []
 
-    # P5-T1: Simple code — write and run a prime checker
+    # T1: Simple code — write and run a prime checker
     results.append(run_test(
-        agent, "P5-T1", "Simple code execution — prime check",
+        agent, "T1", "Simple code execution — prime check",
         "Write and run a Python function that checks if a number is prime. Test it with 17 and print the result.",
         expected_keywords=["17", "prime"],
         expected_tool="python_repl",
         check_fn=lambda out, resp: resp.tool_calls >= 1 and ("true" in out.lower() or "yes" in out.lower() or "prime" in out.lower()),
     ))
 
-    # P5-T2: Code with error — division by zero
+    # T2: Code with error — division by zero
     results.append(run_test(
-        agent, "P5-T2", "Error handling — division by zero",
+        agent, "T2", "Error handling — division by zero",
         "Write Python code that divides 10 by 0 and run it. Report what happens.",
         expected_keywords=["zero"],
         expected_tool="python_repl",
         check_fn=lambda out, resp: any(kw in out.lower() for kw in ["error", "exception", "zerodivision", "cannot", "undefined", "infinity"]),
     ))
 
-    # P5-T3: Iterative fix — sort a list
+    # T3: Iterative fix — sort a list
     results.append(run_test(
-        agent, "P5-T3", "Iterative fix — list sorting",
+        agent, "T3", "Iterative fix — list sorting",
         "Write a Python function to sort a list of numbers [5, 2, 8, 1, 9, 3] in ascending order. Run it and print the sorted result.",
         expected_keywords=["1", "2", "3", "5", "8", "9"],
         expected_tool="python_repl",
     ))
 
-    # P5-T4: Markdown fence stripping test — explicitly use fenced code
+    # T4: Markdown fence stripping test — explicitly use fenced code
     results.append(run_test(
-        agent, "P5-T4", "Markdown fence stripping",
+        agent, "T4", "Markdown fence stripping",
         "Run this Python code using the python_repl tool: print('Markdown fence test passed!')",
         expected_keywords=["fence test passed"],
         expected_tool="python_repl",
     ))
 
-    # P5-T5: Multi-file — create module and run code that uses it
+    # T5: Multi-file — create module and run code that uses it
     # Use code_executor (subprocess) so we can import from /tmp
     results.append(run_test(
-        agent, "P5-T5", "Multi-file — create and import module",
+        agent, "T5", "Multi-file — create and import module",
         ("First use bash to write a file /tmp/effgen_p5_utils.py with this exact content:\n"
          "def greet(name):\n"
          "    return f'Hello, {name}!'\n\n"
@@ -180,9 +169,9 @@ def run_all_tests(agent, model_name="unknown"):
         check_fn=lambda out, resp: resp.tool_calls >= 1,
     ))
 
-    # P5-T6: Data processing — random numbers, mean, stdev
+    # T6: Data processing — random numbers, mean, stdev
     results.append(run_test(
-        agent, "P5-T6", "Data processing — statistics",
+        agent, "T6", "Data processing — statistics",
         "Write Python code to create a list of 10 numbers [1, 4, 7, 2, 5, 8, 3, 6, 9, 10], calculate their mean and standard deviation using the statistics module, and print both values.",
         expected_keywords=["mean", "5.5"],
         expected_tool="python_repl",
@@ -190,7 +179,7 @@ def run_all_tests(agent, model_name="unknown"):
 
     # Summary
     print(f"\n{'='*60}")
-    print(f"Phase 5 Results — Model: {model_name}")
+    print(f"Code Execution Results — Model: {model_name}")
     print(f"{'='*60}")
     pass_count = 0
     for r in results:
@@ -203,34 +192,34 @@ def run_all_tests(agent, model_name="unknown"):
 
 
 def run_regression(agent, model_name="unknown"):
-    """Run Phase 1-4 regression tests on the coding agent."""
+    """Run regression tests to verify previous examples still work with the coding agent."""
     results = []
 
-    # Phase 1: Basic Q&A (no tools)
+    # Basic Q&A (no tools)
     results.append(run_test(
-        agent, "REG-P1", "Q&A: capital of France",
+        agent, "REG-1", "Q&A: capital of France",
         "What is the capital of France?",
         expected_keywords=["paris"],
     ))
 
-    # Phase 2: Calculator (math)
+    # Calculator (math)
     results.append(run_test(
-        agent, "REG-P2", "Calculator: 15 + 27",
+        agent, "REG-2", "Calculator: 15 + 27",
         "What is 15 + 27? Use a tool to calculate it.",
         expected_keywords=["42"],
     ))
 
-    # Phase 3: Multi-tool — date
+    # Multi-tool — bash
     results.append(run_test(
-        agent, "REG-P3", "Multi-tool: run bash pwd",
+        agent, "REG-3", "Multi-tool: run bash pwd",
         "Run the command 'echo hello_regression' using bash and tell me the output.",
         expected_keywords=["hello_regression"],
         expected_tool="bash",
     ))
 
-    # Phase 4: File ops — write and read
+    # File ops — read
     results.append(run_test(
-        agent, "REG-P4", "File ops: read file",
+        agent, "REG-4", "File ops: read file",
         "Use bash to run: cat /etc/hostname",
         check_fn=lambda out, resp: resp.tool_calls >= 1,
     ))
@@ -289,7 +278,7 @@ def interactive_mode(agent):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen Phase 5: Code Execution Agent")
+    parser = argparse.ArgumentParser(description="effGen Code Execution Agent Example")
     parser.add_argument(
         "--model",
         default="Qwen/Qwen2.5-3B-Instruct",
@@ -301,7 +290,7 @@ def main():
     args = parser.parse_args()
 
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-    print(f"effGen v0.1.2 — Phase 5: Code Execution Agent")
+    print("effGen — Code Execution Agent")
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 
@@ -324,11 +313,11 @@ def main():
         run_regression(agent, model_name=args.model)
     else:
         # Run regression first
-        print("\n--- Phase 1-4 Regression ---")
+        print("\n--- Regression Tests ---")
         reg_results = run_regression(agent, model_name=args.model)
 
-        # Run Phase 5 tests
-        print("\n--- Phase 5 Tests ---")
+        # Run code execution tests
+        print("\n--- Code Execution Tests ---")
         p5_results = run_all_tests(agent, model_name=args.model)
 
         # Cleanup

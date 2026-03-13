@@ -36,6 +36,7 @@
 
 | | Date | Update |
 |:---:|:---|:---|
+| 🔧 | **12 Mar 2026** | **v0.1.2 Released**: Test-driven hardening — 10 example agents, 19 bug fixes, cross-model compatibility matrix (11 models, 73% pass rate). [See changelog](https://github.com/ctrl-gaurav/effGen/blob/main/CHANGELOG.md#012---2026-03-12) |
 | 🔒 | **6 Mar 2026** | **v0.1.1 Released**: Stabilization — fixed license/metadata consistency, improved error handling, added 6 examples, expanded test suite. [See changelog](https://github.com/ctrl-gaurav/effGen/blob/main/CHANGELOG.md#011---2026-03-06) |
 | 🎉 | **1 Mar 2026** | **v0.1.0 Released**: Major feature release — 14 built-in tools, agent presets, plugin system, real streaming, memory integration, ACP/MCP protocols, CI/CD, and comprehensive test suite. [See changelog](https://github.com/ctrl-gaurav/effGen/blob/main/CHANGELOG.md#010---2026-03-01) |
 | 🔧 | **3 Feb 2026** | **v0.0.2 Released**: vLLM backend fixes with automatic chat template support, GPU memory control, improved OOM error handling, and multi-model family compatibility |

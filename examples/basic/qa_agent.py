@@ -1,34 +1,31 @@
 #!/usr/bin/env python3
 """
-effGen v0.1.2 — Phase 1: Bare-Bones Q&A Agent (No Tools)
+effGen — Q&A Agent (No Tools)
 
 A minimal Q&A agent using direct inference — no tools, no ReAct loop.
-Tests the simplest possible agent path: model loads, prompt goes in, answer comes out.
+The simplest agent path: model loads, prompt goes in, answer comes out.
 
-Tested models (all PASS):
+Recommended models:
   - Qwen/Qwen2.5-0.5B-Instruct (0.5B)  — fast, concise answers
   - Qwen/Qwen2.5-1.5B-Instruct (1.5B)  — good quality, fast
-  - Qwen/Qwen2.5-3B-Instruct (3B)      — primary dev model, excellent quality
+  - Qwen/Qwen2.5-3B-Instruct (3B)      — excellent quality (default)
   - Qwen/Qwen2.5-7B-Instruct (7B)      — best quality in Qwen2.5 family
   - meta-llama/Llama-3.2-3B-Instruct    — fast, concise
   - microsoft/Phi-4-mini-instruct       — good quality, slower (~14s/query)
   - google/gemma-3-4b-it                — good quality, slowest (~25s/query)
 
-Tools used: None (direct inference via _run_direct_inference)
-Path: Agent.run() → _run_single_agent() → _run_direct_inference() → model.generate()
-
 Usage:
   # Single question (default model: Qwen2.5-3B-Instruct)
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase01_qa_agent.py
+  CUDA_VISIBLE_DEVICES=0 python examples/qa_agent.py
 
   # Specify a model
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase01_qa_agent.py --model Qwen/Qwen2.5-7B-Instruct
+  CUDA_VISIBLE_DEVICES=0 python examples/qa_agent.py --model Qwen/Qwen2.5-7B-Instruct
 
   # Interactive mode
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase01_qa_agent.py --interactive
+  CUDA_VISIBLE_DEVICES=0 python examples/qa_agent.py --interactive
 
   # Multi-turn demo
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase01_qa_agent.py --multi-turn
+  CUDA_VISIBLE_DEVICES=0 python examples/qa_agent.py --multi-turn
 """
 from __future__ import annotations
 
@@ -103,7 +100,7 @@ def interactive_mode(agent):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen Phase 1: Bare-Bones Q&A Agent")
+    parser = argparse.ArgumentParser(description="effGen Q&A Agent Example")
     parser.add_argument(
         "--model",
         default="Qwen/Qwen2.5-3B-Instruct",
@@ -114,7 +111,7 @@ def main():
     args = parser.parse_args()
 
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-    print(f"effGen v0.1.2 — Phase 1: Q&A Agent")
+    print("effGen — Q&A Agent")
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 

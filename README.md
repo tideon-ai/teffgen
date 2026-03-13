@@ -35,6 +35,7 @@
 
 | | Date | Update |
 |:---:|:---|:---|
+| 🔧 | **12 Mar 2026** | **v0.1.2 Released**: Test-driven hardening — 10 example agents, 19 bug fixes, cross-model compatibility matrix (11 models, 73% pass rate). [See changelog](CHANGELOG.md#012---2026-03-12) |
 | 🔒 | **6 Mar 2026** | **v0.1.1 Released**: Stabilization — fixed license/metadata consistency, improved error handling, added 6 examples, expanded test suite. [See changelog](CHANGELOG.md#011---2026-03-06) |
 | 🎉 | **1 Mar 2026** | **v0.1.0 Released**: Major feature release — 14 built-in tools, agent presets, plugin system, real streaming, memory integration, ACP/MCP protocols, CI/CD, and comprehensive test suite. [See changelog](CHANGELOG.md#010---2026-03-01) |
 | 🔧 | **3 Feb 2026** | **v0.0.2 Released**: vLLM backend fixes with automatic chat template support, GPU memory control, improved OOM error handling, and multi-model family compatibility |
@@ -358,23 +359,32 @@ Wikipedia<br/>
 ## 📚 Examples
 
 ```bash
-python examples/basic_agent.py      # Basic agent (Transformers backend)
+# Core agent examples (v0.1.2)
+python examples/qa_agent.py                   # Q&A agent (no tools)
+python examples/calculator_agent.py           # Math with Calculator + PythonREPL
+python examples/advanced_multi_tool_agent.py  # 5 tools + fallback chains
+python examples/file_operations_agent.py      # File read/write/search
+python examples/coding_agent.py               # Code execution + iteration
+python examples/conversational_agent.py       # Multi-turn memory
+python examples/advanced_streaming_agent.py   # Token streaming with callbacks
+python examples/data_processing_agent.py      # JSON & data pipelines
+python examples/multi_agent_pipeline.py       # Multi-agent orchestration
+python examples/error_recovery_agent.py       # Error handling patterns
 
-python examples/basic_agent_vllm.py # Basic agent (vLLM backend - 5-10x faster)
-
-python examples/web_agent.py        # Web search agent
-
-python examples/retrieval_agent.py  # RAG-based retrieval
-
-python examples/agentic_search_agent.py # Grep-based agentic search
-
-python examples/preset_agents.py       # Ready-to-use agent presets
-python examples/streaming_agent.py     # Real-time token streaming
-python examples/memory_agent.py        # Multi-turn memory
-python examples/multi_tool_agent.py    # Multi-tool agent
-python examples/weather_agent.py       # Weather via Open-Meteo (free)
-python examples/plugin_example.py      # Custom tool plugins
+# Quick-start examples
+python examples/basic_agent.py                # Basic agent (Transformers)
+python examples/basic_agent_vllm.py           # Basic agent (vLLM - 5-10x faster)
+python examples/preset_agents.py              # Ready-to-use agent presets
+python examples/streaming_agent.py            # Simple streaming
+python examples/memory_agent.py               # Simple multi-turn memory
+python examples/multi_tool_agent.py           # Simple multi-tool
+python examples/weather_agent.py              # Weather via Open-Meteo (free)
+python examples/plugin_example.py             # Custom tool plugins
+python examples/web_agent.py                  # Web search agent
+python examples/retrieval_agent.py            # RAG-based retrieval
 ```
+
+> 📊 See [examples/compatibility_matrix.md](examples/compatibility_matrix.md) for model compatibility across all agents.
 
 <details>
 <summary><b>📖 More Examples</b></summary>
@@ -441,6 +451,24 @@ result = agent.run("What does the documentation say about configuration?")
 ```
 
 </details>
+
+---
+
+## 🤖 Multi-Model Support
+
+effGen is tested across 11 model families. Top recommendations:
+
+| Model | Size | Compatibility |
+|-------|------|---------------|
+| **Qwen2.5-1.5B-Instruct** | 1.5B | 10/10 agents pass |
+| **Qwen2.5-3B-Instruct** | 3B | 10/10 agents pass (recommended default) |
+| **Phi-4-mini-instruct** | 3.8B | 10/10 agents pass |
+| Qwen3-1.7B | 1.7B | 9.5/10 |
+| Qwen2.5-7B-Instruct | 7B | 9/10 |
+| Llama-3.2-3B-Instruct | 3B | 8.5/10 |
+| gemma-3-4b-it | 4B | 8/10 |
+
+> Full matrix with 11 models x 10 agents: [compatibility_matrix.md](examples/compatibility_matrix.md)
 
 ---
 

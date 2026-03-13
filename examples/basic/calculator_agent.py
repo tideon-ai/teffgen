@@ -1,40 +1,30 @@
 #!/usr/bin/env python3
 """
-effGen v0.1.2 — Phase 2: Calculator Agent (Single Tool)
+effGen — Calculator Agent (Single Tool)
 
 A math agent using the Calculator and PythonREPL tools via the ReAct loop.
-Tests the core tool-calling pipeline: model produces Thought/Action/Action Input,
+Demonstrates the core tool-calling pipeline: model produces Thought/Action/Action Input,
 framework parses them, tool executes, observation returned.
 
-Tested models (post-fix results):
-  - Qwen/Qwen2.5-0.5B-Instruct (0.5B)  — 5/7 PASS, 2 PARTIAL (reasoning limits)
-  - Qwen/Qwen2.5-1.5B-Instruct (1.5B)  — 6/7 PASS, 1 PARTIAL
-  - Qwen/Qwen2.5-3B-Instruct (3B)      — 7/7 PASS, primary dev model
-  - Qwen/Qwen2.5-7B-Instruct (7B)      — 7/7 PASS, best quality
-  - meta-llama/Llama-3.2-3B-Instruct    — 5/7 PASS, 2 PARTIAL (multi-step reasoning)
-  - microsoft/Phi-4-mini-instruct       — 7/7 PASS (after trailing-text fix)
-  - google/gemma-3-4b-it                — 7/7 PASS (after loop detection fix)
-
-Framework bugs fixed in this phase:
-  - BUG-003: Loop detection — models that repeat the same action+input are now
-    detected and short-circuited with the last observation as the answer
-  - BUG-004: "Answer:" pattern tightened — now requires line-start anchor to
-    prevent greedy mid-text matching
-  - BUG-005: Trailing unrelated text stripped from Final Answer — fixes Phi-4-mini
-    generating follow-up questions after the answer
+Recommended models:
+  - Qwen/Qwen2.5-3B-Instruct (3B)      — excellent quality (default)
+  - Qwen/Qwen2.5-7B-Instruct (7B)      — best quality
+  - microsoft/Phi-4-mini-instruct       — very accurate
+  - google/gemma-3-4b-it                — good quality
+  - Qwen/Qwen2.5-1.5B-Instruct (1.5B)  — good quality, fast
+  - meta-llama/Llama-3.2-3B-Instruct    — fast, concise
 
 Tools used: Calculator (primary), PythonREPL (fallback)
-Path: Agent.run() → _run_single_agent() → ReAct loop → _execute_tool() → Calculator._execute()
 
 Usage:
   # Run calculator demo (default model: Qwen2.5-3B-Instruct)
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase02_calculator_agent.py
+  CUDA_VISIBLE_DEVICES=0 python examples/calculator_agent.py
 
   # Specify a model
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase02_calculator_agent.py --model Qwen/Qwen2.5-7B-Instruct
+  CUDA_VISIBLE_DEVICES=0 python examples/calculator_agent.py --model Qwen/Qwen2.5-7B-Instruct
 
   # Interactive mode
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase02_calculator_agent.py --interactive
+  CUDA_VISIBLE_DEVICES=0 python examples/calculator_agent.py --interactive
 """
 from __future__ import annotations
 
@@ -110,7 +100,7 @@ def interactive_mode(agent):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen Phase 2: Calculator Agent")
+    parser = argparse.ArgumentParser(description="effGen Calculator Agent Example")
     parser.add_argument(
         "--model",
         default="Qwen/Qwen2.5-3B-Instruct",
@@ -120,7 +110,7 @@ def main():
     args = parser.parse_args()
 
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-    print(f"effGen v0.1.2 — Phase 2: Calculator Agent")
+    print("effGen — Calculator Agent")
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 

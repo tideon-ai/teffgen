@@ -1,30 +1,31 @@
 #!/usr/bin/env python3
 """
-effGen v0.1.2 — Phase 7: Error Recovery Agent (Intentional Failures)
+effGen — Error Recovery Agent (Intentional Failures)
 
 Deliberately breaks things and tests how the framework handles failures.
-Tests BrokenTool (always crashes), SlowTool (timeout), invalid inputs,
+Demonstrates BrokenTool (always crashes), SlowTool (timeout), invalid inputs,
 circuit breaker transitions, fallback chain exhaustion, partial answer
 extraction, retry backoff, concurrent failures, and control character handling.
 
-9 Tests (from build.md):
-  P7-T1: Invalid tool input — malformed JSON to Calculator
-  P7-T2: Tool crash — BrokenTool always raises RuntimeError, circuit breaker triggers
-  P7-T3: All tools fail — every tool raises, agent gives partial answer
-  P7-T4: Max iterations — max_iterations=2, returns partial answer
-  P7-T5: Empty model response — retry logic with backoff
-  P7-T6: Timeout — SlowTool takes 30s, tool timeout triggers
-  P7-T7: Fallback chain exhaustion — calculator→python_repl→code_executor all fail
-  P7-T8: Concurrent failures — 3 agents simultaneously, no shared state corruption
-  P7-T9: Control character input — \\x00\\x01\\x02 sanitization
+Tests:
+  T1: Invalid tool input — malformed JSON to Calculator
+  T2: Tool crash — BrokenTool always raises RuntimeError, circuit breaker triggers
+  T3: All tools fail — every tool raises, agent gives partial answer
+  T4: Max iterations — max_iterations=2, returns partial answer
+  T5: Empty model response — retry logic with backoff
+  T6: Timeout — SlowTool triggers tool timeout
+  T7: Fallback chain exhaustion — calculator -> python_repl -> code_executor all fail
+  T8: Concurrent failures — 3 agents simultaneously, no shared state corruption
+  T9: Control character input — sanitization of null bytes and control chars
 
 Tools used: Calculator, PythonREPL, FileOperations, BashTool + BrokenTool + SlowTool
-Path: Agent.run() → _run_single_agent() → ReAct loop → _execute_tool()
+
+Recommended models: Qwen/Qwen2.5-3B-Instruct, Qwen/Qwen2.5-7B-Instruct
 
 Usage:
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase07_error_recovery_agent.py
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase07_error_recovery_agent.py --model Qwen/Qwen2.5-7B-Instruct
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase07_error_recovery_agent.py --regression
+  CUDA_VISIBLE_DEVICES=0 python examples/error_recovery_agent.py
+  CUDA_VISIBLE_DEVICES=0 python examples/error_recovery_agent.py --model Qwen/Qwen2.5-7B-Instruct
+  CUDA_VISIBLE_DEVICES=0 python examples/error_recovery_agent.py --regression
 """
 from __future__ import annotations
 
@@ -280,10 +281,10 @@ def run_test(agent, test_id, description, question,
     }
 
 
-# ── Phase 7 Tests ────────────────────────────────────────────────────────────
+# ── Error Recovery Tests ──────────────────────────────────────────────────────
 
 def test_p7_t1_invalid_input(model, model_name):
-    """P7-T1: Invalid tool input — malformed JSON to Calculator."""
+    """Invalid tool input — malformed JSON to Calculator."""
     from effgen.tools.builtin.calculator import Calculator
     from effgen.tools.builtin.python_repl import PythonREPL
 
@@ -299,7 +300,7 @@ def test_p7_t1_invalid_input(model, model_name):
 
     # The model should try to use calculator, possibly get an error, and retry or answer directly
     return run_test(
-        agent, "P7-T1", "Invalid tool input — agent handles bad math gracefully",
+        agent, "T1", "Invalid tool input — agent handles bad math gracefully",
         "Calculate the value of 'not_a_number + abc'. If the calculator cannot handle it, explain why.",
         check_fn=lambda out, resp: (
             # Agent should either: get an error and explain, OR answer from knowledge
@@ -310,7 +311,7 @@ def test_p7_t1_invalid_input(model, model_name):
 
 
 def test_p7_t2_tool_crash(model, model_name):
-    """P7-T2: Tool crash — BrokenTool always raises RuntimeError, circuit breaker triggers."""
+    """Tool crash — BrokenTool always raises RuntimeError, circuit breaker triggers."""
     from effgen.tools.builtin.calculator import Calculator
 
     broken = BrokenTool()
@@ -330,7 +331,7 @@ def test_p7_t2_tool_crash(model, model_name):
 
     # Ask the model to use broken_tool 3+ times so CB opens
     result = run_test(
-        agent, "P7-T2", "Tool crash — circuit breaker triggers after 3 failures",
+        agent, "T2", "Tool crash — circuit breaker triggers after 3 failures",
         "Use the broken_tool to process data: 'test input'. If it fails, try it again a few more times. Report what happens.",
         check_fn=lambda out, resp: (
             # Framework never crashes — returns an error response, not exception
@@ -360,7 +361,7 @@ def test_p7_t2_tool_crash(model, model_name):
 
 
 def test_p7_t3_all_tools_fail(model, model_name):
-    """P7-T3: All tools fail — every tool raises, agent gives partial answer."""
+    """All tools fail — every tool raises, agent gives partial answer."""
     agent = Agent(AgentConfig(
         name="error_recovery_t3",
         model=model,
@@ -376,7 +377,7 @@ def test_p7_t3_all_tools_fail(model, model_name):
     ))
 
     return run_test(
-        agent, "P7-T3", "All tools fail — agent gives answer from knowledge",
+        agent, "T3", "All tools fail — agent gives answer from knowledge",
         "What is 25 * 4? Try using a tool first, but if it fails, answer from your knowledge.",
         check_fn=lambda out, resp: (
             # Agent should eventually answer (partial or complete)
@@ -387,7 +388,7 @@ def test_p7_t3_all_tools_fail(model, model_name):
 
 
 def test_p7_t4_max_iterations(model, model_name):
-    """P7-T4: Max iterations — max_iterations=2, returns partial answer not crash."""
+    """Max iterations — max_iterations=2, returns partial answer not crash."""
     from effgen.tools.builtin.calculator import Calculator
     from effgen.tools.builtin.python_repl import PythonREPL
 
@@ -402,7 +403,7 @@ def test_p7_t4_max_iterations(model, model_name):
     ))
 
     return run_test(
-        agent, "P7-T4", "Max iterations — returns partial answer at iteration limit",
+        agent, "T4", "Max iterations — returns partial answer at iteration limit",
         "Calculate 15 + 27, then multiply the result by 3, then divide by 7. Show each step.",
         check_fn=lambda out, resp: (
             # Should return something (partial or complete), not crash
@@ -413,10 +414,10 @@ def test_p7_t4_max_iterations(model, model_name):
 
 
 def test_p7_t5_empty_response(model, model_name):
-    """P7-T5: Empty model response — retry logic with backoff.
+    """Empty model response — retry logic with backoff.
 
-    This test validates the retry mechanism in _generate().
-    We test it at the framework level by checking the retry logic directly.
+    Validates the retry mechanism in _generate() at the framework level
+    by checking the retry logic directly.
     """
     # Test the retry logic directly with a probe
     from effgen.tools.builtin.calculator import Calculator
@@ -435,7 +436,7 @@ def test_p7_t5_empty_response(model, model_name):
     # 1. _generate has 3 retries with backoff_delays = [0.5, 1.0, 2.0]
     # 2. Temperature increases by 0.1 per retry
     print(f"\n{'='*60}")
-    print(f"Test: P7-T5 — Empty model response retry logic")
+    print(f"Test: T5 — Empty model response retry logic")
 
     # Verify retry parameters exist in the agent's _generate method
     import inspect
@@ -460,7 +461,7 @@ def test_p7_t5_empty_response(model, model_name):
     print(f"Result: {status}")
 
     return {
-        "test_id": "P7-T5", "description": "Empty model response retry logic",
+        "test_id": "T5", "description": "Empty model response retry logic",
         "passed": passed, "output": f"retry_params={has_max_retries and has_backoff}, real_works={real_works}",
         "tool_calls": resp.tool_calls, "iterations": resp.iterations,
         "time": 0.0, "status": status,
@@ -468,7 +469,7 @@ def test_p7_t5_empty_response(model, model_name):
 
 
 def test_p7_t6_timeout(model, model_name):
-    """P7-T6: Timeout — SlowTool takes 30s, tool timeout triggers."""
+    """Timeout — SlowTool triggers tool timeout."""
     from effgen.tools.builtin.calculator import Calculator
 
     # Use a shorter sleep to not waste GPU time, but still test timeout behavior
@@ -489,7 +490,7 @@ def test_p7_t6_timeout(model, model_name):
 
     t0 = time.time()
     result = run_test(
-        agent, "P7-T6", "Timeout — SlowTool triggers timeout",
+        agent, "T6", "Timeout — SlowTool triggers timeout",
         "Use the slow_tool to process 'test data'. If it's too slow, use calculator to compute 10 + 5 instead.",
         check_fn=lambda out, resp: (
             # Framework should handle the slow tool without hanging forever
@@ -510,7 +511,7 @@ def test_p7_t6_timeout(model, model_name):
 
 
 def test_p7_t7_fallback_exhaustion(model, model_name):
-    """P7-T7: Fallback chain exhaustion — calculator→python_repl→code_executor all fail."""
+    """Fallback chain exhaustion — calculator -> python_repl -> code_executor all fail."""
     # Create agent with all-failing math tools
     agent = Agent(AgentConfig(
         name="error_recovery_t7",
@@ -536,7 +537,7 @@ def test_p7_t7_fallback_exhaustion(model, model_name):
     ))
 
     result = run_test(
-        agent, "P7-T7", "Fallback chain exhaustion — all fallbacks fail",
+        agent, "T7", "Fallback chain exhaustion — all fallbacks fail",
         "What is 7 * 8? Use the calculator tool.",
         check_fn=lambda out, resp: (
             # Agent should handle this gracefully — either answer from knowledge or report failure
@@ -559,7 +560,7 @@ def test_p7_t7_fallback_exhaustion(model, model_name):
 
 
 def test_p7_t8_concurrent_failures(model, model_name):
-    """P7-T8: Concurrent failures — 3 agents simultaneously, no shared state corruption."""
+    """Concurrent failures — 3 agents simultaneously, no shared state corruption."""
     from effgen.tools.builtin.calculator import Calculator
 
     results = [None, None, None]
@@ -594,7 +595,7 @@ def test_p7_t8_concurrent_failures(model, model_name):
     ]
 
     print(f"\n{'='*60}")
-    print(f"Test: P7-T8 — Concurrent failures (3 agents)")
+    print(f"Test: T8 — Concurrent failures (3 agents)")
 
     t0 = time.time()
     threads = []
@@ -628,7 +629,7 @@ def test_p7_t8_concurrent_failures(model, model_name):
     print(f"Result: {status}")
 
     return {
-        "test_id": "P7-T8", "description": "Concurrent failures — no shared state corruption",
+        "test_id": "T8", "description": "Concurrent failures — no shared state corruption",
         "passed": all_passed, "output": f"3 agents completed, errors={[e for e in errors if e]}",
         "tool_calls": sum(r.tool_calls for r in results if r),
         "iterations": sum(r.iterations for r in results if r),
@@ -637,11 +638,11 @@ def test_p7_t8_concurrent_failures(model, model_name):
 
 
 def test_p7_t9_control_characters(model, model_name):
-    """P7-T9: Control character input — sanitization strips them."""
+    """Control character input — sanitization strips them."""
     from effgen.core.agent import Agent as AgentClass
 
     print(f"\n{'='*60}")
-    print(f"Test: P7-T9 — Control character sanitization")
+    print(f"Test: T9 — Control character sanitization")
 
     # Test the _sanitize_tool_input method directly
     test_cases = [
@@ -685,7 +686,7 @@ def test_p7_t9_control_characters(model, model_name):
     print(f"Result: {status}")
 
     return {
-        "test_id": "P7-T9", "description": "Control character sanitization",
+        "test_id": "T9", "description": "Control character sanitization",
         "passed": passed, "output": f"sanitize_ok={all_passed}, real_works={real_works}",
         "tool_calls": resp.tool_calls, "iterations": resp.iterations,
         "time": 0.0, "status": status,
@@ -695,7 +696,7 @@ def test_p7_t9_control_characters(model, model_name):
 # ── Regression Tests ─────────────────────────────────────────────────────────
 
 def run_regression(model, model_name):
-    """Run Phase 1-5 regression tests."""
+    """Run regression tests."""
     from effgen.tools.builtin.calculator import Calculator
     from effgen.tools.builtin.python_repl import PythonREPL
     from effgen.tools.builtin.bash_tool import BashTool
@@ -713,21 +714,21 @@ def run_regression(model, model_name):
         enable_sub_agents=False,
     ))
 
-    # Phase 1: Basic Q&A
+    # Q&A
     results.append(run_test(
         agent, "REG-P1", "Q&A: capital of France",
         "What is the capital of France?",
         expected_keywords=["paris"],
     ))
 
-    # Phase 2: Calculator
+    # Calculator
     results.append(run_test(
         agent, "REG-P2", "Calculator: 15 + 27",
         "What is 15 + 27? Use a tool to calculate it.",
         expected_keywords=["42"],
     ))
 
-    # Phase 3: Multi-tool — bash
+    # Multi-tool — bash
     results.append(run_test(
         agent, "REG-P3", "Multi-tool: bash echo",
         "Run the command 'echo hello_regression' using bash and tell me the output.",
@@ -735,14 +736,14 @@ def run_regression(model, model_name):
         expected_tool="bash",
     ))
 
-    # Phase 4: File ops
+    # File ops
     results.append(run_test(
         agent, "REG-P4", "File ops: cat hostname",
         "Use bash to run: cat /etc/hostname",
         check_fn=lambda out, resp: resp.tool_calls >= 1,
     ))
 
-    # Phase 5: Code execution
+    # Code execution
     results.append(run_test(
         agent, "REG-P5", "Code: prime check",
         "Write and run Python code to check if 17 is prime. Print the result.",
@@ -763,61 +764,61 @@ def run_regression(model, model_name):
 
 # ── Main Entry Point ─────────────────────────────────────────────────────────
 
-def run_all_phase7_tests(model, model_name):
-    """Run all 9 Phase 7 tests."""
+def run_all_error_recovery_tests(model, model_name):
+    """Run all 9 error recovery tests."""
     results = []
 
     print("\n" + "="*60)
-    print(f"Phase 7: Error Recovery Agent — Model: {model_name}")
+    print(f"Error Recovery Agent — Model: {model_name}")
     print("="*60)
 
-    # P7-T1: Invalid tool input
+    # T1: Invalid tool input
     results.append(test_p7_t1_invalid_input(model, model_name))
 
-    # P7-T2: Tool crash + circuit breaker
+    # T2: Tool crash + circuit breaker
     results.append(test_p7_t2_tool_crash(model, model_name))
 
-    # P7-T3: All tools fail
+    # T3: All tools fail
     results.append(test_p7_t3_all_tools_fail(model, model_name))
 
-    # P7-T4: Max iterations
+    # T4: Max iterations
     results.append(test_p7_t4_max_iterations(model, model_name))
 
-    # P7-T5: Empty response retry logic
+    # T5: Empty response retry logic
     results.append(test_p7_t5_empty_response(model, model_name))
 
-    # P7-T6: Timeout
+    # T6: Timeout
     results.append(test_p7_t6_timeout(model, model_name))
 
-    # P7-T7: Fallback chain exhaustion
+    # T7: Fallback chain exhaustion
     results.append(test_p7_t7_fallback_exhaustion(model, model_name))
 
-    # P7-T8: Concurrent failures
+    # T8: Concurrent failures
     results.append(test_p7_t8_concurrent_failures(model, model_name))
 
-    # P7-T9: Control character sanitization
+    # T9: Control character sanitization
     results.append(test_p7_t9_control_characters(model, model_name))
 
     # Summary
     print(f"\n{'='*60}")
-    print(f"Phase 7 Results — Model: {model_name}")
+    print(f"Error Recovery Results — Model: {model_name}")
     print(f"{'='*60}")
     pc = sum(1 for r in results if r["passed"])
     for r in results:
         print(f"  {r['status']:5s} — {r['test_id']}: {r['description']} ({r['time']:.1f}s)")
-    print(f"\n{pc}/{len(results)} Phase 7 tests passed")
+    print(f"\n{pc}/{len(results)} tests passed")
 
     return results
 
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen Phase 7: Error Recovery Agent")
+    parser = argparse.ArgumentParser(description="effGen Error Recovery Agent Example")
     parser.add_argument(
         "--model", default="Qwen/Qwen2.5-3B-Instruct",
         help="Model to use (default: Qwen/Qwen2.5-3B-Instruct)",
     )
     parser.add_argument("--regression", action="store_true", help="Run regression tests only")
-    parser.add_argument("--test", type=str, help="Run specific test (e.g., P7-T1)")
+    parser.add_argument("--test", type=str, help="Run specific test (e.g., T1)")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     args = parser.parse_args()
 
@@ -825,7 +826,7 @@ def main():
         logging.basicConfig(level=logging.INFO, format="%(name)s: %(message)s")
 
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-    print(f"effGen v0.1.2 — Phase 7: Error Recovery Agent")
+    print("effGen — Error Recovery Agent")
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 
@@ -839,15 +840,15 @@ def main():
     elif args.test:
         # Run specific test
         test_map = {
-            "P7-T1": test_p7_t1_invalid_input,
-            "P7-T2": test_p7_t2_tool_crash,
-            "P7-T3": test_p7_t3_all_tools_fail,
-            "P7-T4": test_p7_t4_max_iterations,
-            "P7-T5": test_p7_t5_empty_response,
-            "P7-T6": test_p7_t6_timeout,
-            "P7-T7": test_p7_t7_fallback_exhaustion,
-            "P7-T8": test_p7_t8_concurrent_failures,
-            "P7-T9": test_p7_t9_control_characters,
+            "T1": test_p7_t1_invalid_input,
+            "T2": test_p7_t2_tool_crash,
+            "T3": test_p7_t3_all_tools_fail,
+            "T4": test_p7_t4_max_iterations,
+            "T5": test_p7_t5_empty_response,
+            "T6": test_p7_t6_timeout,
+            "T7": test_p7_t7_fallback_exhaustion,
+            "T8": test_p7_t8_concurrent_failures,
+            "T9": test_p7_t9_control_characters,
         }
         test_fn = test_map.get(args.test.upper())
         if test_fn:
@@ -856,12 +857,12 @@ def main():
             print(f"Unknown test: {args.test}. Available: {list(test_map.keys())}")
     else:
         # Run regression first
-        print("\n--- Phase 1-5 Regression ---")
+        print("\n--- Regression Tests ---")
         reg_results = run_regression(model, model_name=args.model)
 
-        # Run Phase 7 tests
-        print("\n--- Phase 7 Tests ---")
-        p7_results = run_all_phase7_tests(model, model_name=args.model)
+        # Run error recovery tests
+        print("\n--- Error Recovery Tests ---")
+        p7_results = run_all_error_recovery_tests(model, model_name=args.model)
 
     model.unload()
     print("\nDone.")

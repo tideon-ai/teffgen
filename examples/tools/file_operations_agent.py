@@ -1,33 +1,23 @@
 #!/usr/bin/env python3
 """
-effGen v0.1.2 — Phase 4: File Operations Agent (Read/Write/Search)
+effGen — File Operations Agent (Read/Write/Search)
 
 A file management agent with FileOperations, BashTool, and TextProcessingTool.
-Tests the agent's ability to read files, write files, list directories, and
-search file contents. Key focus: _map_input_to_parameters() for file operations,
-path parsing, and error messages.
+Demonstrates reading files, writing files, listing directories, and searching
+file contents. The FileOperations tool is sandboxed to allowed directories.
 
-Tested models (post-fix results):
-  - Qwen/Qwen2.5-1.5B-Instruct (1.5B)  — 6/7 PASS, T7 multi-step only 1 tool call
-  - Qwen/Qwen2.5-3B-Instruct (3B)      — 7/7 PASS, primary dev model
-  - Qwen/Qwen2.5-7B-Instruct (7B)      — 7/7 PASS, best quality
-  - meta-llama/Llama-3.2-3B-Instruct    — 5/7 PASS, T1 echoes path not content, T7 single-step
-  - microsoft/Phi-4-mini-instruct       — 7/7 PASS, slowest (~26s/query)
-
-Framework bugs fixed in this phase:
-  - BUG-009: _map_input_to_parameters lstrip('/') strips leading slash from absolute
-    paths — fixed to preserve absolute paths, only strip file:// prefix (agent.py)
-  - BUG-010: _execute_tool_single result conversion misses 'data'/'message' keys —
-    FileOperations returns {success, data, message} but only 'result'/'output' were
-    checked, causing raw dict to be shown to model. Added data/message extraction (agent.py)
+Recommended models:
+  - Qwen/Qwen2.5-3B-Instruct (3B)      — excellent quality (default)
+  - Qwen/Qwen2.5-7B-Instruct (7B)      — best quality
+  - microsoft/Phi-4-mini-instruct       — very accurate (slower)
+  - Qwen/Qwen2.5-1.5B-Instruct (1.5B)  — good quality, fast
 
 Tools used: FileOperations, BashTool, TextProcessingTool
-Path: Agent.run() → _run_single_agent() → ReAct loop → _execute_tool()
 
 Usage:
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase04_file_agent.py
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase04_file_agent.py --model Qwen/Qwen2.5-7B-Instruct
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase04_file_agent.py --interactive
+  CUDA_VISIBLE_DEVICES=0 python examples/file_operations_agent.py
+  CUDA_VISIBLE_DEVICES=0 python examples/file_operations_agent.py --model Qwen/Qwen2.5-7B-Instruct
+  CUDA_VISIBLE_DEVICES=0 python examples/file_operations_agent.py --interactive
 """
 from __future__ import annotations
 
@@ -161,14 +151,14 @@ def run_test(agent, test_id, description, question, expected_keywords=None,
     }
 
 
-def run_all_tests(agent, model_name="unknown", test_dir="/tmp/effgen_phase4_test"):
-    """Run all Phase 4 tests."""
+def run_all_tests(agent, model_name="unknown", test_dir="/tmp/effgen_file_ops_test"):
+    """Run all file operations tests."""
     results = []
 
-    # P4-T1: Write file
+    # T1: Write file
     write_path = os.path.join(test_dir, "test_output.txt")
     results.append(run_test(
-        agent, "P4-T1", "Write file",
+        agent, "T1", "Write file",
         f'Create a file called {write_path} with the content \'Hello from effgen\'',
         expected_keywords=["hello", "effgen"],
         expected_tool="file_operations",
@@ -176,21 +166,21 @@ def run_all_tests(agent, model_name="unknown", test_dir="/tmp/effgen_phase4_test
         test_dir=test_dir,
     ))
 
-    # P4-T2: Read file — create the file first to ensure it exists
+    # T2: Read file — create the file first to ensure it exists
     read_path = os.path.join(test_dir, "test_output.txt")
     if not os.path.exists(read_path):
         with open(read_path, "w") as f:
             f.write("Hello from effgen")
 
     results.append(run_test(
-        agent, "P4-T2", "Read file",
+        agent, "T2", "Read file",
         f'Read the file {read_path}',
         expected_keywords=["hello", "effgen"],
         expected_tool="file_operations",
         test_dir=test_dir,
     ))
 
-    # P4-T3: List directory
+    # T3: List directory
     # Create some test files for listing
     for fname in ["alpha.txt", "beta.txt", "gamma.log"]:
         fpath = os.path.join(test_dir, fname)
@@ -199,7 +189,7 @@ def run_all_tests(agent, model_name="unknown", test_dir="/tmp/effgen_phase4_test
                 f.write(f"Content of {fname}")
 
     results.append(run_test(
-        agent, "P4-T3", "List directory",
+        agent, "T3", "List directory",
         f'List the files in the directory {test_dir}',
         expected_keywords=[],
         expected_tool="file_operations",
@@ -207,33 +197,33 @@ def run_all_tests(agent, model_name="unknown", test_dir="/tmp/effgen_phase4_test
         test_dir=test_dir,
     ))
 
-    # P4-T4: Search for content in a file using bash grep
+    # T4: Search for content in a file using bash grep
     search_file = os.path.join(test_dir, "search_test.txt")
     with open(search_file, "w") as f:
         f.write("import os\nimport sys\nimport json\nprint('hello')\n")
 
     results.append(run_test(
-        agent, "P4-T4", "Search file content",
+        agent, "T4", "Search file content",
         f'Search for the word "import" in the file {search_file}. Use the bash tool with grep.',
         expected_keywords=["import"],
         expected_tool="bash",
         test_dir=test_dir,
     ))
 
-    # P4-T5: Path handling — file:/// prefix
+    # T5: Path handling — file:/// prefix
     file_uri_path = os.path.join(test_dir, "test_output.txt")
     results.append(run_test(
-        agent, "P4-T5", "Path handling (absolute path)",
+        agent, "T5", "Path handling (absolute path)",
         f'Read the contents of the file at {file_uri_path}',
         expected_keywords=["hello", "effgen"],
         expected_tool="file_operations",
         test_dir=test_dir,
     ))
 
-    # P4-T6: Non-existent file — clear error
+    # T6: Non-existent file — clear error
     nonexistent = os.path.join(test_dir, "nonexistent_file_xyz.txt")
     results.append(run_test(
-        agent, "P4-T6", "Non-existent file error",
+        agent, "T6", "Non-existent file error",
         f'Read the file {nonexistent}',
         expected_keywords=[],
         expected_tool="file_operations",
@@ -241,14 +231,14 @@ def run_all_tests(agent, model_name="unknown", test_dir="/tmp/effgen_phase4_test
         test_dir=test_dir,
     ))
 
-    # P4-T7: Multi-step — create, write, read back
+    # T7: Multi-step — create, write, read back
     multi_path = os.path.join(test_dir, "multi_step.txt")
     # Clean up if exists
     if os.path.exists(multi_path):
         os.remove(multi_path)
 
     results.append(run_test(
-        agent, "P4-T7", "Multi-step: write then read",
+        agent, "T7", "Multi-step: write then read",
         f'First, create a file at {multi_path} with 3 lines: "Line 1: Alpha", "Line 2: Beta", "Line 3: Gamma". Then read the file back and tell me what it contains.',
         expected_keywords=["alpha", "beta", "gamma"],
         check_fn=lambda out, resp, td: resp.tool_calls >= 2,
@@ -257,7 +247,7 @@ def run_all_tests(agent, model_name="unknown", test_dir="/tmp/effgen_phase4_test
 
     # Summary
     print(f"\n{'='*60}")
-    print(f"Phase 4 Results — Model: {model_name}")
+    print(f"File Operations Results — Model: {model_name}")
     print(f"{'='*60}")
     pass_count = 0
     for r in results:
@@ -291,18 +281,18 @@ def interactive_mode(agent):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen Phase 4: File Operations Agent")
+    parser = argparse.ArgumentParser(description="effGen File Operations Agent Example")
     parser.add_argument(
         "--model",
         default="Qwen/Qwen2.5-3B-Instruct",
         help="Model to use (default: Qwen/Qwen2.5-3B-Instruct)",
     )
     parser.add_argument("--interactive", action="store_true", help="Interactive chat mode")
-    parser.add_argument("--test", type=str, help="Run a single test (e.g., P4-T1)")
+    parser.add_argument("--test", type=str, help="Run a single test (e.g., T1)")
     parser.add_argument(
         "--test-dir",
-        default="/tmp/effgen_phase4_test",
-        help="Directory for test files (default: /tmp/effgen_phase4_test)",
+        default="/tmp/effgen_file_ops_test",
+        help="Directory for test files (default: /tmp/effgen_file_ops_test)",
     )
     args = parser.parse_args()
 
@@ -310,7 +300,7 @@ def main():
     os.makedirs(args.test_dir, exist_ok=True)
 
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-    print(f"effGen v0.1.2 — Phase 4: File Operations Agent")
+    print("effGen — File Operations Agent")
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
     print(f"Test directory: {args.test_dir}")

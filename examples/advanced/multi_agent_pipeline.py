@@ -1,35 +1,31 @@
 #!/usr/bin/env python3
 """
-effGen v0.1.2 — Phase 10: Multi-Agent Pipeline (Orchestration)
+effGen — Multi-Agent Pipeline (Orchestration)
 
 Demonstrates two multi-agent patterns:
   Option A: Manual Pipeline — 3+ agents wired sequentially (A → B → C)
   Option B: Sub-Agent System — SubAgentRouter → SubAgentManager with real execution
 
-Tested models (all 9/9 PASS):
-  - Qwen/Qwen2.5-3B-Instruct (3B)      — 9/9 PASS, fast (24-110s per test)
-  - Qwen/Qwen2.5-7B-Instruct (7B)      — 9/9 PASS, best quality, fastest per-token
-  - microsoft/Phi-4-mini-instruct       — 9/9 PASS, slower (~100-350s per test)
-
-Framework changes in this phase:
-  - Added fuzzy user-explicit sub-agent trigger detection (router.py)
-  - Regex-based matching handles spelling variants, hyphenation, number patterns
-
 Tests:
-  - P10-T1: Manual pipeline — Agent A generates question, B solves, C summarizes
-  - P10-T2: Sub-agent routing — complex task triggers router decomposition
-  - P10-T3: Parallel sub-agents — independent subtasks with real inference
-  - P10-T4: Sequential sub-agents — dependent subtasks, context passed
-  - P10-T5: Synthesis quality — sub-agent results combined into coherent answer
-  - P10-T6: Error in sub-agent — pipeline handles failure gracefully
-  - P10-T7: User-explicit trigger — fuzzy matching (18/18 accuracy)
-  - P10-T8: Hard 4-stage pipeline (generate→solve→verify→report)
-  - P10-T9: Hard 3-agent sub-agent (shopping cart + tax + payment comparison)
+  - T1: Manual pipeline — Agent A generates question, B solves, C summarizes
+  - T2: Sub-agent routing — simple vs complex task routing
+  - T3: Parallel sub-agents — independent subtasks
+  - T4: Sequential sub-agents — dependent subtasks, context passed
+  - T5: Synthesis quality — results combined into coherent answer
+  - T6: Error handling — pipeline handles failure gracefully
+  - T7: User-explicit trigger — fuzzy matching for sub-agent requests
+  - T8: Hard 4-stage pipeline (generate → solve → verify → report)
+  - T9: Hard 3-agent sub-agent (shopping cart + tax + payment comparison)
+
+Recommended models:
+  - Qwen/Qwen2.5-3B-Instruct (default, fast)
+  - Qwen/Qwen2.5-7B-Instruct (best quality)
+  - microsoft/Phi-4-mini-instruct
 
 Usage:
-  CUDA_VISIBLE_DEVICES=0 conda run -n effgen-verify python examples/v012_phase10_multi_agent_pipeline.py
-  CUDA_VISIBLE_DEVICES=0 conda run -n effgen-verify python examples/v012_phase10_multi_agent_pipeline.py --model Qwen/Qwen2.5-7B-Instruct
-  CUDA_VISIBLE_DEVICES=0 conda run -n effgen-verify python examples/v012_phase10_multi_agent_pipeline.py --test P10-T1
+  CUDA_VISIBLE_DEVICES=0 python examples/multi_agent_pipeline.py
+  CUDA_VISIBLE_DEVICES=0 python examples/multi_agent_pipeline.py --model Qwen/Qwen2.5-7B-Instruct
+  CUDA_VISIBLE_DEVICES=0 python examples/multi_agent_pipeline.py --test T1
 """
 from __future__ import annotations
 
@@ -181,8 +177,8 @@ def run_manual_pipeline(model, topic="compound interest"):
 # ── Option B: Sub-Agent System ──────────────────────────────────────────
 
 def test_sub_agent_routing(model):
-    """P10-T2: Test that the router correctly decides to use sub-agents for complex tasks."""
-    print_header("P10-T2: Sub-Agent Routing Decision")
+    """T2: Test that the router correctly decides to use sub-agents for complex tasks."""
+    print_header("T2: Sub-Agent Routing Decision")
 
     router = SubAgentRouter()
 
@@ -228,13 +224,13 @@ def test_sub_agent_routing(model):
 
 def test_sub_agent_execution(model, strategy="sequential"):
     """
-    P10-T3/T4: Test sub-agent execution with real model inference.
+    T3/T4: Test sub-agent execution with real model inference.
 
     The SubAgentManager currently uses _simulate_execution (placeholder).
     We'll wire it to actually use Agent.run() by monkey-patching or by
     directly building the pipeline.
     """
-    print_header(f"P10-T3/T4: Sub-Agent Execution ({strategy})")
+    print_header(f"T3/T4: Sub-Agent Execution ({strategy})")
 
     tracker = ExecutionTracker()
     manager = SubAgentManager(config={"max_parallel_agents": 3}, execution_tracker=tracker)
@@ -364,8 +360,8 @@ def test_sub_agent_execution(model, strategy="sequential"):
 
 
 def test_synthesis_quality(model):
-    """P10-T5: Test that synthesis produces a coherent final answer from multiple sub-agent results."""
-    print_header("P10-T5: Synthesis Quality")
+    """T5: Test that synthesis produces a coherent final answer from multiple sub-agent results."""
+    print_header("T5: Synthesis Quality")
 
     # Create a synthesizer agent that combines results
     agent = Agent(AgentConfig(
@@ -414,8 +410,8 @@ def test_synthesis_quality(model):
 
 
 def test_error_handling(model):
-    """P10-T6: Test pipeline behavior when one agent fails."""
-    print_header("P10-T6: Error Handling in Pipeline")
+    """T6: Test pipeline behavior when one agent fails."""
+    print_header("T6: Error Handling in Pipeline")
 
     tracker = ExecutionTracker()
     manager = SubAgentManager(config={"stop_on_failure": False}, execution_tracker=tracker)
@@ -528,8 +524,8 @@ def test_error_handling(model):
 # ── Harder Multi-Agent Tests ─────────────────────────────────────────────
 
 def test_user_explicit_trigger(model):
-    """P10-T7: User explicitly asks to use sub-agents — router should honor it (fuzzy matching)."""
-    print_header("P10-T7: User-Explicit Sub-Agent Trigger (Fuzzy)")
+    """T7: User explicitly asks to use sub-agents — router should honor it (fuzzy matching)."""
+    print_header("T7: User-Explicit Sub-Agent Trigger (Fuzzy)")
 
     router = SubAgentRouter()
     passed = 0
@@ -585,8 +581,8 @@ def test_user_explicit_trigger(model):
 
 
 def test_hard_pipeline(model, topic="physics"):
-    """P10-T8: Harder multi-agent pipeline with 4 stages and cross-domain reasoning."""
-    print_header("P10-T8: Hard Multi-Agent Pipeline (4 Stages)")
+    """T8: Harder multi-agent pipeline with 4 stages and cross-domain reasoning."""
+    print_header("T8: Hard Multi-Agent Pipeline (4 Stages)")
 
     # Stage 1: Generate a harder multi-step problem
     print(f"{MAGENTA}Stage 1: Problem Generator{RESET}")
@@ -702,8 +698,8 @@ def test_hard_pipeline(model, topic="physics"):
 
 
 def test_hard_sub_agents(model):
-    """P10-T9: Harder sub-agent test — 3 real sub-agents with different specializations."""
-    print_header("P10-T9: Hard Sub-Agent Test (3 Specialized Agents)")
+    """T9: Harder sub-agent test — 3 real sub-agents with different specializations."""
+    print_header("T9: Hard Sub-Agent Test (3 Specialized Agents)")
 
     tracker = ExecutionTracker()
     manager = SubAgentManager(config={"max_parallel_agents": 3}, execution_tracker=tracker)
@@ -817,27 +813,27 @@ def run_regression(model, phases=None):
     print_header("Regression Testing")
     results = {}
 
-    # Phase 1: Q&A
+    # Q&A
     if 1 in phases:
-        print(f"{CYAN}Phase 1 — Q&A Regression{RESET}")
+        print(f"{CYAN}Q&A Regression{RESET}")
         agent = create_agent("minimal", model)
         resp = agent.run("What is the capital of France?")
         p1_ok = resp.success and "paris" in resp.output.lower()
         print_result("P1-Reg", p1_ok, f"'{resp.output[:60]}...'")
         results["P1"] = p1_ok
 
-    # Phase 5: Coding
+    # Coding
     if 5 in phases:
-        print(f"\n{CYAN}Phase 5 — Coding Regression{RESET}")
+        print(f"\n{CYAN}Coding Regression{RESET}")
         agent = create_agent("coding", model)
         resp = agent.run("Use python_repl to calculate the sum of the first 10 natural numbers. Print the result.")
         p5_ok = resp.success and "55" in resp.output
         print_result("P5-Reg", p5_ok, f"'{resp.output[:60]}...'")
         results["P5"] = p5_ok
 
-    # Phase 7: Error Recovery
+    # Error Recovery
     if 7 in phases:
-        print(f"\n{CYAN}Phase 7 — Error Recovery Regression{RESET}")
+        print(f"\n{CYAN}Error Recovery Regression{RESET}")
         agent = Agent(AgentConfig(
             name="ErrorRecovery",
             model=model,
@@ -852,9 +848,9 @@ def run_regression(model, phases=None):
         print_result("P7-Reg", p7_ok, f"'{resp.output[:60]}...'")
         results["P7"] = p7_ok
 
-    # Phase 9: Streaming
+    # Streaming
     if 9 in phases:
-        print(f"\n{CYAN}Phase 9 — Streaming Regression{RESET}")
+        print(f"\n{CYAN}Streaming Regression{RESET}")
         agent = Agent(AgentConfig(
             name="StreamTest",
             model=model,
@@ -884,15 +880,15 @@ def run_regression(model, phases=None):
 # ── Main ─────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description="Phase 10: Multi-Agent Pipeline")
+    parser = argparse.ArgumentParser(description="effGen Multi-Agent Pipeline Example")
     parser.add_argument("--model", default="Qwen/Qwen2.5-3B-Instruct")
-    parser.add_argument("--test", help="Run specific test (P10-T1..T6, regression)")
+    parser.add_argument("--test", help="Run specific test (T1..T9, regression)")
     parser.add_argument("--skip-regression", action="store_true")
     parser.add_argument("--topic", default="compound interest",
                         help="Topic for manual pipeline question generation")
     args = parser.parse_args()
 
-    print(f"\n{BOLD}effGen v0.1.2 — Phase 10: Multi-Agent Pipeline{RESET}")
+    print(f"\n{BOLD}effGen — Multi-Agent Pipeline{RESET}")
     print(f"Model: {args.model}")
     print(f"GPU: {os.environ.get('CUDA_VISIBLE_DEVICES', 'auto')}")
 
@@ -907,63 +903,63 @@ def main():
     if args.test:
         tests = [args.test.upper()]
     else:
-        tests = ["P10-T1", "P10-T2", "P10-T3", "P10-T4", "P10-T5", "P10-T6",
-                 "P10-T7", "P10-T8", "P10-T9"]
+        tests = ["T1", "T2", "T3", "T4", "T5", "T6",
+                 "T7", "T8", "T9"]
         if not args.skip_regression:
             tests.append("REGRESSION")
 
     for test in tests:
         try:
-            if test == "P10-T1":
+            if test == "T1":
                 r = run_manual_pipeline(model, args.topic)
-                all_results["P10-T1"] = r["pipeline_ok"]
-                print_result("P10-T1", r["pipeline_ok"],
+                all_results["T1"] = r["pipeline_ok"]
+                print_result("T1", r["pipeline_ok"],
                              f"Manual pipeline — {r['times']['total']:.1f}s, {r['tool_calls']} tool calls")
 
-            elif test == "P10-T2":
+            elif test == "T2":
                 r = test_sub_agent_routing(model)
-                all_results["P10-T2"] = r["routing_ok"]
-                print_result("P10-T2", r["routing_ok"], "Sub-agent routing decisions")
+                all_results["T2"] = r["routing_ok"]
+                print_result("T2", r["routing_ok"], "Sub-agent routing decisions")
 
-            elif test == "P10-T3":
+            elif test == "T3":
                 r = test_sub_agent_execution(model, strategy="parallel")
-                all_results["P10-T3"] = r["exec_ok"]
-                print_result("P10-T3", r["exec_ok"],
+                all_results["T3"] = r["exec_ok"]
+                print_result("T3", r["exec_ok"],
                              f"Parallel sub-agents — {r['time']:.1f}s")
 
-            elif test == "P10-T4":
+            elif test == "T4":
                 r = test_sub_agent_execution(model, strategy="sequential")
-                all_results["P10-T4"] = r["exec_ok"]
-                print_result("P10-T4", r["exec_ok"],
+                all_results["T4"] = r["exec_ok"]
+                print_result("T4", r["exec_ok"],
                              f"Sequential sub-agents — {r['time']:.1f}s")
 
-            elif test == "P10-T5":
+            elif test == "T5":
                 r = test_synthesis_quality(model)
-                all_results["P10-T5"] = r["synthesis_ok"]
-                print_result("P10-T5", r["synthesis_ok"],
+                all_results["T5"] = r["synthesis_ok"]
+                print_result("T5", r["synthesis_ok"],
                              f"Synthesis quality — {r['time']:.1f}s")
 
-            elif test == "P10-T6":
+            elif test == "T6":
                 r = test_error_handling(model)
-                all_results["P10-T6"] = r["error_ok"]
-                print_result("P10-T6", r["error_ok"],
+                all_results["T6"] = r["error_ok"]
+                print_result("T6", r["error_ok"],
                              f"Error handling — {r['time']:.1f}s")
 
-            elif test == "P10-T7":
+            elif test == "T7":
                 r = test_user_explicit_trigger(model)
-                all_results["P10-T7"] = r["trigger_ok"]
-                print_result("P10-T7", r["trigger_ok"], "User-explicit sub-agent trigger")
+                all_results["T7"] = r["trigger_ok"]
+                print_result("T7", r["trigger_ok"], "User-explicit sub-agent trigger")
 
-            elif test == "P10-T8":
+            elif test == "T8":
                 r = test_hard_pipeline(model)
-                all_results["P10-T8"] = r["pipeline_ok"]
-                print_result("P10-T8", r["pipeline_ok"],
+                all_results["T8"] = r["pipeline_ok"]
+                print_result("T8", r["pipeline_ok"],
                              f"Hard 4-stage pipeline — {r['times']['total']:.1f}s, {r['tool_calls']} tool calls")
 
-            elif test == "P10-T9":
+            elif test == "T9":
                 r = test_hard_sub_agents(model)
-                all_results["P10-T9"] = r["exec_ok"]
-                print_result("P10-T9", r["exec_ok"],
+                all_results["T9"] = r["exec_ok"]
+                print_result("T9", r["exec_ok"],
                              f"Hard 3-agent sub-agent — {r['time']:.1f}s")
 
             elif test == "REGRESSION":

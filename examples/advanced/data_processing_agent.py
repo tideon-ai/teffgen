@@ -1,25 +1,28 @@
 #!/usr/bin/env python3
 """
-effGen v0.1.2 — Phase 8: JSON & Data Processing Agent
+effGen — Data Processing Agent
 
-Processes structured data — parse JSON, query with JSONPath, transform data,
-produce formatted output. Stress-tests JSONTool and TextProcessingTool with real data.
+Processes structured data using JSONTool, TextProcessingTool, PythonREPL,
+and FileOperations. Demonstrates JSON querying, validation, formatting,
+text analysis, and multi-tool data pipelines.
 
-6 Tests (from build.md):
-  P8-T1: JSON query — query a key from JSON object
-  P8-T2: JSON validation — validate invalid JSON (missing quotes)
-  P8-T3: JSON format — pretty-print compact JSON
-  P8-T4: Complex query — nested JSON with arrays, deep path query
-  P8-T5: Text analysis — word count, sentence count, pattern finding
-  P8-T6: Data pipeline — read JSON, extract names, sort, write output
+Tests:
+  - T1: JSON query — extract value from JSON object
+  - T2: JSON validation — detect invalid JSON
+  - T3: JSON format — pretty-print compact JSON
+  - T4: Complex query — nested JSON with deep path query
+  - T5: Text analysis — word count and sentence count
+  - T6: Data pipeline — read JSON, extract, sort, and write output
 
-Tools used: JSONTool, TextProcessingTool, PythonREPL, FileOperations
-Path: Agent.run() → _run_single_agent() → ReAct loop → _execute_tool()
+Recommended models:
+  - Qwen/Qwen2.5-3B-Instruct (default, fast)
+  - Qwen/Qwen2.5-7B-Instruct (best quality)
+  - microsoft/Phi-4-mini-instruct (good quality)
 
 Usage:
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase08_data_processing_agent.py
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase08_data_processing_agent.py --model Qwen/Qwen2.5-7B-Instruct
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase08_data_processing_agent.py --regression
+  CUDA_VISIBLE_DEVICES=0 python examples/data_processing_agent.py
+  CUDA_VISIBLE_DEVICES=0 python examples/data_processing_agent.py --model Qwen/Qwen2.5-7B-Instruct
+  CUDA_VISIBLE_DEVICES=0 python examples/data_processing_agent.py --regression
 """
 from __future__ import annotations
 
@@ -142,10 +145,10 @@ def run_test(agent, test_id, description, question,
     }
 
 
-# ── Phase 8 Tests ────────────────────────────────────────────────────────────
+# ── Data Processing Tests ────────────────────────────────────────────────────
 
-def test_p8_t1_json_query(model, model_name):
-    """P8-T1: JSON query — query a key from a JSON object."""
+def test_t1_json_query(model, model_name):
+    """T1: JSON query — query a key from a JSON object."""
     agent = Agent(AgentConfig(
         name="data_processing_t1",
         model=model,
@@ -158,7 +161,7 @@ def test_p8_t1_json_query(model, model_name):
 
     json_data = '{"name": "Alice", "age": 30, "city": "Wonderland"}'
     return run_test(
-        agent, "P8-T1", "JSON query — extract value of 'name'",
+        agent, "T1", "JSON query — extract value of 'name'",
         f'Use the json_tool to query this JSON and find the value of the "name" key: {json_data}\n'
         f'Use operation "query" with query "$.name".',
         expected_keywords=["alice"],
@@ -166,8 +169,8 @@ def test_p8_t1_json_query(model, model_name):
     )
 
 
-def test_p8_t2_json_validate(model, model_name):
-    """P8-T2: JSON validation — validate invalid JSON (single-quoted keys)."""
+def test_t2_json_validate(model, model_name):
+    """T2: JSON validation — validate invalid JSON (single-quoted keys)."""
     agent = Agent(AgentConfig(
         name="data_processing_t2",
         model=model,
@@ -181,7 +184,7 @@ def test_p8_t2_json_validate(model, model_name):
     # This is intentionally invalid JSON (single quotes)
     invalid_json = "{key: value}"
     return run_test(
-        agent, "P8-T2", "JSON validation — detect invalid JSON",
+        agent, "T2", "JSON validation — detect invalid JSON",
         f'Use json_tool with operation "validate" to check if this is valid JSON: {invalid_json}\n'
         f'Pass the exact string as the data parameter. Report whether it is valid or invalid.',
         check_fn=lambda out, resp: (
@@ -193,8 +196,8 @@ def test_p8_t2_json_validate(model, model_name):
     )
 
 
-def test_p8_t3_json_format(model, model_name):
-    """P8-T3: JSON format — pretty-print compact JSON."""
+def test_t3_json_format(model, model_name):
+    """T3: JSON format — pretty-print compact JSON."""
     agent = Agent(AgentConfig(
         name="data_processing_t3",
         model=model,
@@ -207,7 +210,7 @@ def test_p8_t3_json_format(model, model_name):
 
     compact_json = '{"a":1,"b":2,"c":{"d":3,"e":4}}'
     return run_test(
-        agent, "P8-T3", "JSON format — pretty-print compact JSON",
+        agent, "T3", "JSON format — pretty-print compact JSON",
         f'Use json_tool with operation "format" to pretty-print this JSON: {compact_json}',
         check_fn=lambda out, resp: (
             resp.tool_calls >= 1
@@ -217,8 +220,8 @@ def test_p8_t3_json_format(model, model_name):
     )
 
 
-def test_p8_t4_complex_query(model, model_name):
-    """P8-T4: Complex query — nested JSON with arrays, deep path query."""
+def test_t4_complex_query(model, model_name):
+    """T4: Complex query — nested JSON with arrays, deep path query."""
     agent = Agent(AgentConfig(
         name="data_processing_t4",
         model=model,
@@ -240,7 +243,7 @@ def test_p8_t4_complex_query(model, model_name):
     })
 
     return run_test(
-        agent, "P8-T4", "Complex query — nested JSON deep path",
+        agent, "T4", "Complex query — nested JSON deep path",
         f'Use json_tool to query this JSON: {nested_json}\n'
         f'Find the name of the first employee using query "$.employees[0].name".',
         expected_keywords=["alice"],
@@ -248,8 +251,8 @@ def test_p8_t4_complex_query(model, model_name):
     )
 
 
-def test_p8_t5_text_analysis(model, model_name):
-    """P8-T5: Text analysis — word count, sentence count, pattern finding."""
+def test_t5_text_analysis(model, model_name):
+    """T5: Text analysis — word count, sentence count, pattern finding."""
     agent = Agent(AgentConfig(
         name="data_processing_t5",
         model=model,
@@ -267,7 +270,7 @@ def test_p8_t5_text_analysis(model, model_name):
     )
 
     return run_test(
-        agent, "P8-T5", "Text analysis — word count and sentence count",
+        agent, "T5", "Text analysis — word count and sentence count",
         f'Use text_processing with operation "word_count" to analyze this text:\n"{sample_text}"\n'
         f'Report the word count, character count, and sentence count.',
         check_fn=lambda out, resp: (
@@ -278,8 +281,8 @@ def test_p8_t5_text_analysis(model, model_name):
     )
 
 
-def test_p8_t6_data_pipeline(model, model_name, sandbox_dir):
-    """P8-T6: Data pipeline — read JSON, extract names, sort, write output."""
+def test_t6_data_pipeline(model, model_name, sandbox_dir):
+    """T6: Data pipeline — read JSON, extract names, sort, write output."""
     # Prepare input file
     data = {
         "team": [
@@ -310,7 +313,7 @@ def test_p8_t6_data_pipeline(model, model_name, sandbox_dir):
     ))
 
     return run_test(
-        agent, "P8-T6", "Data pipeline — read JSON, extract and sort names",
+        agent, "T6", "Data pipeline — read JSON, extract and sort names",
         f'Read the JSON file at {input_path} using file_operations (operation "read", path "{input_path}"). '
         f'Then use json_tool or python_repl to extract all the "name" values from the "team" array, '
         f'sort them alphabetically, and write them (one per line) to {output_path} using file_operations '
@@ -325,7 +328,7 @@ def test_p8_t6_data_pipeline(model, model_name, sandbox_dir):
 # ── Regression Tests ─────────────────────────────────────────────────────────
 
 def run_regression(model, model_name):
-    """Run Phase 1-7 regression tests on Qwen2.5-3B."""
+    """Run regression tests to verify previous examples still work."""
     from effgen.tools.builtin.calculator import Calculator
     from effgen.tools.builtin.python_repl import PythonREPL as PythonREPLTool
     from effgen.tools.builtin.bash_tool import BashTool
@@ -349,21 +352,21 @@ def run_regression(model, model_name):
         enable_sub_agents=False,
     ))
 
-    # Phase 1: Q&A
+    # Q&A
     results.append(run_test(
         agent, "REG-P1", "Q&A: capital of France",
         "What is the capital of France?",
         expected_keywords=["paris"],
     ))
 
-    # Phase 2: Calculator
+    # Calculator
     results.append(run_test(
         agent, "REG-P2", "Calculator: 15 + 27",
         "What is 15 + 27? Use a tool to calculate it.",
         expected_keywords=["42"],
     ))
 
-    # Phase 3: Multi-tool — bash
+    # Multi-tool — bash
     results.append(run_test(
         agent, "REG-P3", "Multi-tool: bash echo",
         "Run the command 'echo hello_regression' using bash and tell me the output.",
@@ -371,14 +374,14 @@ def run_regression(model, model_name):
         expected_tool="bash",
     ))
 
-    # Phase 4: File ops
+    # File ops
     results.append(run_test(
         agent, "REG-P4", "File ops: cat hostname",
         "Use bash to run: cat /etc/hostname",
         check_fn=lambda out, resp: resp.tool_calls >= 1,
     ))
 
-    # Phase 5: Code execution
+    # Code execution
     results.append(run_test(
         agent, "REG-P5", "Code: prime check",
         "Write and run Python code to check if 17 is prime. Print the result.",
@@ -386,14 +389,14 @@ def run_regression(model, model_name):
         expected_tool="python_repl",
     ))
 
-    # Phase 6: Multi-turn memory (simple test — just make sure agent works with conversation)
+    # Multi-turn memory
     results.append(run_test(
         agent, "REG-P6", "Memory: follow-up",
         "My name is TestUser. Remember that.",
         check_fn=lambda out, resp: len(out) > 3,
     ))
 
-    # Phase 7: Error recovery (simple — non-crashing)
+    # Error recovery
     results.append(run_test(
         agent, "REG-P7", "Error recovery: graceful",
         "Calculate the square root of -1. If the calculator can't handle it, explain mathematically.",
@@ -413,41 +416,41 @@ def run_regression(model, model_name):
 
 # ── Main Entry Point ─────────────────────────────────────────────────────────
 
-def run_all_phase8_tests(model, model_name, sandbox_dir):
-    """Run all 6 Phase 8 tests."""
+def run_all_tests(model, model_name, sandbox_dir):
+    """Run all 6 data processing tests."""
     results = []
 
     print("\n" + "="*60)
-    print(f"Phase 8: Data Processing Agent — Model: {model_name}")
+    print(f"Data Processing Agent — Model: {model_name}")
     print("="*60)
 
-    results.append(test_p8_t1_json_query(model, model_name))
-    results.append(test_p8_t2_json_validate(model, model_name))
-    results.append(test_p8_t3_json_format(model, model_name))
-    results.append(test_p8_t4_complex_query(model, model_name))
-    results.append(test_p8_t5_text_analysis(model, model_name))
-    results.append(test_p8_t6_data_pipeline(model, model_name, sandbox_dir))
+    results.append(test_t1_json_query(model, model_name))
+    results.append(test_t2_json_validate(model, model_name))
+    results.append(test_t3_json_format(model, model_name))
+    results.append(test_t4_complex_query(model, model_name))
+    results.append(test_t5_text_analysis(model, model_name))
+    results.append(test_t6_data_pipeline(model, model_name, sandbox_dir))
 
     # Summary
     print(f"\n{'='*60}")
-    print(f"Phase 8 Results — Model: {model_name}")
+    print(f"Data Processing Results — Model: {model_name}")
     print(f"{'='*60}")
     pc = sum(1 for r in results if r["passed"])
     for r in results:
         print(f"  {r['status']:5s} — {r['test_id']}: {r['description']} ({r['time']:.1f}s)")
-    print(f"\n{pc}/{len(results)} Phase 8 tests passed")
+    print(f"\n{pc}/{len(results)} tests passed")
 
     return results
 
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen Phase 8: Data Processing Agent")
+    parser = argparse.ArgumentParser(description="effGen Data Processing Agent Example")
     parser.add_argument(
         "--model", default="Qwen/Qwen2.5-3B-Instruct",
         help="Model to use (default: Qwen/Qwen2.5-3B-Instruct)",
     )
     parser.add_argument("--regression", action="store_true", help="Run regression tests only")
-    parser.add_argument("--test", type=str, help="Run specific test (e.g., P8-T1)")
+    parser.add_argument("--test", type=str, help="Run specific test (e.g., T1)")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     args = parser.parse_args()
 
@@ -455,7 +458,7 @@ def main():
         logging.basicConfig(level=logging.INFO, format="%(name)s: %(message)s")
 
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-    print(f"effGen v0.1.2 — Phase 8: Data Processing Agent")
+    print(f"effGen — Data Processing Agent")
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 
@@ -465,7 +468,7 @@ def main():
     print(f"Model loaded in {time.time() - t0:.1f}s")
 
     # Create sandbox directory for file operations
-    sandbox_dir = tempfile.mkdtemp(prefix="effgen_p8_")
+    sandbox_dir = tempfile.mkdtemp(prefix="effgen_data_")
     print(f"Sandbox: {sandbox_dir}")
 
     try:
@@ -473,12 +476,12 @@ def main():
             run_regression(model, model_name=args.model)
         elif args.test:
             test_map = {
-                "P8-T1": lambda: test_p8_t1_json_query(model, args.model),
-                "P8-T2": lambda: test_p8_t2_json_validate(model, args.model),
-                "P8-T3": lambda: test_p8_t3_json_format(model, args.model),
-                "P8-T4": lambda: test_p8_t4_complex_query(model, args.model),
-                "P8-T5": lambda: test_p8_t5_text_analysis(model, args.model),
-                "P8-T6": lambda: test_p8_t6_data_pipeline(model, args.model, sandbox_dir),
+                "T1": lambda: test_t1_json_query(model, args.model),
+                "T2": lambda: test_t2_json_validate(model, args.model),
+                "T3": lambda: test_t3_json_format(model, args.model),
+                "T4": lambda: test_t4_complex_query(model, args.model),
+                "T5": lambda: test_t5_text_analysis(model, args.model),
+                "T6": lambda: test_t6_data_pipeline(model, args.model, sandbox_dir),
             }
             test_fn = test_map.get(args.test.upper())
             if test_fn:
@@ -487,12 +490,12 @@ def main():
                 print(f"Unknown test: {args.test}. Available: {list(test_map.keys())}")
         else:
             # Run regression first
-            print("\n--- Phase 1-7 Regression ---")
+            print("\n--- Regression Tests ---")
             reg_results = run_regression(model, model_name=args.model)
 
-            # Run Phase 8 tests
-            print("\n--- Phase 8 Tests ---")
-            p8_results = run_all_phase8_tests(model, model_name=args.model, sandbox_dir=sandbox_dir)
+            # Run data processing tests
+            print("\n--- Data Processing Tests ---")
+            p8_results = run_all_tests(model, model_name=args.model, sandbox_dir=sandbox_dir)
     finally:
         # Cleanup sandbox
         if os.path.exists(sandbox_dir):

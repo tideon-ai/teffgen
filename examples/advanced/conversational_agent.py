@@ -1,26 +1,20 @@
 #!/usr/bin/env python3
 """
-effGen v0.1.2 — Phase 6: Conversational Agent (Memory + Multi-Turn)
+effGen — Conversational Agent (Memory + Multi-Turn)
 
 A conversational agent that maintains context across multiple turns using
-ShortTermMemory and LongTermMemory (SQLite). Tests conversation history
+ShortTermMemory and LongTermMemory (SQLite). Demonstrates conversation history
 formatting, memory recall, summarization trigger, and long-term persistence.
 
 Tools: Calculator, DateTimeTool (minimal — focus is on memory)
 Memory: ShortTermMemory (max_tokens=4096, max_messages=50, auto_summarize=True)
-        LongTermMemory (SQLite backend for persistence test)
+        LongTermMemory (SQLite backend for persistence)
 
-Test plan:
-  P6-T1: Name recall across turns
-  P6-T2: Preference recall
-  P6-T3: Contextual tool use (recall + calculator)
-  P6-T4: Many-turn stress test (10 turns, verify Turn 1 recall)
-  P6-T5: Memory summarization trigger (>4096 tokens)
-  P6-T6: Long-term memory persistence (SQLite)
+Recommended models: Qwen/Qwen2.5-3B-Instruct, Qwen/Qwen2.5-7B-Instruct
 
 Usage:
-  CUDA_VISIBLE_DEVICES=0 conda run -n effgen-verify python examples/v012_phase06_conversational_agent.py
-  CUDA_VISIBLE_DEVICES=0 conda run -n effgen-verify python examples/v012_phase06_conversational_agent.py --model Qwen/Qwen2.5-7B-Instruct
+  CUDA_VISIBLE_DEVICES=0 python examples/conversational_agent.py
+  CUDA_VISIBLE_DEVICES=0 python examples/conversational_agent.py --model Qwen/Qwen2.5-7B-Instruct
 """
 from __future__ import annotations
 
@@ -167,23 +161,23 @@ def create_conversational_agent(model, memory_config=None, system_prompt=None):
 
 
 def run_all_tests(model, model_name="unknown"):
-    """Run all Phase 6 tests."""
+    """Run all conversational agent tests."""
     results = []
 
-    # ── P6-T1: Name recall ──
+    # ── T1: Name recall ──
     agent = create_conversational_agent(model)
     results.append(run_multi_turn_test(
-        agent, "P6-T1", "Name recall across turns",
+        agent, "T1", "Name recall across turns",
         turns=[
             ("My name is Alice and I'm a data scientist working on NLP projects.", None),
             ("What's my name and what do I do?", ["alice", "data scientist"]),
         ],
     ))
 
-    # ── P6-T2: Preference recall ──
+    # ── T2: Preference recall ──
     agent = create_conversational_agent(model)
     results.append(run_multi_turn_test(
-        agent, "P6-T2", "Preference recall",
+        agent, "T2", "Preference recall",
         turns=[
             ("I prefer Python over JavaScript for backend development. Remember that.", None),
             ("I'm starting a new backend project. Which programming language should I use based on my preferences?",
@@ -191,10 +185,10 @@ def run_all_tests(model, model_name="unknown"):
         ],
     ))
 
-    # ── P6-T3: Contextual tool use ──
+    # ── T3: Contextual tool use ──
     agent = create_conversational_agent(model)
     results.append(run_multi_turn_test(
-        agent, "P6-T3", "Contextual tool use — recall + calculator",
+        agent, "T3", "Contextual tool use — recall + calculator",
         turns=[
             ("Remember that my office temperature is 22 degrees Celsius.", None),
             ("Convert my office temperature to Fahrenheit. Use the calculator to compute 22 * 9/5 + 32.",
@@ -202,10 +196,10 @@ def run_all_tests(model, model_name="unknown"):
         ],
     ))
 
-    # ── P6-T4: Many-turn stress test ──
+    # ── T4: Many-turn stress test ──
     agent = create_conversational_agent(model)
     results.append(run_multi_turn_test(
-        agent, "P6-T4", "Many-turn stress test — 10 turns, recall Turn 1",
+        agent, "T4", "Many-turn stress test — 10 turns, recall Turn 1",
         turns=[
             ("My favorite color is blue and my lucky number is 42.", None),
             ("I work at a company called TechCorp.", None),
@@ -221,7 +215,7 @@ def run_all_tests(model, model_name="unknown"):
         ],
     ))
 
-    # ── P6-T5: Memory summarization trigger ──
+    # ── T5: Memory summarization trigger ──
     # Use very small max_tokens to force summarization quickly
     agent = create_conversational_agent(model, memory_config={
         "short_term_max_tokens": 512,
@@ -229,7 +223,7 @@ def run_all_tests(model, model_name="unknown"):
         "auto_summarize": True,
     })
     results.append(run_multi_turn_test(
-        agent, "P6-T5", "Memory summarization trigger (max_tokens=512)",
+        agent, "T5", "Memory summarization trigger (max_tokens=512)",
         turns=[
             ("I am a software engineer named Bob who works at Google on the search team. "
              "I have 10 years of experience and I specialize in distributed systems. "
@@ -251,9 +245,9 @@ def run_all_tests(model, model_name="unknown"):
     else:
         print(f"  ⚠ Summarization did NOT trigger (tokens: {mem_stats['current_tokens']}/{512})")
 
-    # ── P6-T6: Long-term memory persistence (SQLite) ──
-    tmpdir = tempfile.mkdtemp(prefix="effgen_p6_ltm_")
-    print(f"\n  [P6-T6] Using temp dir: {tmpdir}")
+    # ── T6: Long-term memory persistence (SQLite) ──
+    tmpdir = tempfile.mkdtemp(prefix="effgen_ltm_")
+    print(f"\n  [T6] Using temp dir: {tmpdir}")
 
     # First session: store facts
     agent1 = create_conversational_agent(model, memory_config={
@@ -267,7 +261,7 @@ def run_all_tests(model, model_name="unknown"):
     # Check that long-term memory was initialized
     ltm_ok = agent1.long_term_memory is not None
     print(f"\n{'='*60}")
-    print(f"Test: P6-T6 — Long-term memory persistence (SQLite)")
+    print(f"Test: T6 — Long-term memory persistence (SQLite)")
     print(f"  LongTermMemory initialized: {ltm_ok}")
 
     if ltm_ok:
@@ -305,9 +299,9 @@ def run_all_tests(model, model_name="unknown"):
         print(f"  FAIL: LongTermMemory not initialized")
 
     status = "PASS" if p6_t6_passed else "FAIL"
-    print(f"\nResult: {status} — P6-T6: Long-term memory persistence (SQLite)")
+    print(f"\nResult: {status} — T6: Long-term memory persistence (SQLite)")
     results.append({
-        "test_id": "P6-T6",
+        "test_id": "T6",
         "description": "Long-term memory persistence (SQLite)",
         "passed": p6_t6_passed,
         "status": status,
@@ -327,7 +321,7 @@ def run_all_tests(model, model_name="unknown"):
 
     # ── Summary ──
     print(f"\n{'='*60}")
-    print(f"Phase 6 Results — Model: {model_name}")
+    print(f"Conversational Agent Results — Model: {model_name}")
     print(f"{'='*60}")
     pass_count = 0
     for r in results:
@@ -339,7 +333,7 @@ def run_all_tests(model, model_name="unknown"):
 
 
 def run_regression(model, model_name="unknown"):
-    """Run Phase 1-5 regression on the conversational agent."""
+    """Run regression tests on the conversational agent."""
     from effgen.presets import create_agent as create_preset_agent
 
     results = []
@@ -473,18 +467,18 @@ def interactive_mode(agent):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen Phase 6: Conversational Agent")
+    parser = argparse.ArgumentParser(description="effGen — Conversational Agent")
     parser.add_argument(
         "--model", default="Qwen/Qwen2.5-3B-Instruct",
         help="Model to use (default: Qwen/Qwen2.5-3B-Instruct)",
     )
     parser.add_argument("--interactive", action="store_true", help="Interactive chat mode")
     parser.add_argument("--regression", action="store_true", help="Run regression tests only")
-    parser.add_argument("--phase6-only", action="store_true", help="Run Phase 6 tests only (skip regression)")
+    parser.add_argument("--tests-only", action="store_true", help="Run conversational tests only (skip regression)")
     args = parser.parse_args()
 
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-    print(f"effGen v0.1.2 — Phase 6: Conversational Agent (Memory + Multi-Turn)")
+    print("effGen — Conversational Agent (Memory + Multi-Turn)")
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 
@@ -499,11 +493,11 @@ def main():
     elif args.regression:
         run_regression(model, model_name=args.model)
     else:
-        if not args.phase6_only:
-            print("\n--- Phase 1-5 Regression ---")
+        if not args.tests_only:
+            print("\n--- Regression Tests ---")
             reg_results = run_regression(model, model_name=args.model)
 
-        print("\n--- Phase 6 Tests ---")
+        print("\n--- Conversational Agent Tests ---")
         p6_results = run_all_tests(model, model_name=args.model)
 
     model.unload()

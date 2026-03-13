@@ -1,21 +1,26 @@
 #!/usr/bin/env python3
 """
-effGen v0.1.2 — Phase 9: Streaming Agent (Real-Time Output)
+effGen — Advanced Streaming Agent (Real-Time Output)
 
 Demonstrates agent.stream() with real-time token-by-token output and
 callbacks for thoughts, tool calls, observations, and final answers.
 
 Tests:
-  - P9-T1: Simple streaming with tool call (Calculator)
-  - P9-T2: No-tool streaming (direct answer)
-  - P9-T3: Multi-tool streaming (Calculator + DateTimeTool)
-  - P9-T4: Stop sequence handling
-  - P9-T5: Error during stream (broken tool)
-  - P9-T6: Callback accumulation (token reconstruction)
+  - T1: Simple streaming with tool call (Calculator)
+  - T2: No-tool streaming (direct answer)
+  - T3: Multi-tool streaming (Calculator + DateTimeTool)
+  - T4: Stop sequence handling
+  - T5: Error handling — graceful completion
+  - T6: Callback accumulation (token reconstruction)
+
+Recommended models:
+  - Qwen/Qwen2.5-3B-Instruct (default)
+  - Qwen/Qwen2.5-7B-Instruct (best quality)
+  - microsoft/Phi-4-mini-instruct
 
 Usage:
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase09_streaming_agent.py
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase09_streaming_agent.py --model Qwen/Qwen2.5-7B-Instruct
+  CUDA_VISIBLE_DEVICES=0 python examples/advanced_streaming_agent.py
+  CUDA_VISIBLE_DEVICES=0 python examples/advanced_streaming_agent.py --model Qwen/Qwen2.5-7B-Instruct
 """
 from __future__ import annotations
 
@@ -142,10 +147,10 @@ def run_test(agent, tracker, test_id, desc, task, checks, **stream_kwargs):
     return all_passed, results
 
 
-def run_phase9_tests(model_name: str):
-    """Run all Phase 9 streaming tests."""
+def run_streaming_tests(model_name: str):
+    """Run all streaming tests."""
     print(f"\n{'#'*60}")
-    print(f"effGen v0.1.2 — Phase 9: Streaming Agent")
+    print(f"effGen — Advanced Streaming Agent")
     print(f"Model: {model_name}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES', 'not set')}")
     print(f"{'#'*60}")
@@ -161,9 +166,9 @@ def run_phase9_tests(model_name: str):
 
     results = {}
 
-    # P9-T1: Simple streaming with tool call
+    # T1: Simple streaming with tool call
     passed, detail = run_test(
-        agent, tracker, "P9-T1", "Simple streaming — 15 * 7",
+        agent, tracker, "T1", "Simple streaming — 15 * 7",
         "What is 15 * 7?",
         {
             "tokens_generated": lambda t: len(t.all_tokens) > 0,
@@ -180,11 +185,11 @@ def run_phase9_tests(model_name: str):
             ),
         }
     )
-    results["P9-T1"] = passed
+    results["T1"] = passed
 
-    # P9-T2: No-tool streaming
+    # T2: No-tool streaming
     passed, detail = run_test(
-        agent, tracker, "P9-T2", "No-tool streaming — Tell me a joke",
+        agent, tracker, "T2", "No-tool streaming — Tell me a joke",
         "Tell me a short joke.",
         {
             "tokens_generated": lambda t: len(t.all_tokens) > 0,
@@ -192,11 +197,11 @@ def run_phase9_tests(model_name: str):
             "no_tool_calls": lambda t: len(t.tool_calls) == 0,
         }
     )
-    results["P9-T2"] = passed
+    results["T2"] = passed
 
-    # P9-T3: Multi-tool streaming
+    # T3: Multi-tool streaming
     passed, detail = run_test(
-        agent, tracker, "P9-T3", "Multi-tool streaming — Calculator + DateTime",
+        agent, tracker, "T3", "Multi-tool streaming — Calculator + DateTime",
         "What is 25 * 4, and what is today's date?",
         {
             "tokens_generated": lambda t: len(t.all_tokens) > 0,
@@ -207,11 +212,11 @@ def run_phase9_tests(model_name: str):
             "answer_contains_100": lambda t: any("100" in a for a in t.answers),
         }
     )
-    results["P9-T3"] = passed
+    results["T3"] = passed
 
-    # P9-T4: Stop sequence handling
+    # T4: Stop sequence handling
     passed, detail = run_test(
-        agent, tracker, "P9-T4", "Stop sequence handling",
+        agent, tracker, "T4", "Stop sequence handling",
         "Use the calculator to compute 99 + 1.",
         {
             "tokens_generated": lambda t: len(t.all_tokens) > 0,
@@ -223,11 +228,11 @@ def run_phase9_tests(model_name: str):
             "observation_callback_fired": lambda t: len(t.observations) > 0,
         }
     )
-    results["P9-T4"] = passed
+    results["T4"] = passed
 
-    # P9-T5: Error during stream (use a tool name that doesn't exist)
+    # T5: Error during stream (use a tool name that doesn't exist)
     passed, detail = run_test(
-        agent, tracker, "P9-T5", "Error handling — graceful completion",
+        agent, tracker, "T5", "Error handling — graceful completion",
         "What is the square root of 49?",
         {
             "tokens_generated": lambda t: len(t.all_tokens) > 0,
@@ -235,11 +240,11 @@ def run_phase9_tests(model_name: str):
             "has_answer": lambda t: len(t.answers) > 0 or len(t.all_tokens) > 5,
         }
     )
-    results["P9-T5"] = passed
+    results["T5"] = passed
 
-    # P9-T6: Callback accumulation — verify token reconstruction
+    # T6: Callback accumulation — verify token reconstruction
     passed, detail = run_test(
-        agent, tracker, "P9-T6", "Callback accumulation — token reconstruction",
+        agent, tracker, "T6", "Callback accumulation — token reconstruction",
         "What is 8 * 9?",
         {
             "tokens_generated": lambda t: len(t.all_tokens) > 0,
@@ -255,11 +260,11 @@ def run_phase9_tests(model_name: str):
             ),
         }
     )
-    results["P9-T6"] = passed
+    results["T6"] = passed
 
     # Summary
     print(f"\n{'#'*60}")
-    print(f"Phase 9 Summary — {model_name}")
+    print(f"Streaming Tests Summary — {model_name}")
     print(f"{'#'*60}")
     for test_id, passed in results.items():
         print(f"  {'PASS' if passed else 'FAIL'} — {test_id}")
@@ -272,9 +277,9 @@ def run_phase9_tests(model_name: str):
 
 
 def run_regression(model_name: str):
-    """Run Phase 1-8 regression tests on the given model."""
+    """Run regression tests to verify previous examples still work."""
     print(f"\n{'#'*60}")
-    print(f"Phase 1-8 Regression — {model_name}")
+    print(f"Regression Tests — {model_name}")
     print(f"{'#'*60}")
 
     from effgen.presets import create_agent as create_preset_agent
@@ -345,7 +350,7 @@ def run_regression(model_name: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen Phase 9: Streaming Agent")
+    parser = argparse.ArgumentParser(description="effGen Advanced Streaming Agent Example")
     parser.add_argument("--model", default="Qwen/Qwen2.5-3B-Instruct")
     parser.add_argument("--regression-only", action="store_true")
     parser.add_argument("--tests-only", action="store_true")
@@ -354,10 +359,10 @@ def main():
     if args.regression_only:
         run_regression(args.model)
     elif args.tests_only:
-        run_phase9_tests(args.model)
+        run_streaming_tests(args.model)
     else:
         run_regression(args.model)
-        run_phase9_tests(args.model)
+        run_streaming_tests(args.model)
 
 
 if __name__ == "__main__":

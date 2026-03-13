@@ -1,34 +1,24 @@
 #!/usr/bin/env python3
 """
-effGen v0.1.2 — Phase 3: Multi-Tool Agent (Tool Selection + Fallback)
+effGen — Advanced Multi-Tool Agent (Tool Selection + Fallback)
 
 A multi-tool agent with 5 tools: Calculator, PythonREPL, DateTimeTool,
-BashTool, and TextProcessingTool. Tests the agent's ability to select
+BashTool, and TextProcessingTool. Demonstrates the agent's ability to select
 the correct tool for different task types, plus fallback chains and
 circuit breaker behavior.
 
-Tested models (post-fix results):
-  - Qwen/Qwen2.5-1.5B-Instruct (1.5B)  — 3/3 PASS (subset tested)
-  - Qwen/Qwen2.5-3B-Instruct (3B)      — 7/8 PASS, T2 intermittent
-  - Qwen/Qwen2.5-7B-Instruct (7B)      — 8/8 PASS, best quality
-  - meta-llama/Llama-3.2-3B-Instruct    — 5-8/8 PASS (non-deterministic)
-  - microsoft/Phi-4-mini-instruct       — 8/8 PASS (slowest but most accurate)
-
-Framework bugs fixed in this phase:
-  - BUG-006: DateTimeTool `now` operation ignores `date` parameter — fixed to
-    return info about provided date (e.g., day_of_week) instead of current time
-  - BUG-007: validate_parameters rejects unknown parameters — SLMs hallucinate
-    extra params like `format`, now warns+strips instead of rejecting
-  - BUG-008: Action: Final Answer parser crosses newline boundary — [:\\s]+
-    matched newlines, capturing Action Input JSON as the answer. Fixed to [: \\t]+
+Recommended models:
+  - Qwen/Qwen2.5-3B-Instruct (3B)      — excellent quality (default)
+  - Qwen/Qwen2.5-7B-Instruct (7B)      — best quality
+  - microsoft/Phi-4-mini-instruct       — most accurate (slower)
+  - meta-llama/Llama-3.2-3B-Instruct    — fast, good quality
 
 Tools used: Calculator, PythonREPL, DateTimeTool, BashTool, TextProcessingTool
-Path: Agent.run() → _run_single_agent() → ReAct loop → _execute_tool()
 
 Usage:
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase03_multi_tool_agent.py
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase03_multi_tool_agent.py --model Qwen/Qwen2.5-7B-Instruct
-  CUDA_VISIBLE_DEVICES=0 python examples/v012_phase03_multi_tool_agent.py --interactive
+  CUDA_VISIBLE_DEVICES=0 python examples/advanced_multi_tool_agent.py
+  CUDA_VISIBLE_DEVICES=0 python examples/advanced_multi_tool_agent.py --model Qwen/Qwen2.5-7B-Instruct
+  CUDA_VISIBLE_DEVICES=0 python examples/advanced_multi_tool_agent.py --interactive
 """
 from __future__ import annotations
 
@@ -149,54 +139,54 @@ def run_test(agent, test_id, description, question, expected_keywords,
 
 
 def run_all_tests(agent, model_name="unknown"):
-    """Run all Phase 3 tests."""
+    """Run all multi-tool tests."""
     results = []
 
-    # P3-T1: Math → Calculator
+    # T1: Math → Calculator
     results.append(run_test(
-        agent, "P3-T1", "Math → Calculator",
+        agent, "T1", "Math → Calculator",
         "What is 347 * 29?",
         expected_keywords=["10063"],
         expected_tool="calculator",
     ))
 
-    # P3-T2: Date → DateTimeTool
+    # T2: Date → DateTimeTool
     results.append(run_test(
-        agent, "P3-T2", "Date → DateTimeTool",
+        agent, "T2", "Date → DateTimeTool",
         "What day of the week is March 15, 2026?",
         expected_keywords=["sunday"],
         expected_tool="datetime",
     ))
 
-    # P3-T3: Text → TextProcessingTool
+    # T3: Text → TextProcessingTool
     results.append(run_test(
-        agent, "P3-T3", "Text → TextProcessingTool",
+        agent, "T3", "Text → TextProcessingTool",
         "Count the words in this text: 'The quick brown fox jumps over the lazy dog'",
         expected_keywords=["9"],
         expected_tool="text_processing",
     ))
 
-    # P3-T4: Shell → BashTool
+    # T4: Shell → BashTool
     results.append(run_test(
-        agent, "P3-T4", "Shell → BashTool",
+        agent, "T4", "Shell → BashTool",
         "What is the current working directory? Use the bash tool with the pwd command.",
         expected_keywords=["/"],
         expected_tool="bash",
     ))
 
-    # P3-T5: Multi-tool task
+    # T5: Multi-tool task
     def check_multi(output, resp):
         return resp.tool_calls >= 2
     results.append(run_test(
-        agent, "P3-T5", "Multi-tool → Calculator + DateTime",
+        agent, "T5", "Multi-tool → Calculator + DateTime",
         "First calculate the square root of 144, then tell me today's date and day of the week.",
         expected_keywords=["12"],
         check_fn=check_multi,
     ))
 
-    # P3-T6: Fallback test — programmatic: force calculator to fail, check PythonREPL fallback
+    # T6: Fallback test — programmatic: force calculator to fail, check PythonREPL fallback
     print(f"\n{'='*60}")
-    print("Test: P3-T6 — Fallback Chain (programmatic test)")
+    print("Test: T6 — Fallback Chain (programmatic test)")
     fb_chain = agent._fallback_chain
     has_fb = fb_chain.has_fallbacks("calculator")
     fb_list = fb_chain.get_fallbacks("calculator")
@@ -218,7 +208,7 @@ def run_all_tests(agent, model_name="unknown"):
         fb_pass = has_fb  # Chain is properly configured even if both fail on this input
     print(f"  Result: {'PASS' if fb_pass else 'FAIL'}")
     results.append({
-        "test_id": "P3-T6",
+        "test_id": "T6",
         "description": "Fallback chain: calculator → python_repl configured and functional",
         "passed": fb_pass,
         "output": fb_result[:200],
@@ -228,9 +218,9 @@ def run_all_tests(agent, model_name="unknown"):
         "status": "PASS" if fb_pass else "FAIL",
     })
 
-    # P3-T7: Circuit breaker test (indirect — we check the state)
+    # T7: Circuit breaker test (indirect — we check the state)
     print(f"\n{'='*60}")
-    print("Test: P3-T7 — Circuit Breaker (programmatic test)")
+    print("Test: T7 — Circuit Breaker (programmatic test)")
     cb = agent._circuit_breaker
     # Simulate 3 failures
     for i in range(3):
@@ -242,7 +232,7 @@ def run_all_tests(agent, model_name="unknown"):
     print(f"  Result: {'PASS' if cb_pass else 'FAIL'}")
     cb.reset("test_broken_tool")
     results.append({
-        "test_id": "P3-T7",
+        "test_id": "T7",
         "description": "Circuit breaker opens after 3 failures",
         "passed": cb_pass,
         "output": f"state={state.value}, available={available}",
@@ -252,9 +242,9 @@ def run_all_tests(agent, model_name="unknown"):
         "status": "PASS" if cb_pass else "FAIL",
     })
 
-    # P3-T8: Missing tool
+    # T8: Missing tool
     results.append(run_test(
-        agent, "P3-T8", "Missing tool → answer directly",
+        agent, "T8", "Missing tool → answer directly",
         "Search the web for Python tutorials.",
         expected_keywords=[],
         check_fn=lambda output, resp: len(output) > 10,  # Just check it responds
@@ -262,7 +252,7 @@ def run_all_tests(agent, model_name="unknown"):
 
     # Summary
     print(f"\n{'='*60}")
-    print(f"Phase 3 Results — Model: {model_name}")
+    print(f"Multi-Tool Results — Model: {model_name}")
     print(f"{'='*60}")
     pass_count = 0
     for r in results:
@@ -296,18 +286,18 @@ def interactive_mode(agent):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen Phase 3: Multi-Tool Agent")
+    parser = argparse.ArgumentParser(description="effGen Multi-Tool Agent Example")
     parser.add_argument(
         "--model",
         default="Qwen/Qwen2.5-3B-Instruct",
         help="Model to use (default: Qwen/Qwen2.5-3B-Instruct)",
     )
     parser.add_argument("--interactive", action="store_true", help="Interactive chat mode")
-    parser.add_argument("--test", type=str, help="Run a single test (e.g., P3-T1)")
+    parser.add_argument("--test", type=str, help="Run a single test (e.g., T1)")
     args = parser.parse_args()
 
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-    print(f"effGen v0.1.2 — Phase 3: Multi-Tool Agent")
+    print("effGen — Multi-Tool Agent")
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 

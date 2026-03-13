@@ -7,11 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [0.1.2] - 2026-03-12
 
-### Added (v0.1.2 — Phase 10)
-- User-explicit sub-agent trigger detection in `SubAgentRouter` — regex-based fuzzy matching for phrases like "use sub-agents", "launch 3 agents", "spawn agents", etc. (router.py)
-- Phase 10 example: `examples/v012_phase10_multi_agent_pipeline.py` — manual pipeline (A→B→C) and sub-agent system tests
+### Added
+- **10 comprehensive example agents** covering Q&A, calculator, multi-tool, file operations, code execution, conversational memory, error recovery, data processing, streaming, and multi-agent pipeline orchestration
+- **Cross-model compatibility matrix** — 11 models tested across all 10 agents (110 combinations), 73% pass rate ([compatibility_matrix.md](examples/compatibility_matrix.md))
+- **User-explicit sub-agent trigger detection** in `SubAgentRouter` — regex-based fuzzy matching for phrases like "use sub-agents", "launch 3 agents", "spawn agents" (router.py)
+- **Compatibility sweep runner** (`examples/sweep_model.py`) for automated cross-model testing
+
+### Improved
+- **ReAct loop robustness** — loop detection breaks repeated identical actions (BUG-003), fuzzy loop detection for 5+ calls with different inputs (BUG-017)
+- **Tool input parsing** — single-quoted JSON via `ast.literal_eval` fallback (BUG-016), non-JSON input mapping, markdown fence stripping for code params
+- **Conversation history** — `max_turns` increased from 5 to 25, summary inclusion, assistant response truncation (300 chars), configurable `keep_recent_messages` (BUG-014, BUG-015)
+- **Answer extraction** — line-start anchor for "Answer:" regex with `re.MULTILINE` (BUG-004), trailing text trimming (BUG-005), newline boundary fix for `Action: Final Answer` (BUG-008)
+- **Tool result formatting** — proper extraction of `data`/`message` keys from FileOperations dict results (BUG-010), stderr extraction for CodeExecutor errors (BUG-013), stdout preference over None for PythonREPL (BUG-012)
+- **Default max_tokens** increased from 512 to 1024 for long tool data (BUG-018)
+
+### Fixed
+- **BUG-001:** `quantization="4bit"` silently ignored by TransformersEngine — now properly passed through (model_loader.py)
+- **BUG-002:** gemma-3 context length detection fails when config uses nested `text_config` (transformers_engine.py)
+- **BUG-006:** DateTimeTool `now` operation ignores `date` parameter (datetime_tool.py)
+- **BUG-007:** `validate_parameters` rejects unknown parameters hallucinated by SLMs — now warns instead of failing (base_tool.py)
+- **BUG-009:** `_map_input_to_parameters` strips leading slash from absolute paths via `lstrip('/')` (agent.py)
+- **BUG-011:** PythonREPL `_execute()` re-evaluates last `ast.Call` expression causing double `print()` output (python_repl.py)
+
+### Internal
+- Test-driven development across 12 phases with real GPU inference
+- 19 framework bugs discovered and fixed through systematic agent testing
+- Compatibility testing across 11 model families (0.5B to 8B parameters)
+- Verification sweep: 116 unit tests pass, all integration tests pass
 
 ## [0.1.1] - 2026-03-06
 
@@ -296,7 +320,8 @@ Thank you to all contributors who helped make effGen possible!
 
 ---
 
-[Unreleased]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/ctrl-gaurav/effGen/compare/v0.0.2...v0.1.0
 [0.0.2]: https://github.com/ctrl-gaurav/effGen/compare/v0.0.1...v0.0.2
