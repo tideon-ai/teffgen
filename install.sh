@@ -243,6 +243,20 @@ check_prerequisites() {
 
     local has_errors=false
 
+    # Check for conda (optional but recommended)
+    local has_conda=false
+    if [ "$SKIP_CONDA" = false ]; then
+        if command -v conda &> /dev/null; then
+            print_success "Conda found: $(conda --version)"
+            has_conda=true
+        else
+            print_warning "Conda not found - will use system Python"
+            SKIP_CONDA=true
+        fi
+    else
+        print_info "Skipping conda (using system Python)"
+    fi
+
     # Check for Python
     if command -v python3 &> /dev/null; then
         local py_version=$(python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))')
@@ -252,24 +266,20 @@ check_prerequisites() {
         if [ "$py_major" -ge 3 ] && [ "$py_minor" -ge 10 ]; then
             print_success "Python $py_version found"
         else
-            print_error "Python 3.10+ required (found $py_version)"
+            if [ "$has_conda" = true ]; then
+                print_warning "System Python is $py_version — conda will create a 3.11 environment"
+            else
+                print_error "Python 3.10+ required (found $py_version)"
+                has_errors=true
+            fi
+        fi
+    else
+        if [ "$has_conda" = true ]; then
+            print_warning "System Python not found — conda will provide Python 3.11"
+        else
+            print_error "Python 3 not found"
             has_errors=true
         fi
-    else
-        print_error "Python 3 not found"
-        has_errors=true
-    fi
-
-    # Check for conda (optional but recommended)
-    if [ "$SKIP_CONDA" = false ]; then
-        if command -v conda &> /dev/null; then
-            print_success "Conda found: $(conda --version)"
-        else
-            print_warning "Conda not found - will use system Python"
-            SKIP_CONDA=true
-        fi
-    else
-        print_info "Skipping conda (using system Python)"
     fi
 
     # Check for git

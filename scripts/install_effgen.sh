@@ -447,8 +447,8 @@ if [ "$USE_CONDA" = true ]; then
 
     # Create environment if it doesn't exist
     if ! conda env list | grep -q "^${CONDA_ENV_NAME} "; then
-        print_progress "Creating conda environment '${CONDA_ENV_NAME}' with Python 3.10..."
-        conda create -n "$CONDA_ENV_NAME" python=3.10 -y > /dev/null 2>&1
+        print_progress "Creating conda environment '${CONDA_ENV_NAME}' with Python 3.11..."
+        conda create -n "$CONDA_ENV_NAME" python=3.11 -y > /dev/null 2>&1
         print_success "Conda environment created"
     fi
 
@@ -481,6 +481,7 @@ print_success "Core tools upgraded"
 if [ "$MINIMAL_INSTALL" = true ]; then
     print_step "Installing minimal dependencies..."
     $PYTHON_CMD -m pip install -e . > /dev/null 2>&1
+    $PYTHON_CMD -m pip install bitsandbytes>=0.46.1 > /dev/null 2>&1
     print_success "Minimal installation complete"
 else
     # Install core requirements
@@ -544,6 +545,11 @@ else
     print_step "Installing effGen package (pip install -e .)..."
     $PYTHON_CMD -m pip install -e . > /dev/null 2>&1
     print_success "effGen package installed in development mode"
+
+    # Install bitsandbytes for 4-bit quantization support
+    print_step "Installing bitsandbytes for 4-bit quantization..."
+    $PYTHON_CMD -m pip install bitsandbytes>=0.46.1 > /dev/null 2>&1
+    print_success "bitsandbytes installed"
 fi
 
 echo ""

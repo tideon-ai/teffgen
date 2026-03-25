@@ -209,3 +209,6 @@ __marimo__/
 # macOS
 .DS_Store
 planning/
+
+# Generated config directory (created by install.sh)
+config/
