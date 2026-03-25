@@ -20,7 +20,7 @@
 #   --help                 Show this help message
 #
 # Requirements:
-#   - conda (recommended) or Python 3.8+
+#   - conda (recommended) or Python 3.10+
 #   - CUDA toolkit (optional, for GPU support)
 ################################################################################
 
@@ -359,8 +359,8 @@ if [ "$USE_CONDA" = false ]; then
     done
 
     if [ -z "$PYTHON_CMD" ]; then
-        print_error "Python 3.8+ is required but not found"
-        print_info "Please install Python 3.8 or higher"
+        print_error "Python 3.10+ is required but not found"
+        print_info "Please install Python 3.10 or higher"
         exit 1
     fi
 fi

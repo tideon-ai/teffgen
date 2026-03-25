@@ -66,7 +66,7 @@ class EmbeddingProvider:
 
     def embed(self, texts: list[str]) -> np.ndarray:
         """Embed a list of texts."""
-        raise NotImplementedError
+        raise NotImplementedError("Subclasses must implement embed()")
 
     def embed_query(self, query: str) -> np.ndarray:
         """Embed a query text."""
@@ -145,7 +145,7 @@ class ChunkingStrategy:
     """Base chunking strategy."""
 
     def chunk(self, text: str, doc_id: str) -> list[Document]:
-        raise NotImplementedError
+        raise NotImplementedError("Subclasses must implement chunk()")
 
 
 class FixedSizeChunker(ChunkingStrategy):

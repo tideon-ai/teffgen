@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.3] - 2026-03-25
+
+### Added
+- **Sub-agent depth limiting** — `max_sub_agent_depth` config option (default 3) prevents unbounded sub-agent recursion (ISSUE-005)
+- **"No tool needed" guidance** in ReAct prompt — explicit instruction and example for direct answers, reducing unnecessary tool calls by SLMs (ISSUE-016)
+- **Model-aware token counting** — `ShortTermMemory` now accepts an optional `model` parameter for accurate tokenization instead of the `len(text)//4` heuristic (ISSUE-009)
+- **Circuit breaker persistence** — optional JSON file persistence for circuit breaker state via `persist_path` parameter (ISSUE-012)
+- **Streaming timeout safety** — all streaming examples now use `signal.SIGALRM` timeouts to prevent indefinite hangs (ISSUE-013)
+- **`pytest-timeout`** added to dev dependencies with 120s default timeout (ISSUE-001)
+- **`bitsandbytes`** added to dev dependencies for 4-bit quantization testing (ISSUE-002)
+
+### Improved
+- **Loop detection** — exact loop now allows 1 retry before triggering (was zero-tolerance); fuzzy loop threshold raised to 7 for `DATA_PROCESSING` category tools; action inputs normalized (JSON key sorting, whitespace stripping) before comparison (ISSUE-004, ISSUE-019)
+- **Partial answer extraction** — observations now scanned for day names and numeric results; multiple valid observations combined for multi-tool tasks (ISSUE-017)
+- **"Answer now" nudge** — when iterations are running low and a tool returned successfully, the scratchpad hints the model to emit `Final Answer:` (ISSUE-017)
+- **Model-family prompt formatters** — Qwen format uses `<|tools|>` section markers; Llama format uses `<|begin_of_text|>` header/EOT tags (ISSUE-010)
+- **Stop sequences** — removed overly aggressive `\n\n\n` stop sequence that could truncate legitimate multi-paragraph output (ISSUE-015)
+- **System prompt** — added "Do NOT use tools for greetings, jokes, opinions, or recalling information" to mistakes section (ISSUE-016)
+- **Model loading warning** — logs a clear warning when `require_model=False` and loading fails, instead of silently setting `self.model = None` (ISSUE-011)
+- **Integration test robustness** — `real_model` fixture falls back to fp16 if bitsandbytes is not installed (ISSUE-002)
+
+### Fixed
+- **NotImplementedError messages** — MCP transport stubs and Retrieval tool stubs now include descriptive messages instead of bare `raise NotImplementedError` (ISSUE-006, ISSUE-008)
+
+### Internal
+- 19 issues from v0.1.2 verification addressed across 12 files
+- Streaming examples hardened with timeout handling
+- Conversational agent example tuned for memory summarization
+
 ## [0.1.2] - 2026-03-12
 
 ### Added
@@ -320,7 +349,8 @@ Thank you to all contributors who helped make effGen possible!
 
 ---
 
-[Unreleased]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/ctrl-gaurav/effGen/compare/v0.0.2...v0.1.0

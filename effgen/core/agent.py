@@ -34,7 +34,7 @@ from ..models.base import BaseModel, GenerationConfig
 from ..models.model_loader import ModelLoader
 from ..prompts.agent_system_prompt import AgentSystemPromptBuilder
 from ..prompts.tool_prompt_generator import ToolPromptGenerator
-from ..tools.base_tool import BaseTool
+from ..tools.base_tool import BaseTool, ToolCategory
 from ..tools.fallback import ToolFallbackChain
 from ..utils.circuit_breaker import CircuitBreaker
 from .execution_tracker import EventType, ExecutionEvent, ExecutionTracker
@@ -91,6 +91,7 @@ class AgentConfig:
     verbose_tools: bool | None = None
     fallback_chain: dict[str, list] | None = None
     enable_fallback: bool = True
+    max_sub_agent_depth: int = 3
     memory_config: dict[str, Any] = field(default_factory=lambda: {
         "short_term_max_tokens": 4096,
         "short_term_max_messages": 100,
@@ -179,6 +180,17 @@ Observation: the result of the tool
 Thought: I now know the final answer
 Final Answer: the complete response to the original question
 
+IMPORTANT: You do NOT have to use a tool for every question.
+If you can answer directly from your knowledge or from the conversation history above, skip the Action step entirely:
+Thought: I can answer this directly without any tools.
+Final Answer: [your answer here]
+Only use tools when you NEED external computation, data, or system access.
+
+Example (no tool needed):
+Question: Tell me a joke about programming.
+Thought: This is a creative request. I can answer directly without tools.
+Final Answer: Why do programmers prefer dark mode? Because light attracts bugs!
+
 Begin!
 
 Question: {task}
@@ -215,6 +227,12 @@ Question: {task}
                 self.model = None
                 if config.require_model:
                     raise RuntimeError(f"Failed to load required model: {e}")
+                else:
+                    logger.warning(
+                        f"Model loading failed for '{self.model_name}'. "
+                        "Agent will crash on first inference call. "
+                        "Set require_model=True to fail fast."
+                    )
         else:
             # No model provided
             self.model_name = None
@@ -255,6 +273,7 @@ Question: {task}
         self.state = AgentState(agent_id=self.name)
 
         # Sub-agent components
+        self._current_depth = 0
         self.router = None
         self.sub_agent_manager = None
         if config.enable_sub_agents:
@@ -279,6 +298,7 @@ Question: {task}
             max_messages=stm_max_messages,
             summarization_threshold=mem_cfg.get("summarization_threshold", 0.8),
             keep_recent_messages=mem_cfg.get("keep_recent_messages", 4),
+            model=self.model,
         )
 
         # Long-term memory (optional, requires persist path)
@@ -547,10 +567,24 @@ Question: {task}
                 # Loop detection: check if we've seen this exact (action, input) before
                 # Also detect fuzzy loops: same tool called 3+ times with different inputs
                 # (SLMs like Llama produce slightly different formatting each time)
-                current_pair = (action, action_input)
+                # Normalize action_input for comparison
+                normalized_input = action_input.strip()
+                try:
+                    parsed_json = json.loads(normalized_input)
+                    normalized_input = json.dumps(parsed_json, sort_keys=True)
+                except (json.JSONDecodeError, TypeError):
+                    pass
+                current_pair = (action, normalized_input)
                 action_call_count = sum(1 for a, _ in previous_actions if a == action)
-                is_exact_loop = current_pair in previous_actions and action in self.tools
-                is_fuzzy_loop = action_call_count >= 5 and action in self.tools
+                exact_loop_count = sum(1 for pair in previous_actions if pair == current_pair)
+                is_exact_loop = exact_loop_count >= 2 and action in self.tools
+                fuzzy_threshold = 5
+                if action in self.tools:
+                    tool = self.tools[action]
+                    if hasattr(tool, 'metadata') and hasattr(tool.metadata, 'category'):
+                        if tool.metadata.category == ToolCategory.DATA_PROCESSING:
+                            fuzzy_threshold = 7
+                is_fuzzy_loop = action_call_count >= fuzzy_threshold and action in self.tools
                 if is_exact_loop or is_fuzzy_loop:
                     loop_type = "exact" if is_exact_loop else f"fuzzy ({action_call_count + 1} calls)"
                     logger.info(
@@ -599,6 +633,10 @@ Question: {task}
 
                     # Log the observation for debugging
                     logger.info(f"Tool result added to scratchpad: {tool_result[:100]}...")
+
+                    # Nudge model to answer when iterations are running low
+                    if iterations >= self.config.max_iterations - 2:
+                        scratchpad += "\n[You have the answer from the tool. Please respond with 'Final Answer:' now.]"
 
             else:
                 # No action specified, prompt to continue
@@ -652,13 +690,23 @@ Question: {task}
         if know_match:
             return know_match.group(1).strip()
 
-        # Pattern 2: Last observation with a clear result value
+        # Pattern 2: Observations with clear result values
         observations = re.findall(r"Observation:\s*(.+?)(?=\nThought:|\nAction:|\Z)", scratchpad, re.DOTALL)
         if observations:
-            last_obs = observations[-1].strip()
-            # If last observation looks like a useful result (not an error)
-            if last_obs and not last_obs.lower().startswith("error"):
-                return last_obs
+            # If multiple observations, combine non-error ones for multi-tool tasks
+            valid_obs = [o.strip() for o in observations if o.strip() and not o.strip().lower().startswith("error")]
+            if len(valid_obs) > 1:
+                return " | ".join(valid_obs)
+            elif valid_obs:
+                return valid_obs[-1]
+
+        # Pattern 2b: Look for day names or numeric results in any observation
+        day_names = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+        for obs in reversed(observations) if observations else []:
+            obs_lower = obs.strip().lower()
+            for day in day_names:
+                if day in obs_lower:
+                    return obs.strip()
 
         # Pattern 3: Last substantive thought
         thoughts = re.findall(r"Thought:\s*(.+?)(?=\nAction:|\nObservation:|\Z)", scratchpad, re.DOTALL)
@@ -686,6 +734,12 @@ Question: {task}
         Returns:
             AgentResponse
         """
+        if self._current_depth >= self.config.max_sub_agent_depth:
+            logger.warning(f"Sub-agent depth limit reached ({self.config.max_sub_agent_depth})")
+            return self._run_single_agent(task, context, **kwargs)
+
+        self._current_depth += 1
+
         # Track decomposition
         self.execution_tracker.track_event(ExecutionEvent(
             type=EventType.TASK_DECOMPOSITION,
@@ -774,7 +828,6 @@ Question: {task}
             "\nQuestion:",
             "\nHuman:",
             "\nUser:",
-            "\n\n\n"
         ]
 
         last_error = None
@@ -1708,7 +1761,6 @@ Provide a well-structured, comprehensive response that integrates all findings."
             "\nQuestion:",
             "\nHuman:",
             "\nUser:",
-            "\n\n\n",
         ]
 
         gen_config = GenerationConfig(

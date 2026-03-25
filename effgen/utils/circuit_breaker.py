@@ -43,10 +43,13 @@ class CircuitBreaker:
         cooldown_seconds: Seconds before an open circuit allows a retry.
     """
 
-    def __init__(self, failure_threshold: int = 3, cooldown_seconds: float = 60.0):
+    def __init__(self, failure_threshold: int = 3, cooldown_seconds: float = 60.0, persist_path: str | None = None):
         self.failure_threshold = failure_threshold
         self.cooldown_seconds = cooldown_seconds
         self._circuits: dict[str, _ToolCircuit] = {}
+        self._persist_path = persist_path
+        if persist_path:
+            self._load_state()
 
     def _get_circuit(self, tool_name: str) -> _ToolCircuit:
         if tool_name not in self._circuits:
@@ -79,6 +82,7 @@ class CircuitBreaker:
             logger.info(f"Circuit for '{tool_name}' reset to CLOSED after success")
         circuit.consecutive_failures = 0
         circuit.state = CircuitState.CLOSED
+        self._save_state()
 
     def record_failure(self, tool_name: str) -> None:
         """Record a tool failure. May open the circuit."""
@@ -93,10 +97,46 @@ class CircuitBreaker:
                     f"{circuit.consecutive_failures} consecutive failures"
                 )
             circuit.state = CircuitState.OPEN
+        self._save_state()
 
     def get_state(self, tool_name: str) -> CircuitState:
         """Get the current circuit state for a tool."""
         return self._get_circuit(tool_name).state
+
+    def _save_state(self) -> None:
+        """Save circuit breaker state to JSON file."""
+        if not self._persist_path:
+            return
+        import json
+        data = {}
+        for name, circuit in self._circuits.items():
+            data[name] = {
+                "consecutive_failures": circuit.consecutive_failures,
+                "last_failure_time": circuit.last_failure_time,
+                "state": circuit.state.value,
+            }
+        try:
+            with open(self._persist_path, 'w') as f:
+                json.dump(data, f)
+        except Exception:
+            pass
+
+    def _load_state(self) -> None:
+        """Load circuit breaker state from JSON file."""
+        if not self._persist_path:
+            return
+        import json
+        try:
+            with open(self._persist_path) as f:
+                data = json.load(f)
+            for name, state in data.items():
+                self._circuits[name] = _ToolCircuit(
+                    consecutive_failures=state["consecutive_failures"],
+                    last_failure_time=state["last_failure_time"],
+                    state=CircuitState(state["state"]),
+                )
+        except (FileNotFoundError, json.JSONDecodeError, KeyError):
+            pass
 
     def reset(self, tool_name: str) -> None:
         """Manually reset a tool's circuit to CLOSED."""

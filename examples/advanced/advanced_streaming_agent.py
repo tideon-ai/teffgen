@@ -97,8 +97,18 @@ def create_streaming_agent(model):
     return Agent(config)
 
 
-def run_test(agent, tracker, test_id, desc, task, checks, **stream_kwargs):
+class _StreamTimeout(Exception):
+    pass
+
+
+def _alarm_handler(signum, frame):
+    raise _StreamTimeout("Streaming test timed out")
+
+
+def run_test(agent, tracker, test_id, desc, task, checks, timeout_sec=120, **stream_kwargs):
     """Run a single streaming test and return PASS/FAIL."""
+    import signal
+
     print(f"\n{'='*60}")
     print(f"{test_id}: {desc}")
     print(f"Task: {task}")
@@ -108,7 +118,9 @@ def run_test(agent, tracker, test_id, desc, task, checks, **stream_kwargs):
     t0 = time.time()
     token_count = 0
 
+    old_handler = signal.signal(signal.SIGALRM, _alarm_handler)
     try:
+        signal.alarm(timeout_sec)
         print(f"\n--- Stream Output ---")
         for token in agent.stream(
             task,
@@ -120,10 +132,17 @@ def run_test(agent, tracker, test_id, desc, task, checks, **stream_kwargs):
         ):
             tracker.all_tokens.append(token)
             token_count += 1
+        signal.alarm(0)
         print(f"\n--- End Stream ({token_count} tokens, {time.time()-t0:.1f}s) ---")
+    except _StreamTimeout:
+        signal.alarm(0)
+        print(f"\n[TIMEOUT] Streaming timed out after {timeout_sec}s ({token_count} tokens)")
     except Exception as e:
+        signal.alarm(0)
         print(f"\n[ERROR] {e}")
         return False, str(e)
+    finally:
+        signal.signal(signal.SIGALRM, old_handler)
 
     # Run checks
     results = {}
@@ -157,7 +176,7 @@ def run_streaming_tests(model_name: str):
 
     print(f"\nLoading model...")
     t0 = time.time()
-    model = load_model(model_name)
+    model = load_model(model_name, quantization="4bit")
     print(f"Model loaded in {time.time()-t0:.1f}s")
 
     agent = create_streaming_agent(model)
@@ -290,7 +309,7 @@ def run_regression(model_name: str):
 
     print(f"\nLoading model...")
     t0 = time.time()
-    model = load_model(model_name)
+    model = load_model(model_name, quantization="4bit")
     print(f"Model loaded in {time.time()-t0:.1f}s")
 
     results = {}

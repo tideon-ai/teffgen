@@ -264,11 +264,12 @@ class ToolPromptGenerator:
         self, system_prompt, conversation_history, tools_section,
         react_instructions, task, scratchpad
     ) -> str:
+        # Qwen2.5 format: structured with clear section markers
         """Qwen-optimized prompt format with chat template hints."""
         parts = [
             f"{system_prompt} You can reason step-by-step and use tools.",
             conversation_history,
-            f"Available tools:\n{tools_section}",
+            f"<|tools|>\nAvailable tools:\n{tools_section}\n<|/tools|>",
             "",
             "IMPORTANT: If there is previous conversation context above, use that information.",
             "",
@@ -285,8 +286,10 @@ class ToolPromptGenerator:
         self, system_prompt, conversation_history, tools_section,
         react_instructions, task, scratchpad
     ) -> str:
+        # Llama-3 format: system-style instructions
         """Llama-optimized prompt format."""
         parts = [
+            "<|begin_of_text|><|start_header_id|>system<|end_header_id|>",
             f"{system_prompt} You can reason step-by-step and use tools.",
             conversation_history,
             f"Available tools:\n{tools_section}",
@@ -294,8 +297,7 @@ class ToolPromptGenerator:
             "IMPORTANT: If there is previous conversation context above, use that information.",
             "",
             react_instructions,
-            "",
-            "Begin!",
+            "<|eot_id|><|start_header_id|>user<|end_header_id|>",
             "",
             f"Question: {task}",
             scratchpad,

@@ -1,5 +1,35 @@
 # effGen Release Notes
 
+## v0.1.3 — March 25, 2026
+
+v0.1.3 addresses 19 issues discovered during v0.1.2 verification, hardening the framework for real-world SLM agent usage.
+
+### Highlights
+
+- **Smarter loop detection** — allows 1 retry before flagging exact loops, raises threshold for data-processing tools, and normalizes inputs before comparison. Fewer false positives in multi-step pipelines.
+- **"Skip the tool" prompting** — ReAct prompt now explicitly tells SLMs they can answer directly without tools. Reduces unnecessary tool calls for greetings, jokes, and recall tasks.
+- **Model-aware token counting** — ShortTermMemory uses the loaded model's tokenizer instead of the `len//4` heuristic, improving summarization trigger accuracy.
+- **Sub-agent depth limit** — configurable `max_sub_agent_depth` (default 3) prevents infinite sub-agent recursion.
+- **Circuit breaker persistence** — optional JSON file persistence so breaker state survives agent restarts.
+
+### What's Improved
+
+- Partial answer extraction now finds day names and numeric results in tool observations
+- Model-family prompt formatters differentiated (Qwen `<|tools|>` tags, Llama header/EOT tags)
+- Removed `\n\n\n` stop sequence that truncated multi-paragraph output
+- Streaming examples hardened with SIGALRM timeouts
+- Integration test fixtures gracefully fall back to fp16 when bitsandbytes is missing
+- NotImplementedError stubs in MCP and Retrieval now include descriptive messages
+
+### What's Fixed
+
+- Loop detection false positives on JSON data pipelines
+- SLMs over-using tools for tasks that don't need them
+- DateTimeTool date queries more reliable (better answer extraction)
+- Silent model loading failures now logged with clear warning
+
+---
+
 ## v0.1.2 — March 12, 2026
 
 v0.1.2 is a test-driven hardening release. Every feature was built by creating a real agent, testing it across multiple models (0.5B to 8B), watching what breaks, and fixing the framework.

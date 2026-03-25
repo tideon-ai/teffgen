@@ -127,7 +127,8 @@ class ShortTermMemory:
                  max_messages: int = 100,
                  summarization_threshold: float = 0.8,
                  summary_length_ratio: float = 0.3,
-                 keep_recent_messages: int = 10):
+                 keep_recent_messages: int = 10,
+                 model=None):
         """
         Initialize short-term memory.
 
@@ -137,12 +138,14 @@ class ShortTermMemory:
             summarization_threshold: Threshold (0-1) of max_tokens to trigger summarization
             summary_length_ratio: Target ratio of summary length to original (0-1)
             keep_recent_messages: Number of recent messages to always keep unsummarized
+            model: Optional model instance for accurate token counting
         """
         self.max_tokens = max_tokens
         self.max_messages = max_messages
         self.summarization_threshold = summarization_threshold
         self.summary_length_ratio = summary_length_ratio
         self.keep_recent_messages = keep_recent_messages
+        self._model = model
 
         # Storage
         self.messages: deque[Message] = deque(maxlen=max_messages)
@@ -152,6 +155,17 @@ class ShortTermMemory:
         self.total_messages_added = 0
         self.total_summarizations = 0
         self._current_token_count = 0
+
+    def _count_tokens(self, text: str) -> int:
+        """Count tokens using model tokenizer if available, else heuristic."""
+        if self._model is not None:
+            try:
+                result = self._model.count_tokens(text)
+                # TokenCount dataclass has a .count attribute
+                return result.count if hasattr(result, 'count') else int(result)
+            except Exception:
+                pass
+        return len(text) // 4
 
     def add_message(self,
                    role: MessageRole,
@@ -250,7 +264,7 @@ class ShortTermMemory:
 
         # Add summaries first if they exist
         for summary in self.summaries:
-            summary_tokens = len(summary.summary) // 4
+            summary_tokens = self._count_tokens(summary.summary)
             if current_tokens + summary_tokens > max_tokens:
                 break
             context.append({
@@ -302,7 +316,7 @@ class ShortTermMemory:
         """
         # Recalculate to ensure accuracy
         total = sum(msg.estimate_tokens() for msg in self.messages)
-        total += sum(len(s.summary) // 4 for s in self.summaries)
+        total += sum(self._count_tokens(s.summary) for s in self.summaries)
         return total
 
     def _should_summarize(self) -> bool:
@@ -343,7 +357,7 @@ class ShortTermMemory:
 
         # Calculate token savings
         original_tokens = sum(msg.estimate_tokens() for msg in messages_to_summarize)
-        summary_tokens = len(summary_text) // 4
+        summary_tokens = self._count_tokens(summary_text)
 
         # Create summary object
         summary = ConversationSummary(

@@ -46,19 +46,19 @@ class MCPTransport:
 
     async def send(self, message: MCPRequest) -> None:
         """Send a message."""
-        raise NotImplementedError
+        raise NotImplementedError("Subclasses must implement send()")
 
     async def receive(self) -> MCPResponse:
         """Receive a message."""
-        raise NotImplementedError
+        raise NotImplementedError("Subclasses must implement receive()")
 
     async def connect(self) -> None:
         """Connect to the server."""
-        raise NotImplementedError
+        raise NotImplementedError("Subclasses must implement connect()")
 
     async def disconnect(self) -> None:
         """Disconnect from the server."""
-        raise NotImplementedError
+        raise NotImplementedError("Subclasses must implement disconnect()")
 
 
 class StdioTransport(MCPTransport):

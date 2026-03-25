@@ -155,6 +155,7 @@ class AgentSystemPromptBuilder:
             "- Do NOT invent or hallucinate tool names that are not listed",
             '- Always end with "Final Answer:" when you have the complete answer',
             "- Do NOT repeat the same failed action — try a different approach",
+            "- Do NOT use tools for greetings, jokes, opinions, or recalling information from conversation",
         ]
 
         # Add tool-specific warnings

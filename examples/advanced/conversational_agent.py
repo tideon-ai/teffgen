@@ -220,6 +220,7 @@ def run_all_tests(model, model_name="unknown"):
     agent = create_conversational_agent(model, memory_config={
         "short_term_max_tokens": 512,
         "short_term_max_messages": 50,
+        "keep_recent_messages": 2,
         "auto_summarize": True,
     })
     results.append(run_multi_turn_test(

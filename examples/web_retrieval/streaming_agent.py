@@ -37,9 +37,29 @@ print("\n" + "=" * 60)
 print("Streaming response for: 'What is 2+2?'")
 print("=" * 60 + "\n")
 
-# Stream tokens as they arrive
-for token in agent.stream("What is 2+2?"):
-    print(token, end="", flush=True)
+# Stream tokens as they arrive (with timeout to prevent hanging)
+import signal
+
+class StreamTimeout(Exception):
+    pass
+
+def _timeout_handler(signum, frame):
+    raise StreamTimeout("Streaming timed out after 120 seconds")
+
+TIMEOUT_SECONDS = 120
+
+try:
+    signal.signal(signal.SIGALRM, _timeout_handler)
+    signal.alarm(TIMEOUT_SECONDS)
+    for token in agent.stream("What is 2+2?"):
+        print(token, end="", flush=True)
+    signal.alarm(0)
+except StreamTimeout:
+    print("\n[WARNING] Streaming timed out — check model and config.")
+except KeyboardInterrupt:
+    print("\n[INFO] Streaming interrupted by user.")
+finally:
+    signal.alarm(0)
 
 print("\n\n" + "=" * 60)
 print("Streaming complete!")

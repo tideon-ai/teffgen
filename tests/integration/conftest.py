@@ -57,7 +57,10 @@ def real_model(gpu_id):
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
 
     from effgen import load_model
-    model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization="4bit")
+    try:
+        model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization="4bit")
+    except Exception:
+        model = load_model("Qwen/Qwen2.5-3B-Instruct")
     yield model
     # Cleanup
     try:

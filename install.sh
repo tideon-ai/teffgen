@@ -249,10 +249,10 @@ check_prerequisites() {
         local py_major=$(echo $py_version | cut -d. -f1)
         local py_minor=$(echo $py_version | cut -d. -f2)
 
-        if [ "$py_major" -ge 3 ] && [ "$py_minor" -ge 8 ]; then
+        if [ "$py_major" -ge 3 ] && [ "$py_minor" -ge 10 ]; then
             print_success "Python $py_version found"
         else
-            print_error "Python 3.8+ required (found $py_version)"
+            print_error "Python 3.10+ required (found $py_version)"
             has_errors=true
         fi
     else
