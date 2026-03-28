@@ -205,6 +205,7 @@ Question: {task}
         """
         self.config = config
         self.name = config.name
+        self._closed = False
 
         # Model initialization
         self.model_loader = ModelLoader()
@@ -368,6 +369,7 @@ Question: {task}
         """
         start_time = time.time()
         context = context or {}
+        self._current_depth = 0  # Reset depth at the start of each top-level run()
 
         # Track task start
         self.execution_tracker.track_event(ExecutionEvent(
@@ -740,61 +742,64 @@ Question: {task}
 
         self._current_depth += 1
 
-        # Track decomposition
-        self.execution_tracker.track_event(ExecutionEvent(
-            type=EventType.TASK_DECOMPOSITION,
-            agent_id=self.name,
-            message=f"Decomposed into {routing_decision.num_sub_agents} subtasks using {routing_decision.strategy.value}",
-            data={
-                "strategy": routing_decision.strategy.value,
-                "num_subtasks": routing_decision.num_sub_agents,
-                "specializations": routing_decision.specializations
-            }
-        ))
+        try:
+            # Track decomposition
+            self.execution_tracker.track_event(ExecutionEvent(
+                type=EventType.TASK_DECOMPOSITION,
+                agent_id=self.name,
+                message=f"Decomposed into {routing_decision.num_sub_agents} subtasks using {routing_decision.strategy.value}",
+                data={
+                    "strategy": routing_decision.strategy.value,
+                    "num_subtasks": routing_decision.num_sub_agents,
+                    "specializations": routing_decision.specializations
+                }
+            ))
 
-        # Execute based on strategy
-        strategy = routing_decision.strategy
-        subtasks = routing_decision.decomposition
+            # Execute based on strategy
+            strategy = routing_decision.strategy
+            subtasks = routing_decision.decomposition
 
-        if strategy == RoutingStrategy.PARALLEL_SUB_AGENTS:
-            # Execute in parallel
-            results = asyncio.run(
-                self.sub_agent_manager.execute_parallel(subtasks)
+            if strategy == RoutingStrategy.PARALLEL_SUB_AGENTS:
+                # Execute in parallel (use helper to handle existing event loops)
+                results = self._run_coroutine_sync(
+                    self.sub_agent_manager.execute_parallel(subtasks)
+                )
+            elif strategy == RoutingStrategy.SEQUENTIAL_SUB_AGENTS:
+                # Execute sequentially
+                results = self.sub_agent_manager.execute_sequential(subtasks)
+            elif strategy == RoutingStrategy.HYBRID:
+                # Execute with hybrid approach
+                results = self.sub_agent_manager.execute_hybrid(subtasks)
+            else:
+                # Default to sequential
+                results = self.sub_agent_manager.execute_sequential(subtasks)
+
+            # Synthesize results
+            synthesis = self.sub_agent_manager.synthesize_results(
+                results,
+                task,
+                strategy
             )
-        elif strategy == RoutingStrategy.SEQUENTIAL_SUB_AGENTS:
-            # Execute sequentially
-            results = self.sub_agent_manager.execute_sequential(subtasks)
-        elif strategy == RoutingStrategy.HYBRID:
-            # Execute with hybrid approach
-            results = self.sub_agent_manager.execute_hybrid(subtasks)
-        else:
-            # Default to sequential
-            results = self.sub_agent_manager.execute_sequential(subtasks)
 
-        # Synthesize results
-        synthesis = self.sub_agent_manager.synthesize_results(
-            results,
-            task,
-            strategy
-        )
+            # Calculate totals
+            total_tokens = synthesis["metrics"]["total_tokens_used"]
+            total_tool_calls = synthesis["metrics"]["total_tool_calls"]
 
-        # Calculate totals
-        total_tokens = synthesis["metrics"]["total_tokens_used"]
-        total_tool_calls = synthesis["metrics"]["total_tool_calls"]
-
-        return AgentResponse(
-            output=synthesis["final_output"],
-            success=synthesis["successful"] > 0,
-            mode=AgentMode.SUB_AGENTS,
-            iterations=len(subtasks),
-            tool_calls=total_tool_calls,
-            tokens_used=total_tokens,
-            routing_decision=routing_decision,
-            metadata={
-                "synthesis": synthesis,
-                "failed_subtasks": synthesis["failed"]
-            }
-        )
+            return AgentResponse(
+                output=synthesis["final_output"],
+                success=synthesis["successful"] > 0,
+                mode=AgentMode.SUB_AGENTS,
+                iterations=len(subtasks),
+                tool_calls=total_tool_calls,
+                tokens_used=total_tokens,
+                routing_decision=routing_decision,
+                metadata={
+                    "synthesis": synthesis,
+                    "failed_subtasks": synthesis["failed"]
+                }
+            )
+        finally:
+            self._current_depth -= 1
 
     def _generate(self, prompt: str, **kwargs) -> dict[str, Any]:
         """
@@ -935,8 +940,8 @@ Question: {task}
                     final_match = re.search(pattern, text, re.IGNORECASE | re.DOTALL | re.MULTILINE)
                     if final_match:
                         answer = final_match.group(1).strip()
-                        # Stop at next section marker or observation
-                        answer = re.split(r'\n(?:Question|Thought|Action):', answer, maxsplit=1)[0].strip()
+                        # Stop at next section marker, observation, or human turn
+                        answer = re.split(r'\n(?:Question|Thought|Action|Observation|Human):', answer, maxsplit=1)[0].strip()
                         # Strip trailing unrelated content (e.g. Phi-4 generating
                         # follow-up questions after the answer like "...is 42.What year...")
                         # Match sentence boundary (.!?) followed by a new sentence
@@ -1072,22 +1077,67 @@ Question: {task}
         return parsed
 
     @staticmethod
-    def _run_coroutine_sync(coro):
+    def _run_coroutine_sync(coro, timeout: float = 120.0):
         """
         Run an async coroutine from synchronous code.
 
         Uses a simple strategy: try asyncio.run() first. If an event loop
         is already running, fall back to a thread-based approach.
+
+        Args:
+            coro: The coroutine to run.
+            timeout: Maximum seconds to wait (default 120s).
         """
         try:
             # No running loop — simplest path
             return asyncio.run(coro)
         except RuntimeError:
-            # Event loop already running — run in a new thread
+            # Event loop already running (Jupyter, FastAPI, etc.) —
+            # run in a dedicated thread with its own event loop.
             import concurrent.futures
+            logger.info(
+                "Event loop already running — falling back to "
+                "ThreadPoolExecutor for coroutine execution"
+            )
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(asyncio.run, coro)
-                return future.result(timeout=60)
+                return future.result(timeout=timeout)
+
+    @staticmethod
+    def _clean_json_input(raw: str) -> str:
+        """
+        Clean malformed JSON commonly produced by SLMs before parsing.
+
+        Handles:
+        - Markdown-wrapped JSON (```json ... ```)
+        - Trailing commas  ({"key": "val",})
+        - Unquoted keys    ({expression: "2+2"})
+
+        Returns the cleaned string (still needs json.loads).
+        """
+        text = raw.strip()
+
+        # Strip markdown code fences
+        if text.startswith("```"):
+            # Remove opening fence (with optional language tag) and closing fence
+            text = re.sub(r'^```(?:json|JSON)?\s*\n?', '', text)
+            text = re.sub(r'\n?```\s*$', '', text)
+            text = text.strip()
+
+        # Remove trailing commas before } or ]
+        # e.g. {"key": "val",} -> {"key": "val"}
+        text = re.sub(r',\s*([}\]])', r'\1', text)
+
+        # Quote unquoted keys:  {expression: "2+2"} -> {"expression": "2+2"}
+        # Match word characters at the start of a key position (after { or ,)
+        # but only if they aren't already quoted
+        text = re.sub(
+            r'(?<=[{,])\s*([a-zA-Z_]\w*)\s*:',
+            r' "\1":',
+            text
+        )
+
+        return text
 
     @staticmethod
     def _sanitize_tool_input(tool_input: str, max_length: int = 10000) -> str:
@@ -1194,8 +1244,9 @@ Question: {task}
             input_dict = {}
             if tool_input:
                 try:
-                    # Try parsing as JSON first
-                    input_dict = json.loads(tool_input)
+                    # Try parsing as JSON first (after cleaning SLM artifacts)
+                    cleaned = self._clean_json_input(tool_input)
+                    input_dict = json.loads(cleaned)
                     if not isinstance(input_dict, dict):
                         # JSON parsed but not a dict - need to intelligently map to tool parameters
                         input_dict = self._map_input_to_parameters(tool, input_dict)
@@ -1699,16 +1750,53 @@ Provide a well-structured, comprehensive response that integrates all findings."
         func = functools.partial(self.run, task, mode, context, **kwargs)
         return await loop.run_in_executor(None, func)
 
+    # ── Resource management ─────────────────────────────────────────────
+
+    def close(self) -> None:
+        """
+        Release resources held by the agent.
+
+        Closes SQLite connections (long-term memory), resets circuit
+        breakers, and clears memory references.  Safe to call multiple
+        times.
+        """
+        if getattr(self, '_closed', False):
+            return
+        self._closed = True
+        self._circuit_breaker.reset_all()
+        if self.long_term_memory is not None:
+            try:
+                self.long_term_memory.close()
+            except Exception:
+                pass
+        logger.debug(f"Agent '{self.name}' closed")
+
+    def __enter__(self):
+        """Sync context manager entry."""
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Sync context manager exit — clean up resources."""
+        self.close()
+        return False
+
     async def __aenter__(self):
         """Async context manager entry."""
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit — clean up resources."""
-        # Reset circuit breaker
-        self._circuit_breaker.reset_all()
-        # Clear short-term memory if desired
+        self.close()
         return False
+
+    def __del__(self):
+        """Warn if agent was garbage-collected without close()."""
+        if not getattr(self, '_closed', True):
+            logger.warning(
+                f"Agent '{getattr(self, 'name', '?')}' was garbage-collected "
+                "without calling close(). Use 'with Agent(config) as agent:' "
+                "or call agent.close() explicitly."
+            )
 
     def stream(self,
                task: str,

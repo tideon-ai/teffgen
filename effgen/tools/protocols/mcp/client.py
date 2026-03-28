@@ -138,7 +138,7 @@ class StdioTransport(MCPTransport):
 
 
 class HTTPTransport(MCPTransport):
-    """HTTP transport for MCP."""
+    """HTTP transport for MCP (concurrent-safe)."""
 
     def __init__(self, url: str, timeout: int = 30):
         """
@@ -146,11 +146,15 @@ class HTTPTransport(MCPTransport):
 
         Args:
             url: Server URL
-            timeout: Request timeout
+            timeout: Request timeout in seconds
         """
         self.url = url
         self.timeout = timeout
         self.client: httpx.AsyncClient | None = None
+        # Pending requests keyed by correlation ID for concurrent safety
+        self._pending: dict[str, MCPRequest] = {}
+        self._pending_order: asyncio.Queue[str] = asyncio.Queue()
+        self._request_counter = 0
 
     async def connect(self) -> None:
         """Create HTTP client."""
@@ -162,71 +166,126 @@ class HTTPTransport(MCPTransport):
             await self.client.aclose()
 
     async def send(self, message: MCPRequest) -> None:
-        """Send HTTP request."""
+        """Queue an HTTP request for later retrieval by receive()."""
         if not self.client:
             raise RuntimeError("Transport not connected")
 
-        # Store for receive
-        self._last_request = message
+        # Assign a correlation ID so concurrent sends don't overwrite
+        self._request_counter += 1
+        correlation_id = str(self._request_counter)
+        self._pending[correlation_id] = message
+        await self._pending_order.put(correlation_id)
 
     async def receive(self) -> MCPResponse:
-        """Send request and receive response."""
+        """Dequeue the next pending request, send it, and return the response."""
         if not self.client:
             raise RuntimeError("Transport not connected")
+
+        # Wait for a pending request (with timeout)
+        try:
+            correlation_id = await asyncio.wait_for(
+                self._pending_order.get(), timeout=self.timeout
+            )
+        except asyncio.TimeoutError:
+            raise TimeoutError(
+                f"No pending request to receive within {self.timeout}s"
+            )
+
+        message = self._pending.pop(correlation_id)
 
         response = await self.client.post(
             self.url,
-            json=self._last_request.to_dict(),
+            json=message.to_dict(),
         )
         response.raise_for_status()
 
         data = response.json()
         handler = MCPProtocolHandler()
-        message = handler.parse_message(data)
+        parsed = handler.parse_message(data)
 
-        if isinstance(message, MCPResponse):
-            return message
+        if isinstance(parsed, MCPResponse):
+            return parsed
         else:
-            raise ValueError(f"Expected response, got {type(message)}")
+            raise ValueError(f"Expected response, got {type(parsed)}")
 
 
 class SSETransport(MCPTransport):
-    """Server-Sent Events transport for MCP."""
+    """Server-Sent Events transport for MCP with reconnection."""
 
-    def __init__(self, url: str, timeout: int = 30):
+    def __init__(
+        self,
+        url: str,
+        timeout: int = 30,
+        max_retries: int = 5,
+        auth_headers: dict[str, str] | None = None,
+    ):
         """
         Initialize SSE transport.
 
         Args:
             url: Server URL
-            timeout: Request timeout
+            timeout: Request timeout in seconds
+            max_retries: Maximum reconnection attempts (exponential backoff)
+            auth_headers: Optional authentication headers
         """
         self.url = url
         self.timeout = timeout
+        self.max_retries = max_retries
+        self.auth_headers = auth_headers or {}
         self.client: httpx.AsyncClient | None = None
         self._event_queue: asyncio.Queue = asyncio.Queue()
+        self._listener_task: asyncio.Task | None = None
 
     async def connect(self) -> None:
-        """Connect to SSE endpoint."""
-        self.client = httpx.AsyncClient(timeout=self.timeout)
-        # Start event listener
-        asyncio.create_task(self._listen_events())
+        """Connect to SSE endpoint and start event listener."""
+        self.client = httpx.AsyncClient(
+            timeout=self.timeout, headers=self.auth_headers
+        )
+        self._listener_task = asyncio.create_task(self._listen_events())
 
     async def disconnect(self) -> None:
         """Close SSE connection."""
+        if self._listener_task and not self._listener_task.done():
+            self._listener_task.cancel()
         if self.client:
             await self.client.aclose()
 
     async def _listen_events(self) -> None:
-        """Listen for SSE events."""
+        """Listen for SSE events with reconnection on disconnect."""
         if not self.client:
             return
 
-        async with self.client.stream("GET", self.url) as response:
-            async for line in response.aiter_lines():
-                if line.startswith("data: "):
-                    data = json.loads(line[6:])
-                    await self._event_queue.put(data)
+        retries = 0
+        while retries <= self.max_retries:
+            try:
+                async with self.client.stream("GET", self.url) as response:
+                    retries = 0  # reset on successful connection
+                    async for line in response.aiter_lines():
+                        if line.startswith("data: "):
+                            raw = line[6:]
+                            try:
+                                data = json.loads(raw)
+                            except json.JSONDecodeError:
+                                logger.warning(
+                                    f"SSE: invalid JSON in event data: {raw[:100]}"
+                                )
+                                continue
+                            await self._event_queue.put(data)
+            except (httpx.StreamError, httpx.RemoteProtocolError, ConnectionError) as exc:
+                retries += 1
+                if retries > self.max_retries:
+                    logger.error(
+                        f"SSE: max retries ({self.max_retries}) exceeded — giving up"
+                    )
+                    break
+                backoff = min(2 ** retries, 30)
+                logger.warning(
+                    f"SSE: stream disconnected ({exc}), "
+                    f"reconnecting in {backoff}s (attempt {retries}/{self.max_retries})"
+                )
+                await asyncio.sleep(backoff)
+            except asyncio.CancelledError:
+                break
 
     async def send(self, message: MCPRequest) -> None:
         """Send message via POST."""
@@ -240,7 +299,15 @@ class SSETransport(MCPTransport):
 
     async def receive(self) -> MCPResponse:
         """Receive message from event queue."""
-        data = await self._event_queue.get()
+        try:
+            data = await asyncio.wait_for(
+                self._event_queue.get(), timeout=self.timeout
+            )
+        except asyncio.TimeoutError:
+            raise TimeoutError(
+                f"No SSE event received within {self.timeout}s"
+            )
+
         handler = MCPProtocolHandler()
         message = handler.parse_message(data)
 

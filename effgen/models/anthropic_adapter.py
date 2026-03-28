@@ -180,9 +180,50 @@ class AnthropicAdapter(FunctionCallingModel):
 
         return input_cost + output_cost
 
+    @staticmethod
+    def _build_content(prompt: str | list) -> str | list[dict]:
+        """
+        Build Anthropic content from a prompt.
+
+        Supports plain text and multimodal content (vision).
+
+        Args:
+            prompt: Text string or list of content parts.
+                    Each part can be a string or a dict with ``type``
+                    (``"text"`` or ``"image"`` with ``source``).
+
+        Returns:
+            Content suitable for Anthropic messages API.
+        """
+        if isinstance(prompt, str):
+            return prompt
+
+        content: list[dict] = []
+        for item in prompt:
+            if isinstance(item, str):
+                content.append({"type": "text", "text": item})
+            elif isinstance(item, dict):
+                # Pass through Anthropic-native content blocks
+                if "type" in item:
+                    content.append(item)
+                elif "image_url" in item:
+                    # Convert OpenAI-style image_url to Anthropic image block
+                    content.append({
+                        "type": "image",
+                        "source": {
+                            "type": "url",
+                            "url": item["image_url"],
+                        },
+                    })
+                else:
+                    content.append({"type": "text", "text": str(item)})
+            else:
+                content.append({"type": "text", "text": str(item)})
+        return content
+
     def generate(
         self,
-        prompt: str,
+        prompt: str | list,
         config: GenerationConfig | None = None,
         system_prompt: str | None = None,
         **kwargs
@@ -216,7 +257,7 @@ class AnthropicAdapter(FunctionCallingModel):
             request_params = {
                 "model": self.model_name,
                 "max_tokens": config.max_tokens or 4096,
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": [{"role": "user", "content": self._build_content(prompt)}],
                 "temperature": config.temperature,
                 "top_p": config.top_p,
                 "top_k": config.top_k,
@@ -321,7 +362,7 @@ class AnthropicAdapter(FunctionCallingModel):
             request_params = {
                 "model": self.model_name,
                 "max_tokens": config.max_tokens or 4096,
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": [{"role": "user", "content": self._build_content(prompt)}],
                 "temperature": config.temperature,
                 "top_p": config.top_p,
                 "top_k": config.top_k,
@@ -382,7 +423,7 @@ class AnthropicAdapter(FunctionCallingModel):
             request_params = {
                 "model": self.model_name,
                 "max_tokens": config.max_tokens or 4096,
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": [{"role": "user", "content": self._build_content(prompt)}],
                 "tools": tools,
                 "temperature": config.temperature,
                 "top_p": config.top_p,

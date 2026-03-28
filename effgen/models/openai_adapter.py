@@ -166,17 +166,43 @@ class OpenAIAdapter(FunctionCallingModel):
             logger.error(f"Failed to initialize OpenAI client: {e}")
             raise RuntimeError(f"OpenAI initialization failed: {e}") from e
 
-    def _create_messages(self, prompt: str) -> list[dict[str, str]]:
+    def _create_messages(self, prompt: str | list) -> list[dict[str, Any]]:
         """
         Convert prompt to OpenAI messages format.
 
+        Supports plain text prompts and multimodal content (vision).
+
         Args:
-            prompt: Input prompt
+            prompt: Text string or list of content parts.
+                    Each part can be a string or a dict with ``type``
+                    (``"text"`` or ``"image_url"``).
 
         Returns:
             List of message dicts
         """
-        return [{"role": "user", "content": prompt}]
+        if isinstance(prompt, str):
+            return [{"role": "user", "content": prompt}]
+
+        # Multimodal: build content array for vision
+        content_parts: list[dict[str, Any]] = []
+        for item in prompt:
+            if isinstance(item, str):
+                content_parts.append({"type": "text", "text": item})
+            elif isinstance(item, dict):
+                # Pass through OpenAI-native content parts (image_url, etc.)
+                if "type" in item:
+                    content_parts.append(item)
+                elif "image_url" in item:
+                    content_parts.append({
+                        "type": "image_url",
+                        "image_url": {"url": item["image_url"]},
+                    })
+                else:
+                    content_parts.append({"type": "text", "text": str(item)})
+            else:
+                content_parts.append({"type": "text", "text": str(item)})
+
+        return [{"role": "user", "content": content_parts}]
 
     def _calculate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
         """

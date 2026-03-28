@@ -46,6 +46,10 @@ class PythonREPL(BaseTool):
     - Memory limits (via base class)
     """
 
+    # Standardized resource limits
+    DEFAULT_TIMEOUT = 30          # seconds (matches ToolMetadata.timeout_seconds)
+    DEFAULT_MAX_OUTPUT = 102400   # 100 KB
+
     # Dangerous builtins to restrict
     RESTRICTED_BUILTINS = {
         "eval",
@@ -224,6 +228,64 @@ class PythonREPL(BaseTool):
 
         return None
 
+    def _check_security(self, code: str) -> str | None:
+        """
+        Check for sandbox-escape patterns beyond import restrictions.
+
+        Blocks:
+        - Direct ``__import__`` calls
+        - ``importlib`` usage
+        - ``__builtins__`` dict manipulation
+        - ``getattr``/``setattr`` targeting blocked modules or dunder attrs
+        - String-concatenation bypasses  (e.g. ``eval("__" + "import__")``)
+
+        Returns:
+            Error message if dangerous pattern found, None otherwise.
+        """
+        # Fast string-level checks (catches dynamic construction too)
+        blocked_strings = [
+            "__import__",
+            "importlib",
+            "__builtins__",
+            "__subclasses__",
+            "__bases__",
+            "__mro__",
+            "__globals__",
+            "__code__",
+        ]
+        for pattern in blocked_strings:
+            if pattern in code:
+                return f"Access to '{pattern}' is blocked in restricted mode"
+
+        # AST-level checks
+        try:
+            tree = ast.parse(code)
+        except SyntaxError:
+            return None  # let execution handle it
+
+        for node in ast.walk(tree):
+            # Block getattr/setattr calls that could reach blocked objects
+            if isinstance(node, ast.Call):
+                func = node.func
+                if isinstance(func, ast.Name) and func.id in ("getattr", "setattr", "delattr"):
+                    # Check if second arg (attr name) is a blocked dunder
+                    if len(node.args) >= 2:
+                        attr_arg = node.args[1]
+                        if isinstance(attr_arg, ast.Constant) and isinstance(attr_arg.value, str):
+                            if attr_arg.value.startswith("__") and attr_arg.value.endswith("__"):
+                                return (
+                                    f"getattr/setattr with dunder attribute "
+                                    f"'{attr_arg.value}' is blocked in restricted mode"
+                                )
+
+            # Block attribute access to __builtins__, __globals__ etc.
+            if isinstance(node, ast.Attribute):
+                if node.attr in ("__builtins__", "__globals__", "__subclasses__",
+                                 "__bases__", "__mro__", "__code__"):
+                    return f"Access to '{node.attr}' is blocked in restricted mode"
+
+        return None
+
     async def _execute(
         self,
         code: str,
@@ -253,7 +315,7 @@ class PythonREPL(BaseTool):
         # Get session
         session = self._get_session(session_id)
 
-        # Check imports in restricted mode
+        # Check imports and security in restricted mode
         if restricted_mode:
             import_error = self._check_imports(code)
             if import_error:
@@ -262,6 +324,15 @@ class PythonREPL(BaseTool):
                     "stdout": "",
                     "stderr": "",
                     "error": import_error,
+                    "variables": {} if return_variables else None,
+                }
+            security_error = self._check_security(code)
+            if security_error:
+                return {
+                    "result": None,
+                    "stdout": "",
+                    "stderr": "",
+                    "error": security_error,
                     "variables": {} if return_variables else None,
                 }
 
@@ -321,9 +392,13 @@ class PythonREPL(BaseTool):
             error = f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"
             logger.debug(f"REPL execution error: {error}")
 
-        # Get output
+        # Get output (truncate to max_output_size)
         stdout_value = stdout_capture.getvalue()
         stderr_value = stderr_capture.getvalue()
+        if len(stdout_value) > self.DEFAULT_MAX_OUTPUT:
+            stdout_value = stdout_value[:self.DEFAULT_MAX_OUTPUT] + "\n... (output truncated)"
+        if len(stderr_value) > self.DEFAULT_MAX_OUTPUT:
+            stderr_value = stderr_value[:self.DEFAULT_MAX_OUTPUT] + "\n... (output truncated)"
 
         # Prepare response
         response = {

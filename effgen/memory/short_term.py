@@ -309,14 +309,25 @@ class ShortTermMemory:
 
     def get_token_count(self) -> int:
         """
-        Get current total token count.
+        Get current total token count (cached).
+
+        Returns the incrementally maintained count. Use
+        ``_validate_token_count()`` for a full recalculation.
 
         Returns:
             Total tokens currently stored
         """
-        # Recalculate to ensure accuracy
+        return self._current_token_count
+
+    def _validate_token_count(self) -> int:
+        """
+        Full recalculation of token count — call periodically or on demand.
+
+        Updates ``_current_token_count`` and returns the authoritative value.
+        """
         total = sum(msg.estimate_tokens() for msg in self.messages)
         total += sum(self._count_tokens(s.summary) for s in self.summaries)
+        self._current_token_count = total
         return total
 
     def _should_summarize(self) -> bool:
@@ -326,7 +337,8 @@ class ShortTermMemory:
         Returns:
             True if summarization is needed
         """
-        current_tokens = self.get_token_count()
+        # Use cached count for performance (validated after summarization)
+        current_tokens = self._current_token_count
         threshold = self.max_tokens * self.summarization_threshold
 
         # Only summarize if we have enough messages to make it worthwhile
@@ -379,42 +391,72 @@ class ShortTermMemory:
 
         # Update statistics
         self.total_summarizations += 1
-        self._current_token_count = self.get_token_count()
+        self._validate_token_count()
 
     def _generate_summary(self, messages: list[Message]) -> str:
         """
-        Generate a summary of messages.
+        Generate a structured summary of messages.
 
-        For now, this is a simple extractive summary. In production,
-        you would call an LLM to generate a better summary.
+        Preserves facts (numbers, names, tool results) with higher priority
+        than filler text. Uses a structured format so the agent can recover
+        key information from the summary.
 
         Args:
             messages: Messages to summarize
 
         Returns:
-            Summary text
+            Summary text with Facts / Decisions / Pending sections
         """
-        # Simple extractive summary: key points from each message
-        key_points = []
+        import re as _re
+
+        facts: list[str] = []
+        decisions: list[str] = []
+        pending: list[str] = []
 
         for msg in messages:
-            # Take first sentence or first 100 chars
             content = msg.content.strip()
             if not content:
                 continue
 
-            # Extract first sentence
-            first_sentence = content.split('.')[0] + '.'
-            if len(first_sentence) > 100:
-                first_sentence = content[:100] + "..."
+            # Tool messages are high-value facts — keep them almost verbatim
+            if msg.role == MessageRole.TOOL:
+                # Truncate very long tool outputs but keep the core result
+                snippet = content[:200] + ("..." if len(content) > 200 else "")
+                facts.append(f"Tool result: {snippet}")
+                continue
 
-            key_points.append(f"{msg.role.value}: {first_sentence}")
+            # Extract sentences containing numbers or names (high-priority facts)
+            sentences = _re.split(r'(?<=[.!?])\s+', content)
+            has_number = False
+            for sentence in sentences:
+                if _re.search(r'\d', sentence):
+                    facts.append(sentence.strip()[:150])
+                    has_number = True
 
-        # Limit summary length
-        summary = " | ".join(key_points)
+            # If no numeric sentences, take first sentence as a fact
+            if not has_number and sentences:
+                first = sentences[0].strip()
+                if len(first) > 150:
+                    first = first[:150] + "..."
+                if msg.role == MessageRole.USER:
+                    pending.append(f"User asked: {first}")
+                elif msg.role == MessageRole.ASSISTANT:
+                    decisions.append(first)
+
+        # Build structured summary
+        parts = []
+        if facts:
+            parts.append("Facts: " + " | ".join(dict.fromkeys(facts)))  # dedupe
+        if decisions:
+            parts.append("Decisions: " + " | ".join(dict.fromkeys(decisions)))
+        if pending:
+            parts.append("Pending: " + " | ".join(dict.fromkeys(pending)))
+
+        summary = "\n".join(parts) if parts else "No significant content."
+
+        # Respect target length
         target_length = int(sum(len(m.content) for m in messages) * self.summary_length_ratio)
-
-        if len(summary) > target_length:
+        if target_length > 0 and len(summary) > target_length:
             summary = summary[:target_length] + "..."
 
         return summary
@@ -490,7 +532,7 @@ class ShortTermMemory:
         stats = data.get("statistics", {})
         memory.total_messages_added = stats.get("total_messages_added", 0)
         memory.total_summarizations = stats.get("total_summarizations", 0)
-        memory._current_token_count = memory.get_token_count()
+        memory._validate_token_count()
 
         return memory
 

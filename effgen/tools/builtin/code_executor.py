@@ -56,10 +56,11 @@ class CodeExecutor(BaseTool):
 
     SUPPORTED_LANGUAGES = ["python", "javascript", "bash", "sh"]
 
-    # Default resource limits
-    DEFAULT_TIMEOUT = 30  # seconds
-    DEFAULT_MEMORY_LIMIT = "512m"  # 512 MB
-    DEFAULT_CPU_QUOTA = 100000  # 100% of one CPU
+    # Default resource limits (standardized across execution tools)
+    DEFAULT_TIMEOUT = 30           # seconds
+    DEFAULT_MEMORY_LIMIT = "256m"  # 256 MB
+    DEFAULT_CPU_QUOTA = 100000     # 100% of one CPU
+    DEFAULT_MAX_OUTPUT = 102400    # 100 KB
 
     # Docker images for different languages
     DOCKER_IMAGES = {

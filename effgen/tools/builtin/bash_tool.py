@@ -69,7 +69,12 @@ DANGEROUS_PATTERNS = [
     r"wget\s+.*\|\s*(sh|bash)",  # wget | sh pattern
     r"eval\s+",  # eval
     r"`.*`",  # command substitution in backticks
-    r"\$\(.*\)",  # command substitution
+    r"\$\(.*\)",  # command substitution  $(cmd) including nested
+    r"\$\{[^}]*\$\(",  # parameter expansion with embedded substitution ${VAR:-$(cmd)}
+    r"\$\{[^}]*`",  # parameter expansion with backtick substitution ${VAR:-`cmd`}
+    r"<<[- \t]*\w+",  # heredoc injection (<<EOF, <<-EOF, << MARKER)
+    r"<\(.*\)",  # process substitution input <(cmd)
+    r">\(.*\)",  # process substitution output >(cmd)
 ]
 
 # Sensitive environment variables to strip
@@ -109,16 +114,25 @@ class BashTool(BaseTool):
     - Optional allowed_commands whitelist mode
     - Strips sensitive environment variables
     - Command timeout to prevent hanging
+
+    Resource limits (configurable):
+    - CPU time: ``timeout`` seconds (default 30)
+    - Output size: ``max_output_size`` bytes (default 100 KB)
     """
+
+    # Standardized defaults (shared across execution tools)
+    DEFAULT_TIMEOUT = 30          # seconds
+    DEFAULT_MAX_OUTPUT = 102400   # 100 KB
 
     def __init__(
         self,
         allowed_commands: list[str] | None = None,
         blocked_commands: list[str] | None = None,
-        timeout: int = 30,
+        timeout: int = DEFAULT_TIMEOUT,
         working_directory: str | None = None,
         strip_env_vars: set[str] | None = None,
         allow_command_substitution: bool = False,
+        max_output_size: int = DEFAULT_MAX_OUTPUT,
     ):
         """
         Initialize the Bash tool.
@@ -130,6 +144,7 @@ class BashTool(BaseTool):
             working_directory: Working directory for commands (default: current dir).
             strip_env_vars: Extra env vars to strip (added to defaults).
             allow_command_substitution: Allow $() and `` in commands (default: False).
+            max_output_size: Maximum output size in bytes (default: 100 KB).
         """
         super().__init__(
             metadata=ToolMetadata(
@@ -188,6 +203,7 @@ class BashTool(BaseTool):
         if strip_env_vars:
             self.strip_env_vars.update(strip_env_vars)
         self.allow_command_substitution = allow_command_substitution
+        self.max_output_size = max_output_size
 
     def _is_command_safe(self, command: str) -> tuple:
         """
@@ -207,7 +223,11 @@ class BashTool(BaseTool):
         for pattern in DANGEROUS_PATTERNS:
             if re.search(pattern, cmd_stripped):
                 # Allow command substitution if explicitly enabled
-                if self.allow_command_substitution and pattern in (r"`.*`", r"\$\(.*\)"):
+                substitution_patterns = {
+                    r"`.*`", r"\$\(.*\)", r"\$\{[^}]*\$\(",
+                    r"\$\{[^}]*`", r"<\(.*\)", r">\(.*\)",
+                }
+                if self.allow_command_substitution and pattern in substitution_patterns:
                     continue
                 return False, "Command blocked: matches dangerous pattern"
 
@@ -272,7 +292,7 @@ class BashTool(BaseTool):
             stderr_str = stderr.decode("utf-8", errors="replace").strip()
 
             # Truncate very long outputs
-            max_output = 10000
+            max_output = self.max_output_size
             if len(stdout_str) > max_output:
                 stdout_str = stdout_str[:max_output] + "\n... (output truncated)"
             if len(stderr_str) > max_output:
