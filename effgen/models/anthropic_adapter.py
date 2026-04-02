@@ -501,6 +501,14 @@ class AnthropicAdapter(FunctionCallingModel):
         """
         return "claude-3" in self.model_name
 
+    def supports_tool_calling(self) -> bool:
+        """Check if the model supports native tool calling.
+
+        Returns:
+            bool: True for Claude 3+ models that support tool use.
+        """
+        return self.supports_function_calling()
+
     def count_tokens(self, text: str) -> TokenCount:
         """
         Count tokens in text using Anthropic's token counting.

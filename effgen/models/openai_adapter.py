@@ -498,6 +498,14 @@ class OpenAIAdapter(FunctionCallingModel):
         """
         return True
 
+    def supports_tool_calling(self) -> bool:
+        """Check if the model supports native tool calling.
+
+        Returns:
+            bool: True (OpenAI models support native tool calling).
+        """
+        return True
+
     def count_tokens(self, text: str) -> TokenCount:
         """
         Count tokens in text using tiktoken.

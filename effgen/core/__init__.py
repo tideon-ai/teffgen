@@ -37,6 +37,21 @@ from .router import RoutingDecision, RoutingStrategy, SubAgentRouter
 # State
 from .state import AgentState
 
+# Structured Output
+from .structured_output import StructuredOutputConfig, constrain_output, validate_json_schema
+
+# Tool Calling Strategy
+from .tool_calling import (
+    HybridStrategy,
+    NativeFunctionCallingStrategy,
+    ReActStrategy,
+    ToolCallResult,
+    ToolCallingStrategy,
+    ToolDefinition,
+    get_strategy,
+    tools_to_definitions,
+)
+
 # Sub-Agent Manager
 from .sub_agent_manager import (
     SubAgentConfig,
@@ -95,4 +110,19 @@ __all__ = [
 
     # State
     "AgentState",
+
+    # Structured Output
+    "StructuredOutputConfig",
+    "constrain_output",
+    "validate_json_schema",
+
+    # Tool Calling Strategy
+    "ToolCallingStrategy",
+    "ReActStrategy",
+    "NativeFunctionCallingStrategy",
+    "HybridStrategy",
+    "ToolCallResult",
+    "ToolDefinition",
+    "get_strategy",
+    "tools_to_definitions",
 ]

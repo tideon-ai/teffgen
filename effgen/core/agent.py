@@ -41,6 +41,12 @@ from .execution_tracker import EventType, ExecutionEvent, ExecutionTracker
 from .router import RoutingDecision, RoutingStrategy, SubAgentRouter
 from .state import AgentState
 from .sub_agent_manager import SubAgentManager
+from .tool_calling import (
+    ReActStrategy,
+    ToolCallResult,
+    ToolCallingStrategy,
+    get_strategy,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +98,9 @@ class AgentConfig:
     fallback_chain: dict[str, list] | None = None
     enable_fallback: bool = True
     max_sub_agent_depth: int = 3
+    tool_calling_mode: str = "auto"  # "auto", "native", "react", "hybrid"
+    output_format: str | None = None  # Global default: "json", "yaml", "csv", or None
+    output_schema: dict[str, Any] | None = None  # Global default JSON Schema
     memory_config: dict[str, Any] = field(default_factory=lambda: {
         "short_term_max_tokens": 4096,
         "short_term_max_messages": 100,
@@ -242,6 +251,13 @@ Question: {task}
         # Tools
         self.tools = {tool.name: tool for tool in config.tools}
 
+        # Tool calling strategy
+        self._tool_calling_strategy = get_strategy(
+            mode=config.tool_calling_mode,
+            model=self.model,
+        )
+        logger.info(f"Tool calling strategy: {self._tool_calling_strategy.name}")
+
         # Tool prompt generator for enhanced ReAct prompts
         self._tool_prompt_generator = ToolPromptGenerator(
             tools=config.tools,
@@ -354,6 +370,8 @@ Question: {task}
             task: str,
             mode: AgentMode = AgentMode.AUTO,
             context: dict[str, Any] | None = None,
+            output_schema: dict[str, Any] | None = None,
+            output_model: Any = None,
             **kwargs) -> AgentResponse:
         """
         Execute a task.
@@ -362,6 +380,11 @@ Question: {task}
             task: Task description
             mode: Execution mode (single, sub_agents, auto)
             context: Optional context
+            output_schema: JSON Schema dict — when provided, the final output
+                is guaranteed to be valid JSON matching this schema.
+            output_model: Pydantic BaseModel class — when provided, output is
+                validated and the parsed instance is stored in
+                ``response.metadata["parsed"]``.
             **kwargs: Additional arguments
 
         Returns:
@@ -370,6 +393,12 @@ Question: {task}
         start_time = time.time()
         context = context or {}
         self._current_depth = 0  # Reset depth at the start of each top-level run()
+
+        # Resolve structured output schema
+        effective_schema = output_schema or self.config.output_schema
+        if output_model is not None and effective_schema is None:
+            from .structured_output import pydantic_model_to_schema
+            effective_schema = pydantic_model_to_schema(output_model)
 
         # Track task start
         self.execution_tracker.track_event(ExecutionEvent(
@@ -396,6 +425,12 @@ Question: {task}
             else:
                 # Single agent mode
                 response = self._run_single_agent(task, context, **kwargs)
+
+            # Apply structured output constraint if requested
+            if effective_schema and response.success and response.output:
+                response = self._apply_structured_output(
+                    response, effective_schema, output_model, task,
+                )
 
             # Add execution metadata
             response.execution_time = time.time() - start_time
@@ -451,6 +486,96 @@ Question: {task}
                 metadata={"error": str(e)}
             )
 
+    def _apply_structured_output(
+        self,
+        response: AgentResponse,
+        schema: dict[str, Any],
+        output_model: Any | None,
+        task: str,
+    ) -> AgentResponse:
+        """Post-process response to ensure structured output matches schema.
+
+        If the agent's free-text output already contains valid JSON matching
+        the schema, it is extracted and returned. Otherwise, the model is
+        re-prompted to produce conforming JSON.
+
+        Args:
+            response: The original AgentResponse.
+            schema: JSON Schema dict.
+            output_model: Optional Pydantic model class for parsing.
+            task: Original task (used for re-prompting).
+
+        Returns:
+            AgentResponse with validated structured output.
+        """
+        from .structured_output import (
+            StructuredOutputConfig,
+            constrain_output,
+            extract_json_from_text,
+            validate_json_schema,
+        )
+
+        # First, try to extract and validate JSON from existing output
+        json_str = extract_json_from_text(response.output)
+        if json_str:
+            try:
+                parsed = json.loads(json_str)
+                valid, err = validate_json_schema(parsed, schema)
+                if valid:
+                    response.output = json_str
+                    response.metadata["structured_output"] = True
+                    if output_model is not None:
+                        response.metadata["parsed"] = self._parse_with_pydantic(
+                            output_model, parsed,
+                        )
+                    return response
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        # Existing output doesn't match — use constrain_output to re-prompt
+        if self.model is not None:
+            try:
+                logger.info("Re-prompting model for structured output")
+                config = StructuredOutputConfig(schema=schema)
+                structured_prompt = (
+                    f"Based on this task and result, produce structured output.\n"
+                    f"Task: {task}\n"
+                    f"Result: {response.output}"
+                )
+                json_str, parsed = constrain_output(
+                    self.model, structured_prompt, schema, config,
+                )
+                response.output = json_str
+                response.metadata["structured_output"] = True
+                response.metadata["structured_output_reprompted"] = True
+                if output_model is not None:
+                    response.metadata["parsed"] = self._parse_with_pydantic(
+                        output_model, parsed,
+                    )
+            except ValueError as e:
+                logger.warning(f"Structured output constraint failed: {e}")
+                response.metadata["structured_output"] = False
+                response.metadata["structured_output_error"] = str(e)
+
+        return response
+
+    @staticmethod
+    def _parse_with_pydantic(model_class: Any, data: Any) -> Any:
+        """Parse data into a Pydantic model instance.
+
+        Supports both Pydantic v1 and v2.
+        """
+        try:
+            if hasattr(model_class, 'model_validate'):
+                # Pydantic v2
+                return model_class.model_validate(data)
+            else:
+                # Pydantic v1
+                return model_class(**data)
+        except Exception as e:
+            logger.warning(f"Pydantic parsing failed: {e}")
+            return None
+
     def _run_single_agent(self,
                          task: str,
                          context: dict[str, Any],
@@ -484,8 +609,36 @@ Question: {task}
         while iterations < max_iterations:
             iterations += 1
 
-            # Build prompt using ToolPromptGenerator or custom template
-            if self.config.system_prompt_template:
+            # Determine if we should use native tool calling prompt format
+            use_native_prompt = (
+                self._tool_calling_strategy.name in ("native", "hybrid")
+                and self.model is not None
+                and hasattr(self.model, 'supports_tool_calling')
+                and self.model.supports_tool_calling()
+            )
+
+            # Build prompt
+            gen_kwargs = dict(kwargs)
+            if use_native_prompt and not self.config.system_prompt_template:
+                # Native/hybrid mode: use a simple user message and pass
+                # tool definitions via the chat template's tools parameter.
+                # The model will produce native tool call tokens (e.g.
+                # <tool_call> for Qwen, [TOOL_CALLS] for Mistral).
+                if scratchpad:
+                    prompt = (
+                        f"{task}\n\n"
+                        f"Previous steps:\n{scratchpad}\n\n"
+                        f"Continue solving the task. If you have the final answer, state it clearly."
+                    )
+                else:
+                    prompt = task
+                # Pass tool definitions for the chat template
+                tool_defs = self._tool_calling_strategy.format_tools_for_prompt(
+                    list(self.tools.values())
+                )
+                if isinstance(tool_defs, list):
+                    gen_kwargs["tools"] = tool_defs
+            elif self.config.system_prompt_template:
                 # User-provided custom template
                 tools_description = self._get_tools_description()
                 prompt = self.config.system_prompt_template.format(
@@ -495,7 +648,7 @@ Question: {task}
                     scratchpad=scratchpad
                 )
             else:
-                # Use enhanced ToolPromptGenerator
+                # ReAct mode: use enhanced ToolPromptGenerator
                 prompt = self._tool_prompt_generator.generate_react_prompt(
                     task=task,
                     scratchpad=scratchpad,
@@ -517,15 +670,19 @@ Question: {task}
             ))
 
             # Generate response
-            response = self._generate(prompt, **kwargs)
+            response = self._generate(prompt, **gen_kwargs)
             tokens_used += response.get("tokens_used", 0)
 
             # Debug: Log the raw response
             logger.info(f"[Iteration {iterations}] Raw model output: {response['text'][:300]}...")
             logger.debug(f"[Iteration {iterations}] Full model output: {response['text']}")
 
-            # Parse response
-            parsed = self._parse_react_response(response["text"])
+            # Parse response using strategy
+            strategy_result = self._tool_calling_strategy.parse_response(
+                response["text"], tools=self.tools,
+            )
+            # Convert to legacy dict format for compatibility with rest of loop
+            parsed = self._tool_call_result_to_dict(strategy_result)
 
             # Debug: Log what was parsed
             logger.info(f"[Iteration {iterations}] Parsed - Action: {parsed.get('action')}, Input: {parsed.get('action_input')}, Final: {parsed.get('final_answer')}")
@@ -541,7 +698,8 @@ Question: {task}
                     mode=AgentMode.SINGLE,
                     iterations=iterations,
                     tool_calls=tool_calls,
-                    tokens_used=tokens_used
+                    tokens_used=tokens_used,
+                    metadata={"tool_calling_strategy": self._tool_calling_strategy.name}
                 )
 
             # Check if model is stating an answer without "Final Answer:" keyword
@@ -558,7 +716,8 @@ Question: {task}
                         mode=AgentMode.SINGLE,
                         iterations=iterations,
                         tool_calls=tool_calls,
-                        tokens_used=tokens_used
+                        tokens_used=tokens_used,
+                        metadata={"tool_calling_strategy": self._tool_calling_strategy.name}
                     )
 
             # Execute action if present
@@ -850,7 +1009,12 @@ Question: {task}
                     stop_sequences=kwargs.get('stop_sequences', default_stop_sequences)
                 )
 
-                result = self.model.generate(prompt, config=gen_config)
+                # Pass through extra kwargs (e.g. tools for native calling)
+                extra_gen_kwargs = {}
+                if "tools" in kwargs:
+                    extra_gen_kwargs["tools"] = kwargs["tools"]
+
+                result = self.model.generate(prompt, config=gen_config, **extra_gen_kwargs)
 
                 response_text = result.text if result and result.text else ""
                 tokens_used = result.tokens_used if result and hasattr(result, 'tokens_used') else 0
@@ -1074,6 +1238,32 @@ Question: {task}
             logger.error(f"Critical error in parse_react_response: {e}", exc_info=True)
             # Return partial parse results even if there was an error
 
+        return parsed
+
+    @staticmethod
+    def _tool_call_result_to_dict(result: ToolCallResult) -> dict[str, Any]:
+        """Convert a ToolCallResult to the legacy dict format used by the ReAct loop.
+
+        This bridges the new strategy-based parsing with the existing loop
+        logic that expects ``{'thought', 'action', 'action_input', 'final_answer'}``.
+        """
+        parsed: dict[str, Any] = {
+            "thought": result.thought,
+            "action": None,
+            "action_input": None,
+            "final_answer": result.final_answer,
+        }
+        if result.is_tool_call and result.tool_name:
+            parsed["action"] = result.tool_name
+            # Convert arguments dict back to the string form the loop expects
+            if result.arguments:
+                raw = result.arguments.get("__raw_input__")
+                if raw:
+                    parsed["action_input"] = raw
+                else:
+                    parsed["action_input"] = json.dumps(result.arguments)
+            else:
+                parsed["action_input"] = "{}"
         return parsed
 
     @staticmethod

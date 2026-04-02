@@ -368,6 +368,10 @@ class TransformersEngine(BatchModel):
         generation_config, stop_sequences = self._create_generation_config(config)
 
         try:
+            # Extract tool definitions before sanitizing kwargs — these are
+            # passed to the chat template, not to HF generate()
+            tools_for_template = kwargs.pop("tools", None)
+
             # Sanitize kwargs for HuggingFace Transformers compatibility
             # Convert OpenAI-style parameters to HuggingFace format
             sanitized_kwargs = {}
@@ -398,12 +402,37 @@ class TransformersEngine(BatchModel):
                     messages = [
                         {"role": "user", "content": prompt}
                     ]
+                    template_kwargs: dict[str, Any] = {
+                        "tokenize": False,
+                        "add_generation_prompt": True,
+                    }
+                    # Pass tool definitions for native function calling
+                    if tools_for_template:
+                        template_kwargs["tools"] = tools_for_template
+                        logger.debug(
+                            f"Passing {len(tools_for_template)} tool definitions "
+                            "to chat template for native function calling"
+                        )
                     formatted_prompt = self.tokenizer.apply_chat_template(
                         messages,
-                        tokenize=False,
-                        add_generation_prompt=True
+                        **template_kwargs,
                     )
                     logger.debug("Applied chat template to prompt")
+                except TypeError as e:
+                    # Template may not support tools param — fall back without tools
+                    if tools_for_template:
+                        logger.debug(
+                            f"Chat template does not accept tools param: {e}, "
+                            "falling back to plain template"
+                        )
+                        formatted_prompt = self.tokenizer.apply_chat_template(
+                            messages,
+                            tokenize=False,
+                            add_generation_prompt=True,
+                        )
+                    else:
+                        logger.warning(f"Failed to apply chat template: {e}")
+                        formatted_prompt = prompt
                 except Exception as e:
                     logger.warning(f"Failed to apply chat template, using raw prompt: {e}")
                     formatted_prompt = prompt
@@ -429,11 +458,23 @@ class TransformersEngine(BatchModel):
                 )
 
             # Decode output
+            # When native tool calling is active, preserve tool-call tokens
+            # like <tool_call>, </tool_call>, [TOOL_CALLS] etc. but strip
+            # chat-template end markers like <|im_end|>, </s>, <|eot_id|>.
             generated_ids = outputs[0][inputs["input_ids"].shape[1]:]
-            generated_text = self.tokenizer.decode(
-                generated_ids,
-                skip_special_tokens=True
-            )
+            if tools_for_template:
+                generated_text = self.tokenizer.decode(
+                    generated_ids, skip_special_tokens=False,
+                )
+                # Strip common chat-template end tokens
+                for end_marker in ("<|im_end|>", "</s>", "<|eot_id|>",
+                                   "<|end_of_text|>", "<|endoftext|>"):
+                    generated_text = generated_text.replace(end_marker, "")
+                generated_text = generated_text.strip()
+            else:
+                generated_text = self.tokenizer.decode(
+                    generated_ids, skip_special_tokens=True,
+                )
 
             # Apply stop sequences post-generation
             # This is more reliable than trying to use them during generation
@@ -673,6 +714,35 @@ class TransformersEngine(BatchModel):
             return 8
         else:
             return 1  # CPU is slow, use minimal batch size
+
+    def supports_tool_calling(self) -> bool:
+        """Check if the model supports native tool calling via chat template.
+
+        Returns True if the tokenizer's chat template accepts a ``tools``
+        parameter, which is the case for Qwen2.5, Llama 3.x, Mistral, etc.
+        """
+        if not self._is_loaded or self.tokenizer is None:
+            return False
+        if not hasattr(self.tokenizer, 'apply_chat_template'):
+            return False
+        # Test whether the chat template accepts a `tools` kwarg
+        try:
+            self.tokenizer.apply_chat_template(
+                [{"role": "user", "content": "test"}],
+                tools=[{
+                    "type": "function",
+                    "function": {
+                        "name": "test",
+                        "description": "test",
+                        "parameters": {"type": "object", "properties": {}},
+                    }
+                }],
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+            return True
+        except (TypeError, Exception):
+            return False
 
     def unload(self) -> None:
         """

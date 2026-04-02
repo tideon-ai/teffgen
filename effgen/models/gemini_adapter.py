@@ -506,6 +506,14 @@ class GeminiAdapter(FunctionCallingModel):
         """
         return True
 
+    def supports_tool_calling(self) -> bool:
+        """Check if the model supports native tool calling.
+
+        Returns:
+            bool: True (Gemini models support native tool calling).
+        """
+        return True
+
     def count_tokens(self, text: str) -> TokenCount:
         """
         Count tokens in text using Gemini's token counting.

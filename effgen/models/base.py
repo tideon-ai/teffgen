@@ -192,6 +192,19 @@ class BaseModel(ABC):
         """
         pass
 
+    def supports_tool_calling(self) -> bool:
+        """
+        Check if the model supports native tool/function calling.
+
+        Native tool calling uses the model's built-in tool call format
+        (e.g., chat template ``tools`` parameter, API tool_calls) instead
+        of parsing free-text ReAct output.
+
+        Returns:
+            bool: True if native tool calling is supported.
+        """
+        return False
+
     def is_loaded(self) -> bool:
         """
         Check if the model is currently loaded.

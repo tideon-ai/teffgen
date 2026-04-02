@@ -587,6 +587,35 @@ class VLLMEngine(BatchModel):
         """
         return self.max_num_seqs
 
+    def supports_tool_calling(self) -> bool:
+        """Check if the model supports native tool calling.
+
+        For vLLM, checks whether the HuggingFace tokenizer's chat template
+        accepts a ``tools`` parameter.
+        """
+        tokenizer = self._hf_tokenizer or self.tokenizer
+        if not self._is_loaded or tokenizer is None:
+            return False
+        if not hasattr(tokenizer, 'apply_chat_template'):
+            return False
+        try:
+            tokenizer.apply_chat_template(
+                [{"role": "user", "content": "test"}],
+                tools=[{
+                    "type": "function",
+                    "function": {
+                        "name": "test",
+                        "description": "test",
+                        "parameters": {"type": "object", "properties": {}},
+                    }
+                }],
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+            return True
+        except (TypeError, Exception):
+            return False
+
     def unload(self) -> None:
         """
         Unload the model and free GPU memory.
