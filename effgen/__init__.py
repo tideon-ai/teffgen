@@ -57,6 +57,23 @@ from effgen.presets import create_agent, list_presets
 # Prompt imports
 from effgen.prompts import ChainManager, PromptOptimizer, TemplateManager
 
+# Guardrails imports
+from effgen.guardrails import (
+    Guardrail,
+    GuardrailChain,
+    GuardrailPosition,
+    GuardrailResult,
+    LengthGuardrail,
+    PIIGuardrail,
+    PromptInjectionGuardrail,
+    ToolInputGuardrail,
+    ToolOutputGuardrail,
+    ToolPermissionGuardrail,
+    TopicGuardrail,
+    ToxicityGuardrail,
+    get_guardrail_preset,
+)
+
 # Tool imports
 from effgen.tools import BaseTool, ToolRegistry
 from effgen.tools import get_registry as get_tool_registry

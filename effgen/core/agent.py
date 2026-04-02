@@ -101,6 +101,7 @@ class AgentConfig:
     tool_calling_mode: str = "auto"  # "auto", "native", "react", "hybrid"
     output_format: str | None = None  # Global default: "json", "yaml", "csv", or None
     output_schema: dict[str, Any] | None = None  # Global default JSON Schema
+    guardrails: Any = None  # GuardrailChain, preset name (str), or None
     memory_config: dict[str, Any] = field(default_factory=lambda: {
         "short_term_max_tokens": 4096,
         "short_term_max_messages": 100,
@@ -337,6 +338,24 @@ Question: {task}
                 self.long_term_memory = LongTermMemory(backend=backend)
                 self.long_term_memory.start_session(name=self.name)
 
+        # Guardrails
+        self._guardrail_chain = self._resolve_guardrails(config.guardrails)
+
+    @staticmethod
+    def _resolve_guardrails(guardrails: Any):
+        """Resolve guardrails config to a GuardrailChain or None."""
+        if guardrails is None:
+            return None
+        # Already a GuardrailChain
+        from ..guardrails.base import GuardrailChain
+        if isinstance(guardrails, GuardrailChain):
+            return guardrails
+        # Preset name string
+        if isinstance(guardrails, str):
+            from ..guardrails.presets import get_guardrail_preset
+            return get_guardrail_preset(guardrails)
+        return None
+
     def _build_system_prompt(self) -> str:
         """Build a dynamic system prompt based on agent configuration and tools."""
         return self._system_prompt_builder.build(
@@ -394,6 +413,20 @@ Question: {task}
         context = context or {}
         self._current_depth = 0  # Reset depth at the start of each top-level run()
 
+        # Pre-run input guardrail check
+        if self._guardrail_chain is not None:
+            from ..guardrails.base import GuardrailPosition
+            gr = self._guardrail_chain.check(task, position=GuardrailPosition.INPUT)
+            if not gr.passed:
+                return AgentResponse(
+                    output=f"Input blocked by guardrail: {gr.reason}",
+                    success=False,
+                    execution_time=time.time() - start_time,
+                    metadata={"guardrail_blocked": True, "guardrail_reason": gr.reason},
+                )
+            if gr.modified_content is not None:
+                task = gr.modified_content
+
         # Resolve structured output schema
         effective_schema = output_schema or self.config.output_schema
         if output_model is not None and effective_schema is None:
@@ -431,6 +464,18 @@ Question: {task}
                 response = self._apply_structured_output(
                     response, effective_schema, output_model, task,
                 )
+
+            # Post-run output guardrail check
+            if self._guardrail_chain is not None and response.success and response.output:
+                from ..guardrails.base import GuardrailPosition as _GP
+                gr = self._guardrail_chain.check(response.output, position=_GP.OUTPUT)
+                if not gr.passed:
+                    response.output = f"Output blocked by guardrail: {gr.reason}"
+                    response.success = False
+                    response.metadata["guardrail_blocked"] = True
+                    response.metadata["guardrail_reason"] = gr.reason
+                elif gr.modified_content is not None:
+                    response.output = gr.modified_content
 
             # Add execution metadata
             response.execution_time = time.time() - start_time
@@ -1365,6 +1410,20 @@ Question: {task}
         # Sanitize input
         tool_input = self._sanitize_tool_input(tool_input)
 
+        # Pre-tool guardrail check (TOOL_INPUT)
+        if self._guardrail_chain is not None:
+            from ..guardrails.base import GuardrailPosition as _GP
+            tool_obj = self.tools.get(tool_name)
+            gr = self._guardrail_chain.check(
+                tool_input, position=_GP.TOOL_INPUT,
+                tool_name=tool_name, tool=tool_obj,
+            )
+            if not gr.passed:
+                logger.info(f"Guardrail blocked tool '{tool_name}': {gr.reason}")
+                return f"Error executing tool '{tool_name}': blocked by guardrail — {gr.reason}"
+            if gr.modified_content is not None:
+                tool_input = gr.modified_content
+
         # Circuit breaker check
         if not self._circuit_breaker.is_available(tool_name):
             logger.info(f"Circuit breaker OPEN for '{tool_name}', skipping execution")
@@ -1394,6 +1453,19 @@ Question: {task}
                     logger.info(f"Fallback '{fb_name}' succeeded for '{tool_name}'")
                     return f"[Fallback: used {fb_name} instead of {tool_name}] {fb_result}"
             logger.info(f"All fallbacks exhausted for '{tool_name}'")
+
+        # Post-tool guardrail check (TOOL_OUTPUT)
+        if self._guardrail_chain is not None and not result_str.startswith("Error executing tool"):
+            from ..guardrails.base import GuardrailPosition as _GP
+            gr = self._guardrail_chain.check(
+                result_str, position=_GP.TOOL_OUTPUT,
+                tool_name=tool_name,
+            )
+            if not gr.passed:
+                logger.info(f"Guardrail blocked output from '{tool_name}': {gr.reason}")
+                return f"Error executing tool '{tool_name}': output blocked by guardrail — {gr.reason}"
+            if gr.modified_content is not None:
+                result_str = gr.modified_content
 
         return result_str
 
