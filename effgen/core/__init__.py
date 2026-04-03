@@ -34,8 +34,20 @@ from .orchestrator import MultiAgentOrchestrator, OrchestrationPattern, TeamConf
 # Router
 from .router import RoutingDecision, RoutingStrategy, SubAgentRouter
 
+# Lifecycle Management
+from .lifecycle import AgentEntry, AgentLifecycleState, AgentPool, AgentRegistry
+
+# Message Bus
+from .message_bus import AgentMessage, MessageBus, MessageType
+
+# Shared State
+from .shared_state import SharedState, StateMutation
+
 # State
 from .state import AgentState
+
+# Workflow
+from .workflow import WorkflowDAG, WorkflowEdge, WorkflowNode, WorkflowResult
 
 # Structured Output
 from .structured_output import StructuredOutputConfig, constrain_output, validate_json_schema
@@ -107,6 +119,27 @@ __all__ = [
     "SubTask",
     "TaskStatus",
     "TaskPriority",
+
+    # Lifecycle Management
+    "AgentLifecycleState",
+    "AgentEntry",
+    "AgentPool",
+    "AgentRegistry",
+
+    # Message Bus
+    "MessageBus",
+    "AgentMessage",
+    "MessageType",
+
+    # Shared State
+    "SharedState",
+    "StateMutation",
+
+    # Workflow
+    "WorkflowDAG",
+    "WorkflowNode",
+    "WorkflowEdge",
+    "WorkflowResult",
 
     # State
     "AgentState",

@@ -1699,6 +1699,19 @@ Examples:
     # Presets command
     subparsers.add_parser('presets', help='List available agent presets')
 
+    # Workflow command
+    workflow_parser = subparsers.add_parser('workflow', help='Run a DAG-based workflow')
+    workflow_subparsers = workflow_parser.add_subparsers(dest='workflow_command', help='Workflow command')
+
+    workflow_run = workflow_subparsers.add_parser('run', help='Run a workflow from YAML file')
+    workflow_run.add_argument('file', help='Path to workflow YAML file')
+    workflow_run.add_argument('-m', '--model', help='Default model for all agents')
+    workflow_run.add_argument('--input', action='append', nargs=2, metavar=('NODE', 'TASK'),
+                              help='Input for a specific node (can be repeated)')
+
+    workflow_validate = workflow_subparsers.add_parser('validate', help='Validate a workflow YAML file')
+    workflow_validate.add_argument('file', help='Path to workflow YAML file')
+
     return parser
 
 
@@ -1799,6 +1812,75 @@ dependencies = ["effgen"]
     return 0
 
 
+def _handle_workflow_command(args, cli) -> int:
+    """Handle the 'workflow' CLI subcommand."""
+    from effgen.core.workflow import WorkflowDAG
+
+    wf_cmd = getattr(args, 'workflow_command', None)
+
+    if wf_cmd == 'validate':
+        try:
+            dag = WorkflowDAG.from_yaml(args.file)
+            order = dag.topological_order()
+            cli.print(f"Workflow '{dag.name}' is valid.")
+            cli.print(f"  Nodes: {len(dag.nodes)}")
+            cli.print(f"  Edges: {len(dag.edges)}")
+            cli.print(f"  Execution order: {' -> '.join(order)}")
+            return 0
+        except Exception as e:
+            cli.print(f"Validation failed: {e}")
+            return 1
+
+    elif wf_cmd == 'run':
+        try:
+            model_name = getattr(args, 'model', None)
+
+            def _agent_factory(nd):
+                from effgen.core.agent import Agent, AgentConfig
+                from effgen.models import load_model
+                m = model_name or nd.get('model', 'Qwen/Qwen2.5-1.5B-Instruct')
+                model = load_model(m)
+                config = AgentConfig(
+                    name=nd.get('agent', nd['id']),
+                    model=model,
+                    max_iterations=nd.get('max_iterations', 5),
+                )
+                return Agent(config)
+
+            dag = WorkflowDAG.from_yaml(args.file, agent_factory=_agent_factory)
+            cli.print(f"Running workflow '{dag.name}' ({len(dag.nodes)} nodes)...")
+
+            # Build initial inputs from --input flags
+            initial_inputs = {}
+            if getattr(args, 'input', None):
+                for node_id, task_str in args.input:
+                    initial_inputs[node_id] = task_str
+
+            result = dag.run(initial_inputs=initial_inputs)
+
+            cli.print(f"\nWorkflow {'succeeded' if result.success else 'FAILED'} "
+                       f"in {result.execution_time:.2f}s")
+            for nr in result.node_results:
+                status = nr['status']
+                cli.print(f"  [{status:>9s}] {nr['id']} ({nr['execution_time']:.2f}s)")
+
+            if result.success:
+                # Show final outputs
+                cli.print("\nOutputs:")
+                for key, val in result.outputs.items():
+                    cli.print(f"  {key}: {str(val)[:200]}")
+
+            return 0 if result.success else 1
+
+        except Exception as e:
+            cli.print(f"Workflow execution failed: {e}")
+            return 1
+
+    else:
+        cli.print("Usage: effgen workflow [run|validate] <file.yaml>")
+        return 0
+
+
 def main():
     """Main entry point for CLI."""
     parser = create_parser()
@@ -1846,6 +1928,8 @@ def main():
                 cli.print(f"  {name:12s} — {desc}")
             cli.print("\nUsage: effgen run --preset <name> \"your task\"")
             exit_code = 0
+        elif args.command == 'workflow':
+            exit_code = _handle_workflow_command(args, cli)
         elif args.command is None:
             # No command - launch interactive wizard
             # Create a namespace with default values for run command

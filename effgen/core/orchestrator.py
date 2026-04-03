@@ -18,6 +18,9 @@ from typing import Any
 
 from .agent import Agent, AgentMode
 from .execution_tracker import EventType, ExecutionEvent, ExecutionTracker
+from .lifecycle import AgentLifecycleState, AgentRegistry
+from .message_bus import AgentMessage, MessageBus, MessageType
+from .shared_state import SharedState
 
 
 class OrchestrationPattern(Enum):
@@ -120,6 +123,9 @@ class MultiAgentOrchestrator:
         self.teams: dict[str, TeamConfig] = {}
         self.execution_tracker = ExecutionTracker()
         self.agent_registry: dict[str, Agent] = {}
+        self.message_bus = MessageBus(persist=True)
+        self.shared_state = SharedState()
+        self.lifecycle_registry = AgentRegistry()
 
     def register_agent(self, agent: Agent):
         """
@@ -129,6 +135,11 @@ class MultiAgentOrchestrator:
             agent: Agent to register
         """
         self.agent_registry[agent.name] = agent
+        # Also register in lifecycle registry (ignore if already registered)
+        try:
+            self.lifecycle_registry.register(agent.name, agent)
+        except ValueError:
+            pass
 
     def create_team(self,
                    name: str,
@@ -249,11 +260,21 @@ class MultiAgentOrchestrator:
         Execute agents one after another.
 
         Output of agent N becomes input of agent N+1.
+        Messages are published on the bus and results stored in shared state.
         """
         current_task = task
         responses = []
 
         for i, agent in enumerate(team.agents):
+            # Send task assignment via message bus
+            self.message_bus.send(AgentMessage(
+                sender=f"orchestrator_{team.name}",
+                recipient=agent.name,
+                type=MessageType.TASK_ASSIGNMENT,
+                payload=current_task[:200],
+                topic=f"team.{team.name}.task",
+            ))
+
             # Track agent start
             self.execution_tracker.track_event(ExecutionEvent(
                 type=EventType.SUB_AGENT_START,
@@ -272,15 +293,38 @@ class MultiAgentOrchestrator:
                 message=f"Agent {i+1}/{len(team.agents)} completed"
             ))
 
-            responses.append({
+            agent_result = {
                 "agent_name": agent.name,
                 "output": response.output,
                 "success": response.success,
                 "tokens_used": response.tokens_used
-            })
+            }
+            responses.append(agent_result)
+
+            # Publish result on message bus
+            self.message_bus.send(AgentMessage(
+                sender=agent.name,
+                recipient=f"orchestrator_{team.name}",
+                type=MessageType.RESULT,
+                payload=agent_result,
+                topic=f"team.{team.name}.result",
+            ))
+
+            # Store result in shared state
+            self.shared_state.set(
+                f"team_{team.name}", f"result_{agent.name}",
+                agent_result, agent_id=agent.name,
+            )
 
             if not response.success:
-                # Stop on failure
+                # Publish error
+                self.message_bus.send(AgentMessage(
+                    sender=agent.name,
+                    recipient=f"orchestrator_{team.name}",
+                    type=MessageType.ERROR,
+                    payload=response.output,
+                    topic=f"team.{team.name}.error",
+                ))
                 break
 
             # Use output as input for next agent
@@ -603,6 +647,28 @@ Consider the above viewpoints and provide your perspective or refined answer."""
         """Remove a team."""
         if name in self.teams:
             del self.teams[name]
+
+    def cancel_workflow(self, team_name: str | None = None) -> int:
+        """
+        Cancel all running agents, optionally scoped to a team.
+
+        Args:
+            team_name: If given, only cancel agents in this team
+
+        Returns:
+            Number of agents cancelled
+        """
+        if team_name:
+            team = self.teams.get(team_name)
+            if not team:
+                return 0
+            count = 0
+            for agent in team.agents:
+                if self.lifecycle_registry.cancel(agent.name):
+                    count += 1
+            return count
+        else:
+            return self.lifecycle_registry.cancel_all()
 
     def __repr__(self) -> str:
         """String representation."""
