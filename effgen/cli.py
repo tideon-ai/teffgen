@@ -1725,6 +1725,14 @@ Examples:
                               help='Use a preset agent configuration')
     batch_parser.add_argument('--query-field', default='query', help='Field name for queries in JSONL/CSV (default: query)')
 
+    # Debug command
+    debug_parser = subparsers.add_parser('debug', help='Run an agent in interactive debug mode')
+    debug_parser.add_argument('task', help='Task to execute')
+    debug_parser.add_argument('-m', '--model', help='Model to use')
+    debug_parser.add_argument('--preset', choices=['math', 'research', 'coding', 'general', 'minimal'],
+                              help='Use a preset agent configuration')
+    debug_parser.add_argument('--step', action='store_true', help='Step through each iteration')
+
     return parser
 
 
@@ -1999,6 +2007,15 @@ def main():
             exit_code = _handle_workflow_command(args, cli)
         elif args.command == 'batch':
             exit_code = _handle_batch_command(args, cli)
+        elif args.command == 'debug':
+            from effgen.debug.inspector import run_debug_cli
+            run_debug_cli(
+                task=args.task,
+                preset=getattr(args, 'preset', None),
+                model=getattr(args, 'model', None),
+                step=getattr(args, 'step', False),
+            )
+            exit_code = 0
         elif args.command is None:
             # No command - launch interactive wizard
             # Create a namespace with default values for run command

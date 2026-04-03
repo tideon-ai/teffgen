@@ -53,6 +53,31 @@ from effgen.utils.logging import (
     setup_logger,
 )
 
+# Structured logging
+from effgen.utils.structured_logging import (
+    EffGenJSONFormatter,
+    LogRunContext,
+    StructuredLogger,
+    generate_run_id,
+    generate_workflow_id,
+    get_structured_logger,
+    setup_json_logging,
+)
+
+# Tracing
+from effgen.utils.tracing import (
+    get_tracer,
+    setup_tracing,
+    shutdown_tracing,
+    trace_agent_run,
+    trace_tool_execute,
+)
+
+# Prometheus metrics
+from effgen.utils.prometheus_metrics import (
+    metrics as prometheus_metrics,
+)
+
 # Metrics utilities
 from effgen.utils.metrics import (
     MODEL_PRICING,
@@ -114,6 +139,25 @@ __all__ = [
     'ResourceSnapshot',
     'MetricsCollector',
     'get_global_metrics',
+
+    # Structured logging
+    'EffGenJSONFormatter',
+    'LogRunContext',
+    'StructuredLogger',
+    'generate_run_id',
+    'generate_workflow_id',
+    'get_structured_logger',
+    'setup_json_logging',
+
+    # Tracing
+    'get_tracer',
+    'setup_tracing',
+    'shutdown_tracing',
+    'trace_agent_run',
+    'trace_tool_execute',
+
+    # Prometheus metrics
+    'prometheus_metrics',
 
     # Validators
     'ValidationError',

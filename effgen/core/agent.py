@@ -37,6 +37,20 @@ from ..prompts.tool_prompt_generator import ToolPromptGenerator
 from ..tools.base_tool import BaseTool, ToolCategory
 from ..tools.fallback import ToolFallbackChain
 from ..utils.circuit_breaker import CircuitBreaker
+from ..utils.prometheus_metrics import metrics as prom_metrics
+from ..utils.structured_logging import (
+    LogRunContext,
+    generate_run_id,
+    get_structured_logger,
+)
+from ..utils.tracing import (
+    set_span_attribute,
+    set_span_error,
+    trace_agent_iterate,
+    trace_agent_run,
+    trace_model_generate,
+    trace_tool_execute,
+)
 from .execution_tracker import EventType, ExecutionEvent, ExecutionTracker
 from .router import RoutingDecision, RoutingStrategy, SubAgentRouter
 from .state import AgentState
@@ -49,6 +63,7 @@ from .tool_calling import (
 )
 
 logger = logging.getLogger(__name__)
+_slog = get_structured_logger(__name__)
 
 
 class AgentMode(Enum):
@@ -404,7 +419,7 @@ Question: {task}
             output_model: Pydantic BaseModel class — when provided, output is
                 validated and the parsed instance is stored in
                 ``response.metadata["parsed"]``.
-            **kwargs: Additional arguments
+            **kwargs: Additional arguments (debug=True for DebugTrace)
 
         Returns:
             AgentResponse with results
@@ -412,12 +427,20 @@ Question: {task}
         start_time = time.time()
         context = context or {}
         self._current_depth = 0  # Reset depth at the start of each top-level run()
+        debug = kwargs.pop("debug", False)
+        run_id = generate_run_id()
+
+        # Metrics: track request
+        labels = {"agent_name": self.name}
+        prom_metrics.total_requests.inc(labels=labels)
+        prom_metrics.active_agents.inc(labels=labels)
 
         # Pre-run input guardrail check
         if self._guardrail_chain is not None:
             from ..guardrails.base import GuardrailPosition
             gr = self._guardrail_chain.check(task, position=GuardrailPosition.INPUT)
             if not gr.passed:
+                prom_metrics.active_agents.dec(labels=labels)
                 return AgentResponse(
                     output=f"Input blocked by guardrail: {gr.reason}",
                     success=False,
@@ -441,95 +464,132 @@ Question: {task}
             data={"task": task, "mode": mode.value}
         ))
 
-        try:
-            # Determine execution mode
-            if mode == AgentMode.AUTO and self.config.enable_sub_agents:
-                # Use router to decide
-                routing_decision = self.router.route(task, context)
+        # Wrap entire run in tracing span + structured log context
+        with trace_agent_run(self.name, task, run_id=run_id) as _span, \
+             LogRunContext(run_id=run_id, agent_name=self.name):
+            _slog.agent_event(self.name, "task_start", task=task[:200], mode=mode.value, run_id=run_id)
 
-                if routing_decision.use_sub_agents:
+            try:
+                # Pass debug flag through kwargs
+                if debug:
+                    kwargs["_debug"] = True
+                    kwargs["_run_id"] = run_id
+
+                # Determine execution mode
+                if mode == AgentMode.AUTO and self.config.enable_sub_agents:
+                    # Use router to decide
+                    routing_decision = self.router.route(task, context)
+
+                    if routing_decision.use_sub_agents:
+                        response = self._run_with_sub_agents(task, routing_decision, context, **kwargs)
+                    else:
+                        response = self._run_single_agent(task, context, **kwargs)
+                elif mode == AgentMode.SUB_AGENTS and self.config.enable_sub_agents:
+                    # Force sub-agent mode
+                    routing_decision = self.router.route(task, context)
                     response = self._run_with_sub_agents(task, routing_decision, context, **kwargs)
                 else:
+                    # Single agent mode
                     response = self._run_single_agent(task, context, **kwargs)
-            elif mode == AgentMode.SUB_AGENTS and self.config.enable_sub_agents:
-                # Force sub-agent mode
-                routing_decision = self.router.route(task, context)
-                response = self._run_with_sub_agents(task, routing_decision, context, **kwargs)
-            else:
-                # Single agent mode
-                response = self._run_single_agent(task, context, **kwargs)
 
-            # Apply structured output constraint if requested
-            if effective_schema and response.success and response.output:
-                response = self._apply_structured_output(
-                    response, effective_schema, output_model, task,
-                )
-
-            # Post-run output guardrail check
-            if self._guardrail_chain is not None and response.success and response.output:
-                from ..guardrails.base import GuardrailPosition as _GP
-                gr = self._guardrail_chain.check(response.output, position=_GP.OUTPUT)
-                if not gr.passed:
-                    response.output = f"Output blocked by guardrail: {gr.reason}"
-                    response.success = False
-                    response.metadata["guardrail_blocked"] = True
-                    response.metadata["guardrail_reason"] = gr.reason
-                elif gr.modified_content is not None:
-                    response.output = gr.modified_content
-
-            # Add execution metadata
-            response.execution_time = time.time() - start_time
-            response.execution_trace = self.execution_tracker.get_trace()
-            response.execution_tree = self.execution_tracker.generate_execution_tree()
-
-            # Track completion
-            self.execution_tracker.track_event(ExecutionEvent(
-                type=EventType.TASK_COMPLETE,
-                agent_id=self.name,
-                message=f"Task completed in {response.execution_time:.2f}s",
-                data={
-                    "execution_time": response.execution_time,
-                    "tokens_used": response.tokens_used,
-                    "tool_calls": response.tool_calls
-                }
-            ))
-
-            # Store conversation in short-term memory for context retention
-            if response.success and response.output:
-                self.short_term_memory.add_user_message(task)
-                self.short_term_memory.add_assistant_message(response.output)
-                logger.debug(
-                    f"Stored conversation turn in memory "
-                    f"(total: {self.short_term_memory.total_messages_added} messages)"
-                )
-
-                # Persist important facts to long-term memory if available
-                if self.long_term_memory and response.tool_calls > 0:
-                    self.long_term_memory.add_memory(
-                        content=f"Q: {task}\nA: {response.output}",
-                        memory_type=MemoryType.CONVERSATION,
-                        importance=ImportanceLevel.MEDIUM,
-                        tags=["conversation"],
+                # Apply structured output constraint if requested
+                if effective_schema and response.success and response.output:
+                    response = self._apply_structured_output(
+                        response, effective_schema, output_model, task,
                     )
 
-            return response
+                # Post-run output guardrail check
+                if self._guardrail_chain is not None and response.success and response.output:
+                    from ..guardrails.base import GuardrailPosition as _GP
+                    gr = self._guardrail_chain.check(response.output, position=_GP.OUTPUT)
+                    if not gr.passed:
+                        response.output = f"Output blocked by guardrail: {gr.reason}"
+                        response.success = False
+                        response.metadata["guardrail_blocked"] = True
+                        response.metadata["guardrail_reason"] = gr.reason
+                    elif gr.modified_content is not None:
+                        response.output = gr.modified_content
 
-        except Exception as e:
-            # Track failure
-            self.execution_tracker.track_event(ExecutionEvent(
-                type=EventType.TASK_FAILED,
-                agent_id=self.name,
-                message=f"Task failed: {str(e)}",
-                data={"error": str(e)}
-            ))
+                # Add execution metadata
+                response.execution_time = time.time() - start_time
+                response.execution_trace = self.execution_tracker.get_trace()
+                response.execution_tree = self.execution_tracker.generate_execution_tree()
+                response.metadata["run_id"] = run_id
 
-            return AgentResponse(
-                output=f"Error: {str(e)}",
-                success=False,
-                execution_time=time.time() - start_time,
-                execution_trace=self.execution_tracker.get_trace(),
-                metadata={"error": str(e)}
-            )
+                # Track completion
+                self.execution_tracker.track_event(ExecutionEvent(
+                    type=EventType.TASK_COMPLETE,
+                    agent_id=self.name,
+                    message=f"Task completed in {response.execution_time:.2f}s",
+                    data={
+                        "execution_time": response.execution_time,
+                        "tokens_used": response.tokens_used,
+                        "tool_calls": response.tool_calls
+                    }
+                ))
+
+                # Metrics: record latency and tokens
+                prom_metrics.response_latency.observe(response.execution_time, labels=labels)
+                if response.tokens_used:
+                    prom_metrics.token_usage.observe(response.tokens_used, labels=labels)
+                    prom_metrics.tokens_used.inc(response.tokens_used, labels=labels)
+
+                # Tracing span attributes
+                set_span_attribute("effgen.tokens_used", response.tokens_used)
+                set_span_attribute("effgen.tool_calls", response.tool_calls)
+                set_span_attribute("effgen.success", response.success)
+                set_span_attribute("effgen.latency", response.execution_time)
+
+                _slog.agent_event(
+                    self.name, "task_complete",
+                    latency=response.execution_time,
+                    tokens=response.tokens_used,
+                    tool_calls=response.tool_calls,
+                    success=response.success,
+                )
+
+                # Store conversation in short-term memory for context retention
+                if response.success and response.output:
+                    self.short_term_memory.add_user_message(task)
+                    self.short_term_memory.add_assistant_message(response.output)
+                    logger.debug(
+                        f"Stored conversation turn in memory "
+                        f"(total: {self.short_term_memory.total_messages_added} messages)"
+                    )
+
+                    # Persist important facts to long-term memory if available
+                    if self.long_term_memory and response.tool_calls > 0:
+                        self.long_term_memory.add_memory(
+                            content=f"Q: {task}\nA: {response.output}",
+                            memory_type=MemoryType.CONVERSATION,
+                            importance=ImportanceLevel.MEDIUM,
+                            tags=["conversation"],
+                        )
+
+                return response
+
+            except Exception as e:
+                # Track failure
+                self.execution_tracker.track_event(ExecutionEvent(
+                    type=EventType.TASK_FAILED,
+                    agent_id=self.name,
+                    message=f"Task failed: {str(e)}",
+                    data={"error": str(e)}
+                ))
+                prom_metrics.errors.inc(labels=labels)
+                set_span_error(e)
+                _slog.agent_event(self.name, "task_failed", level=logging.ERROR, error=str(e))
+
+                return AgentResponse(
+                    output=f"Error: {str(e)}",
+                    success=False,
+                    execution_time=time.time() - start_time,
+                    execution_trace=self.execution_tracker.get_trace(),
+                    metadata={"error": str(e), "run_id": run_id}
+                )
+
+            finally:
+                prom_metrics.active_agents.dec(labels=labels)
 
     def run_batch(
         self,
@@ -674,6 +734,10 @@ Question: {task}
         Returns:
             AgentResponse
         """
+        # Extract debug flags (set by run())
+        debug = kwargs.pop("_debug", False)
+        run_id = kwargs.pop("_run_id", "")
+
         # If no tools available, use direct inference instead of ReAct
         if not self.tools:
             return self._run_direct_inference(task, context, **kwargs)
@@ -684,6 +748,14 @@ Question: {task}
         scratchpad = ""
         max_iterations = kwargs.get("max_iterations", self.config.max_iterations)
 
+        # Debug trace collector
+        debug_trace = None
+        if debug:
+            from ..debug.inspector import DebugTrace
+            debug_trace = DebugTrace(
+                task=task, agent_name=self.name, run_id=run_id,
+            )
+
         # Format conversation history
         conversation_history = self._format_conversation_history()
 
@@ -691,6 +763,7 @@ Question: {task}
         previous_actions: list[tuple[str, str]] = []  # Track (action, input) pairs for loop detection
         while iterations < max_iterations:
             iterations += 1
+            iter_start = time.time()
 
             # Determine if we should use native tool calling prompt format
             use_native_prompt = (
@@ -752,9 +825,15 @@ Question: {task}
                 data={"iteration": iterations}
             ))
 
-            # Generate response
-            response = self._generate(prompt, **gen_kwargs)
-            tokens_used += response.get("tokens_used", 0)
+            # Generate response inside tracing span
+            with trace_agent_iterate(self.name, iterations):
+                model_name = getattr(self, "model_name", None) or "unknown"
+                with trace_model_generate(model_name):
+                    response = self._generate(prompt, **gen_kwargs)
+                iter_tokens = response.get("tokens_used", 0)
+                tokens_used += iter_tokens
+
+            _slog.iteration_event(iterations, "generate", tokens=iter_tokens)
 
             # Debug: Log the raw response
             logger.info(f"[Iteration {iterations}] Raw model output: {response['text'][:300]}...")
@@ -773,17 +852,45 @@ Question: {task}
             # Add to scratchpad
             scratchpad += f"\nThought: {parsed.get('thought', '')}"
 
-            # Check for final answer
-            if parsed.get("final_answer"):
+            # Capture debug iteration data
+            cur_observation = None  # filled later if tool runs
+
+            def _build_response(output: str, success: bool = True, **extra_meta: Any) -> AgentResponse:
+                """Helper to build response and attach debug trace."""
+                meta: dict[str, Any] = {"tool_calling_strategy": self._tool_calling_strategy.name}
+                meta.update(extra_meta)
+                if debug_trace is not None:
+                    debug_trace.total_tokens = tokens_used
+                    debug_trace.total_latency = time.time() - (iter_start - (iterations - 1) * 0.001)
+                    debug_trace.final_answer = output if success else None
+                    debug_trace.success = success
+                    meta["debug_trace"] = debug_trace
                 return AgentResponse(
-                    output=parsed["final_answer"],
-                    success=True,
+                    output=output,
+                    success=success,
                     mode=AgentMode.SINGLE,
                     iterations=iterations,
                     tool_calls=tool_calls,
                     tokens_used=tokens_used,
-                    metadata={"tool_calling_strategy": self._tool_calling_strategy.name}
+                    metadata=meta,
                 )
+
+            # Check for final answer
+            if parsed.get("final_answer"):
+                # Record final debug iteration
+                if debug_trace is not None:
+                    from ..debug.inspector import DebugIteration
+                    debug_trace.iterations.append(DebugIteration(
+                        iteration=iterations,
+                        raw_prompt=prompt[:2000],
+                        raw_response=response["text"][:2000],
+                        thought=parsed.get("thought", ""),
+                        final_answer=parsed["final_answer"],
+                        tokens_used=iter_tokens,
+                        latency=time.time() - iter_start,
+                        scratchpad_snapshot=scratchpad,
+                    ))
+                return _build_response(parsed["final_answer"])
 
             # Check if model is stating an answer without "Final Answer:" keyword
             # This happens when model provides result after tool execution
@@ -793,15 +900,19 @@ Question: {task}
                 # Check for answer-like patterns
                 if any(phrase in response_text.lower() for phrase in ["the answer is", "the result is", "the sum is", "equals", "="]):
                     logger.info("Detected answer statement without 'Final Answer:' keyword")
-                    return AgentResponse(
-                        output=response_text,
-                        success=True,
-                        mode=AgentMode.SINGLE,
-                        iterations=iterations,
-                        tool_calls=tool_calls,
-                        tokens_used=tokens_used,
-                        metadata={"tool_calling_strategy": self._tool_calling_strategy.name}
-                    )
+                    if debug_trace is not None:
+                        from ..debug.inspector import DebugIteration
+                        debug_trace.iterations.append(DebugIteration(
+                            iteration=iterations,
+                            raw_prompt=prompt[:2000],
+                            raw_response=response_text[:2000],
+                            thought=parsed.get("thought", ""),
+                            final_answer=response_text,
+                            tokens_used=iter_tokens,
+                            latency=time.time() - iter_start,
+                            scratchpad_snapshot=scratchpad,
+                        ))
+                    return _build_response(response_text)
 
             # Execute action if present
             if parsed.get("action") and parsed.get("action_input"):
@@ -838,15 +949,7 @@ Question: {task}
                     # Extract the last successful observation from scratchpad
                     partial = self._extract_partial_answer(scratchpad)
                     if partial:
-                        return AgentResponse(
-                            output=partial,
-                            success=True,
-                            mode=AgentMode.SINGLE,
-                            iterations=iterations,
-                            tool_calls=tool_calls,
-                            tokens_used=tokens_used,
-                            metadata={"reason": "loop_detected", "repeated_action": action}
-                        )
+                        return _build_response(partial, reason="loop_detected", repeated_action=action)
                     # If no partial answer, add a hint to the scratchpad and continue
                     scratchpad += (
                         f"\nAction: {action}"
@@ -866,9 +969,19 @@ Question: {task}
                     scratchpad += f"\nAction Input: {action_input}"
                     scratchpad += "\nObservation: No tools available. Please provide your answer directly using 'Final Answer:'."
                 else:
-                    # Execute tool
-                    tool_result = self._execute_tool(action, action_input)
+                    # Execute tool inside tracing span
+                    tool_start = time.time()
+                    with trace_tool_execute(action, action_input):
+                        tool_result = self._execute_tool(action, action_input)
+                    tool_elapsed = time.time() - tool_start
                     tool_calls += 1
+                    cur_observation = tool_result
+
+                    # Metrics for tool execution
+                    tool_labels = {"tool_name": action, "agent_name": self.name}
+                    prom_metrics.tool_calls.inc(labels=tool_labels)
+                    prom_metrics.tool_execution_time.observe(tool_elapsed, labels=tool_labels)
+                    _slog.tool_event(action, "executed", latency=tool_elapsed)
 
                     # Add observation to scratchpad
                     scratchpad += f"\nAction: {action}"
@@ -886,10 +999,32 @@ Question: {task}
                 # No action specified, prompt to continue
                 scratchpad += "\nAction: (continue reasoning)"
 
+            # Record debug iteration
+            if debug_trace is not None:
+                from ..debug.inspector import DebugIteration
+                debug_trace.iterations.append(DebugIteration(
+                    iteration=iterations,
+                    raw_prompt=prompt[:2000],
+                    raw_response=response["text"][:2000],
+                    thought=parsed.get("thought", ""),
+                    action=parsed.get("action"),
+                    action_input=parsed.get("action_input"),
+                    observation=cur_observation,
+                    tokens_used=iter_tokens,
+                    latency=time.time() - iter_start,
+                    scratchpad_snapshot=scratchpad,
+                ))
+
         # Max iterations reached — try to extract partial answer from scratchpad
         partial_answer = self._extract_partial_answer(scratchpad)
         if partial_answer:
             logger.info("Max iterations reached, returning partial answer from scratchpad")
+            meta: dict[str, Any] = {"reason": "max_iterations_partial", "partial": True}
+            if debug_trace is not None:
+                debug_trace.total_tokens = tokens_used
+                debug_trace.final_answer = partial_answer
+                debug_trace.success = True
+                meta["debug_trace"] = debug_trace
             return AgentResponse(
                 output=partial_answer,
                 success=True,
@@ -897,9 +1032,14 @@ Question: {task}
                 iterations=iterations,
                 tool_calls=tool_calls,
                 tokens_used=tokens_used,
-                metadata={"reason": "max_iterations_partial", "partial": True}
+                metadata=meta,
             )
 
+        meta_fail: dict[str, Any] = {"reason": "max_iterations_reached"}
+        if debug_trace is not None:
+            debug_trace.total_tokens = tokens_used
+            debug_trace.success = False
+            meta_fail["debug_trace"] = debug_trace
         return AgentResponse(
             output="Maximum iterations reached without final answer.",
             success=False,
@@ -907,7 +1047,7 @@ Question: {task}
             iterations=iterations,
             tool_calls=tool_calls,
             tokens_used=tokens_used,
-            metadata={"reason": "max_iterations_reached"}
+            metadata=meta_fail,
         )
 
     def _extract_partial_answer(self, scratchpad: str) -> str | None:
