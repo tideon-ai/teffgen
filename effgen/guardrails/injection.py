@@ -61,8 +61,8 @@ class PromptInjectionGuardrail(Guardrail):
     # System prompt extraction attempts
     _SYSTEM_PROMPT_EXTRACTION: list[re.Pattern[str]] = [
         re.compile(
-            r"\b(?:(?:show|reveal|print|display|output|repeat|echo|tell\s+me|give\s+me|what\s+(?:is|are))"
-            r"\s+(?:your|the)\s+(?:system\s+(?:prompt|message|instructions?)|"
+            r"\b(?:(?:show|reveal|print|display|output|repeat|echo|tell|give|what\s+(?:is|are))"
+            r"(?:\s+me)?\s+(?:your|the)\s+(?:system\s+(?:prompt|message|instructions?)|"
             r"initial\s+(?:prompt|instructions?)|hidden\s+(?:prompt|instructions?)|"
             r"(?:original|full|complete|entire)\s+(?:prompt|instructions?)))",
             re.I,

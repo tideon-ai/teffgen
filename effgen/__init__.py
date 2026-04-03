@@ -51,6 +51,21 @@ from effgen.models import (
     load_model,
 )
 
+# Batch & Aggregation imports
+from effgen.core.batch import BatchConfig, BatchResult, BatchRunner
+from effgen.core.aggregation import ResultAggregator
+
+# Domain imports
+from effgen.domains import (
+    Domain,
+    FinanceDomain,
+    HealthDomain,
+    KeywordExpander,
+    LegalDomain,
+    ScienceDomain,
+    TechDomain,
+)
+
 # Preset imports
 from effgen.presets import create_agent, list_presets
 
@@ -163,6 +178,21 @@ __all__ = [
     "ImportanceLevel",
     "JSONStorageBackend",
     "SQLiteStorageBackend",
+
+    # Batch & Aggregation
+    "BatchRunner",
+    "BatchConfig",
+    "BatchResult",
+    "ResultAggregator",
+
+    # Domains
+    "Domain",
+    "KeywordExpander",
+    "TechDomain",
+    "ScienceDomain",
+    "FinanceDomain",
+    "HealthDomain",
+    "LegalDomain",
 
     # Presets
     "create_agent",

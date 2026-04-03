@@ -1712,6 +1712,19 @@ Examples:
     workflow_validate = workflow_subparsers.add_parser('validate', help='Validate a workflow YAML file')
     workflow_validate.add_argument('file', help='Path to workflow YAML file')
 
+    # Batch command
+    batch_parser = subparsers.add_parser('batch', help='Run batch queries from a file')
+    batch_parser.add_argument('--input', required=True, help='Input file (JSONL, CSV, JSON, or plain text)')
+    batch_parser.add_argument('--output', help='Output file (JSONL, CSV, or JSON)')
+    batch_parser.add_argument('--concurrency', type=int, default=5, help='Max concurrent queries (default: 5)')
+    batch_parser.add_argument('--batch-size', type=int, default=0, help='Batch size (0 = all at once)')
+    batch_parser.add_argument('--timeout', type=float, default=120.0, help='Timeout per query in seconds')
+    batch_parser.add_argument('--retries', type=int, default=1, help='Retries for failed queries')
+    batch_parser.add_argument('-m', '--model', help='Model to use')
+    batch_parser.add_argument('--preset', choices=['math', 'research', 'coding', 'general', 'minimal'],
+                              help='Use a preset agent configuration')
+    batch_parser.add_argument('--query-field', default='query', help='Field name for queries in JSONL/CSV (default: query)')
+
     return parser
 
 
@@ -1881,6 +1894,60 @@ def _handle_workflow_command(args, cli) -> int:
         return 0
 
 
+def _handle_batch_command(args, cli) -> int:
+    """Handle the 'batch' CLI subcommand."""
+    from effgen.core.batch import BatchConfig, BatchRunner
+
+    input_path = args.input
+    output_path = getattr(args, 'output', None)
+    model_name = getattr(args, 'model', None) or 'Qwen/Qwen2.5-1.5B-Instruct'
+    preset_name = getattr(args, 'preset', None)
+    query_field = getattr(args, 'query_field', 'query')
+
+    try:
+        # Create agent
+        if preset_name:
+            from effgen.presets import create_agent
+            from effgen.models import load_model
+            model = load_model(model_name)
+            agent = create_agent(preset_name, model)
+        else:
+            from effgen.core.agent import Agent, AgentConfig
+            from effgen.models import load_model
+            model = load_model(model_name)
+            config = AgentConfig(name="batch-agent", model=model, max_iterations=5)
+            agent = Agent(config)
+
+        config = BatchConfig(
+            max_concurrency=args.concurrency,
+            batch_size=args.batch_size,
+            retry_failed=args.retries,
+            timeout_per_item=args.timeout,
+        )
+
+        runner = BatchRunner(agent)
+        cli.print(f"Loading queries from {input_path}...")
+        result = runner.run_from_file(input_path, config=config, query_field=query_field)
+
+        cli.print(
+            f"\nBatch complete: {result.succeeded}/{result.total} succeeded "
+            f"in {result.total_time:.2f}s"
+        )
+
+        if output_path:
+            queries = runner._read_queries(
+                __import__('pathlib').Path(input_path), query_field,
+            )
+            runner.write_results(result, output_path, query_list=queries)
+            cli.print(f"Results written to {output_path}")
+
+        return 0 if result.failed == 0 else 1
+
+    except Exception as e:
+        cli.print(f"Batch execution failed: {e}")
+        return 1
+
+
 def main():
     """Main entry point for CLI."""
     parser = create_parser()
@@ -1930,6 +1997,8 @@ def main():
             exit_code = 0
         elif args.command == 'workflow':
             exit_code = _handle_workflow_command(args, cli)
+        elif args.command == 'batch':
+            exit_code = _handle_batch_command(args, cli)
         elif args.command is None:
             # No command - launch interactive wizard
             # Create a namespace with default values for run command

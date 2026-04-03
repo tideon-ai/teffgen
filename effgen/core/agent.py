@@ -531,6 +531,44 @@ Question: {task}
                 metadata={"error": str(e)}
             )
 
+    def run_batch(
+        self,
+        queries: list[str],
+        max_concurrency: int = 5,
+        batch_size: int = 0,
+        retry_failed: int = 1,
+        timeout_per_item: float = 120.0,
+        progress_callback: Callable[[int, int], None] | None = None,
+        **run_kwargs: Any,
+    ) -> Any:
+        """Run multiple queries in parallel through this agent.
+
+        Convenience wrapper around :class:`~effgen.core.batch.BatchRunner`.
+
+        Args:
+            queries: List of query strings to execute.
+            max_concurrency: Maximum number of concurrent agent runs.
+            batch_size: Process queries in batches of this size (0 = all at once).
+            retry_failed: Number of retries for failed queries.
+            timeout_per_item: Timeout per query in seconds.
+            progress_callback: Called with (completed, total) after each query.
+            **run_kwargs: Extra keyword arguments forwarded to ``self.run()``.
+
+        Returns:
+            BatchResult containing all AgentResponse objects in input order.
+        """
+        from .batch import BatchConfig, BatchRunner
+
+        config = BatchConfig(
+            max_concurrency=max_concurrency,
+            batch_size=batch_size,
+            retry_failed=retry_failed,
+            timeout_per_item=timeout_per_item,
+            progress_callback=progress_callback,
+        )
+        runner = BatchRunner(self)
+        return runner.run(queries, config=config, **run_kwargs)
+
     def _apply_structured_output(
         self,
         response: AgentResponse,

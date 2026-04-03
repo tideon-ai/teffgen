@@ -13,6 +13,12 @@ This module contains the core agent system components:
 # Agent
 from .agent import Agent, AgentConfig, AgentMode, AgentResponse
 
+# Batch Execution
+from .batch import BatchConfig, BatchResult, BatchRunner
+
+# Result Aggregation
+from .aggregation import AggregatedResult, MergeStrategy, ResultAggregator, ToolResultCache
+
 # Complexity Analyzer
 from .complexity_analyzer import ComplexityAnalyzer, ComplexityScore
 
@@ -140,6 +146,17 @@ __all__ = [
     "WorkflowNode",
     "WorkflowEdge",
     "WorkflowResult",
+
+    # Batch Execution
+    "BatchRunner",
+    "BatchConfig",
+    "BatchResult",
+
+    # Result Aggregation
+    "ResultAggregator",
+    "AggregatedResult",
+    "MergeStrategy",
+    "ToolResultCache",
 
     # State
     "AgentState",
