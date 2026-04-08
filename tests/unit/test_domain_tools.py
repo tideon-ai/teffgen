@@ -1,0 +1,481 @@
+"""
+Phase 10 — New Domain Tools: real (non-mock) tests.
+
+All tests exercise the actual tool code paths end-to-end:
+- Finance / Knowledge: hit real free public APIs (frankfurter.app,
+  CoinGecko, Yahoo Finance v8, arXiv Atom feed, Stack Exchange,
+  GitHub). Skipped automatically if the network is unreachable.
+- Data Science: run against real pandas / matplotlib / numpy / scipy.
+- DevOps: run real git / subprocess / psutil calls.
+- Communication: exercise real formatting logic (drafts are offline).
+
+No mocking, no monkeypatching. If an optional dependency is missing,
+the test is skipped with a clear reason.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import csv
+import json
+import os
+import socket
+import tempfile
+import urllib.request
+
+import pytest
+
+from effgen.tools.builtin import (
+    ArxivTool,
+    CryptoTool,
+    CurrencyConverterTool,
+    DataFrameTool,
+    DockerTool,
+    EmailDraftTool,
+    GitHubTool,
+    GitTool,
+    HTTPTool,
+    NotificationTool,
+    PlotTool,
+    SlackDraftTool,
+    StackOverflowTool,
+    StatsTool,
+    StockPriceTool,
+    SystemInfoTool,
+    WolframAlphaTool,
+)
+from effgen.tools.base_tool import ToolResult
+
+
+# ---------------------------------------------------------------------------
+# helpers
+# ---------------------------------------------------------------------------
+
+def _has_network(host: str = "api.github.com", port: int = 443, timeout: float = 3.0) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+NETWORK = _has_network()
+needs_net = pytest.mark.skipif(not NETWORK, reason="no network")
+
+
+def _run(coro):
+    """Run an async coroutine synchronously."""
+    return asyncio.get_event_loop().run_until_complete(coro) if False else asyncio.run(coro)
+
+
+def _ok(result: ToolResult):
+    assert isinstance(result, ToolResult)
+    assert result.success, f"tool failed: {result.error}"
+    return result.output
+
+
+# ---------------------------------------------------------------------------
+# 10.1 Finance
+# ---------------------------------------------------------------------------
+
+@needs_net
+def test_currency_converter_usd_to_eur():
+    out = _ok(_run(CurrencyConverterTool().execute(
+        amount=100.0, from_currency="USD", to_currency="EUR",
+    )))
+    assert out["from"] == "USD"
+    assert out["to"] == "EUR"
+    assert isinstance(out["converted"], float) and out["converted"] > 0
+    assert 0.5 < out["rate"] < 2.0  # sanity band
+    assert "disclaimer" in out
+    assert out["source"] == "frankfurter.app"
+
+
+def test_currency_converter_identity():
+    # Same currency — no network required, runs identity fast-path
+    out = _ok(_run(CurrencyConverterTool().execute(
+        amount=42.0, from_currency="JPY", to_currency="JPY",
+    )))
+    assert out["rate"] == 1.0
+    assert out["converted"] == 42.0
+    assert out["source"] == "identity"
+
+
+def test_currency_converter_invalid_currency_fails():
+    r = _run(CurrencyConverterTool().execute(
+        amount=10.0, from_currency="USD", to_currency="ZZZ",
+    ))
+    assert not r.success
+    assert r.error is not None
+
+
+@needs_net
+def test_crypto_bitcoin_usd():
+    out = _ok(_run(CryptoTool().execute(coin="bitcoin", vs_currency="usd")))
+    assert out["coin"] == "bitcoin"
+    assert out["vs_currency"] == "usd"
+    assert isinstance(out["price"], float) and out["price"] > 0
+    assert out["source"] == "coingecko"
+
+
+def test_crypto_unknown_coin_fails():
+    if not NETWORK:
+        pytest.skip("no network")
+    r = _run(CryptoTool().execute(coin="not-a-real-coin-xyz", vs_currency="usd"))
+    assert not r.success
+    assert "Unknown coin" in (r.error or "")
+
+
+@needs_net
+def test_stock_price_aapl():
+    out = _ok(_run(StockPriceTool().execute(symbol="AAPL")))
+    assert out["symbol"] == "AAPL"
+    assert out["price"] is None or out["price"] > 0
+    assert out["source"] in ("yfinance", "yahoo_api")
+    assert "disclaimer" in out
+
+
+def test_stock_price_missing_symbol_parameter():
+    r = _run(StockPriceTool().execute())  # missing required
+    assert not r.success
+    assert "symbol" in (r.error or "")
+
+
+# ---------------------------------------------------------------------------
+# 10.2 Data science
+# ---------------------------------------------------------------------------
+
+def test_stats_summary_numpy_required():
+    pytest.importorskip("numpy")
+    out = _ok(_run(StatsTool().execute(operation="summary", data=[1, 2, 3, 4, 5])))
+    assert out["n"] == 5
+    assert out["mean"] == 3.0
+    assert out["median"] == 3.0
+    assert out["min"] == 1.0
+    assert out["max"] == 5.0
+    assert abs(out["std"] - 1.5811388300841898) < 1e-9
+
+
+def test_stats_correlation_and_regression():
+    pytest.importorskip("numpy")
+    x = [1, 2, 3, 4, 5]
+    y = [2, 4, 6, 8, 10]  # perfectly linear y = 2x
+    corr = _ok(_run(StatsTool().execute(operation="correlation", data=x, y=y)))
+    assert abs(corr["result"] - 1.0) < 1e-9
+
+    reg = _ok(_run(StatsTool().execute(operation="regression", data=x, y=y)))
+    assert abs(reg["slope"] - 2.0) < 1e-9
+    assert abs(reg["intercept"]) < 1e-9
+
+
+def test_stats_basic_ops():
+    pytest.importorskip("numpy")
+    d = [10, 20, 30]
+    assert _ok(_run(StatsTool().execute(operation="mean", data=d)))["result"] == 20.0
+    assert _ok(_run(StatsTool().execute(operation="median", data=d)))["result"] == 20.0
+    assert _ok(_run(StatsTool().execute(operation="min", data=d)))["result"] == 10.0
+    assert _ok(_run(StatsTool().execute(operation="max", data=d)))["result"] == 30.0
+
+
+def test_stats_empty_data_fails():
+    pytest.importorskip("numpy")
+    r = _run(StatsTool().execute(operation="mean", data=[]))
+    assert not r.success
+
+
+def test_stats_mismatched_lengths_fails():
+    pytest.importorskip("numpy")
+    r = _run(StatsTool().execute(operation="correlation", data=[1, 2, 3], y=[1, 2]))
+    assert not r.success
+
+
+def test_dataframe_csv_head_filter_aggregate(tmp_path):
+    pytest.importorskip("pandas")
+    csv_path = tmp_path / "data.csv"
+    with open(csv_path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["name", "city", "age", "salary"])
+        w.writerow(["alice", "NYC", 30, 100000])
+        w.writerow(["bob", "NYC", 25, 80000])
+        w.writerow(["carol", "SF", 35, 120000])
+        w.writerow(["dave", "SF", 40, 150000])
+
+    tool = DataFrameTool()
+
+    head = _ok(_run(tool.execute(file_path=str(csv_path), operation="head", n=2)))
+    assert head["rows"] == 4
+    assert len(head["data"]) == 2
+    assert head["columns"] == ["name", "city", "age", "salary"]
+
+    desc = _ok(_run(tool.execute(file_path=str(csv_path), operation="describe")))
+    assert "data" in desc
+
+    info = _ok(_run(tool.execute(file_path=str(csv_path), operation="info")))
+    assert info["data"]["non_null"]["age"] == 4
+
+    flt = _ok(_run(tool.execute(
+        file_path=str(csv_path), operation="filter",
+        column="city", op="==", value="NYC",
+    )))
+    assert flt["matched_rows"] == 2
+
+    agg = _ok(_run(tool.execute(
+        file_path=str(csv_path), operation="aggregate",
+        agg="mean", group_by="city",
+    )))
+    # Grouped-by-city mean salaries
+    assert agg["data"]["salary"]["NYC"] == 90000.0
+    assert agg["data"]["salary"]["SF"] == 135000.0
+
+
+def test_dataframe_missing_file_fails(tmp_path):
+    pytest.importorskip("pandas")
+    r = _run(DataFrameTool().execute(
+        file_path=str(tmp_path / "nope.csv"), operation="head",
+    ))
+    assert not r.success
+    assert "not found" in (r.error or "").lower() or "no such" in (r.error or "").lower()
+
+
+def test_dataframe_filter_requires_column_and_op(tmp_path):
+    pytest.importorskip("pandas")
+    csv_path = tmp_path / "d.csv"
+    csv_path.write_text("a,b\n1,2\n")
+    r = _run(DataFrameTool().execute(file_path=str(csv_path), operation="filter"))
+    assert not r.success
+
+
+def test_plot_line_creates_png(tmp_path):
+    pytest.importorskip("matplotlib")
+    out_path = tmp_path / "chart.png"
+    out = _ok(_run(PlotTool().execute(
+        chart_type="line",
+        x=[1, 2, 3, 4],
+        y=[10, 20, 15, 25],
+        title="test",
+        xlabel="x",
+        ylabel="y",
+        output_path=str(out_path),
+    )))
+    assert out["file_path"] == str(out_path)
+    assert out_path.exists()
+    assert out_path.stat().st_size > 100  # non-trivial PNG
+    # PNG magic bytes
+    assert out_path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_plot_histogram_to_tempfile():
+    pytest.importorskip("matplotlib")
+    out = _ok(_run(PlotTool().execute(
+        chart_type="hist", y=list(range(100)),
+    )))
+    assert os.path.exists(out["file_path"])
+    assert out["file_path"].endswith(".png")
+    os.unlink(out["file_path"])
+
+
+def test_plot_scatter_requires_x():
+    pytest.importorskip("matplotlib")
+    r = _run(PlotTool().execute(chart_type="scatter", y=[1, 2, 3]))
+    assert not r.success
+
+
+# ---------------------------------------------------------------------------
+# 10.3 DevOps
+# ---------------------------------------------------------------------------
+
+def test_git_status_on_repo():
+    out = _ok(_run(GitTool().execute(operation="status", cwd=".")))
+    assert out["returncode"] == 0
+    assert "command" in out
+    assert out["command"].startswith("git status")
+
+
+def test_git_log_returns_commits():
+    out = _ok(_run(GitTool().execute(operation="log", n=3, cwd=".")))
+    assert out["returncode"] == 0
+    # Repo has at least 3 commits (per git history)
+    lines = [l for l in out["stdout"].splitlines() if l.strip()]
+    assert len(lines) >= 1
+
+
+def test_git_branch():
+    out = _ok(_run(GitTool().execute(operation="branch", cwd=".")))
+    assert out["returncode"] == 0
+
+
+def test_git_rejects_disallowed_operation():
+    r = _run(GitTool().execute(operation="push", cwd="."))
+    # validate_parameters will reject via enum first
+    assert not r.success
+
+
+def test_docker_version_or_skip():
+    import shutil
+    if shutil.which("docker") is None:
+        pytest.skip("docker not installed")
+    out = _ok(_run(DockerTool().execute(operation="version")))
+    # docker may not be running; returncode !=0 is OK, we only verify the
+    # tool executed the subprocess without raising.
+    assert "returncode" in out
+
+
+def test_docker_logs_requires_container():
+    import shutil
+    if shutil.which("docker") is None:
+        pytest.skip("docker not installed")
+    r = _run(DockerTool().execute(operation="logs"))
+    assert not r.success
+
+
+def test_system_info_all():
+    pytest.importorskip("psutil")
+    out = _ok(_run(SystemInfoTool().execute(kind="all")))
+    for key in ("cpu", "memory", "disk", "network"):
+        assert key in out
+    assert out["memory"]["total"] > 0
+    assert out["cpu"]["count_logical"] >= 1
+
+
+def test_system_info_memory_only():
+    pytest.importorskip("psutil")
+    out = _ok(_run(SystemInfoTool().execute(kind="memory")))
+    assert "memory" in out
+    assert "cpu" not in out
+
+
+@needs_net
+def test_http_get_json_response():
+    out = _ok(_run(HTTPTool().execute(
+        url="https://api.github.com/repos/ctrl-gaurav/effGen",
+        method="GET",
+        headers={"User-Agent": "effGen-tests"},
+    )))
+    assert out["status"] == 200
+    assert out["json"] is not None
+    assert out["json"].get("name", "").lower() == "effgen"
+
+
+def test_http_invalid_scheme_rejected():
+    r = _run(HTTPTool().execute(url="ftp://example.com"))
+    assert not r.success
+
+
+# ---------------------------------------------------------------------------
+# 10.4 Knowledge
+# ---------------------------------------------------------------------------
+
+@needs_net
+def test_arxiv_search_returns_papers():
+    out = _ok(_run(ArxivTool().execute(query="transformer", max_results=3)))
+    assert out["count"] >= 1
+    first = out["results"][0]
+    assert "title" in first and len(first["title"]) > 0
+    assert "url" in first and first["url"].startswith("http")
+    assert isinstance(first["authors"], list)
+
+
+@needs_net
+def test_stackoverflow_search():
+    out = _ok(_run(StackOverflowTool().execute(query="python list comprehension", max_results=3)))
+    assert out["count"] >= 1
+    first = out["results"][0]
+    assert "title" in first
+    assert first["link"].startswith("https://stackoverflow.com")
+
+
+@needs_net
+def test_github_search_repositories():
+    out = _ok(_run(GitHubTool().execute(query="effgen", kind="repositories", max_results=3)))
+    assert "results" in out
+    assert out["total_count"] >= 0
+    # Should find ctrl-gaurav/effGen
+    full_names = [r["full_name"] for r in out["results"]]
+    assert any("effgen" in (fn or "").lower() for fn in full_names)
+
+
+def test_wolfram_alpha_without_key_fails():
+    # Ensure no key leaked from env
+    os.environ.pop("WOLFRAM_ALPHA_APPID", None)
+    tool = WolframAlphaTool()
+    r = _run(tool.execute(query="2+2"))
+    assert not r.success
+    assert "api key" in (r.error or "").lower()
+
+
+# ---------------------------------------------------------------------------
+# 10.5 Communication
+# ---------------------------------------------------------------------------
+
+def test_email_draft_basic():
+    out = _ok(_run(EmailDraftTool().execute(
+        to=["alice@example.com", "bob@example.com"],
+        subject="Hi",
+        body="Hello there",
+        cc=["carol@example.com"],
+        from_address="me@example.com",
+    )))
+    assert out["sent"] is False
+    assert "DRAFT ONLY" in out["notice"]
+    draft = out["draft"]
+    assert "From: me@example.com" in draft
+    assert "To: alice@example.com, bob@example.com" in draft
+    assert "Cc: carol@example.com" in draft
+    assert "Subject: Hi" in draft
+    assert "Hello there" in draft
+
+
+def test_email_draft_requires_recipients():
+    r = _run(EmailDraftTool().execute(subject="x", body="y"))
+    assert not r.success
+
+
+def test_slack_draft_with_mentions_and_thread():
+    out = _ok(_run(SlackDraftTool().execute(
+        channel="#eng",
+        text="deploy finished",
+        mentions=["alice", "@bob"],
+        thread_ts="1234.5678",
+    )))
+    assert out["sent"] is False
+    assert "#eng" in out["draft"]
+    assert "<@alice>" in out["draft"]
+    assert "<@bob>" in out["draft"]
+    assert "1234.5678" in out["draft"]
+
+
+def test_slack_draft_plain():
+    out = _ok(_run(SlackDraftTool().execute(channel="#general", text="hi")))
+    assert out["draft"] == "[#general]: hi"
+    assert out["sent"] is False
+
+
+def test_notification_graceful_without_plyer():
+    # Whether plyer is installed or not, this tool must succeed and
+    # report shown={True|False} without raising.
+    out = _ok(_run(NotificationTool().execute(
+        title="test", message="from pytest", timeout=1,
+    )))
+    assert out["title"] == "test"
+    assert out["message"] == "from pytest"
+    assert "shown" in out
+
+
+# ---------------------------------------------------------------------------
+# registry integration
+# ---------------------------------------------------------------------------
+
+def test_registry_auto_discovers_phase10_tools():
+    from effgen.tools.registry import ToolRegistry
+    reg = ToolRegistry()
+    reg.discover_builtin_tools()
+    names = set(reg.list_tools())
+    expected = {
+        "stock_price", "currency_converter", "crypto_price",
+        "dataframe", "plot", "stats",
+        "git", "docker", "system_info", "http",
+        "arxiv", "stackoverflow", "github", "wolfram_alpha",
+        "email_draft", "slack_draft", "notification",
+    }
+    missing = expected - names
+    assert not missing, f"registry missing phase 10 tools: {missing}"

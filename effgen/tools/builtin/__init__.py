@@ -6,6 +6,7 @@ This module contains the standard set of tools that ship with effGen.
 
 # Import built-in tools (lazy loading handled by registry)
 __all__ = [
+    # Phase 0-9 tools
     "CodeExecutor",
     "PythonREPL",
     "WebSearch",
@@ -20,6 +21,28 @@ __all__ = [
     "TextProcessingTool",
     "URLFetchTool",
     "WikipediaTool",
+    # Phase 10.1 Finance
+    "StockPriceTool",
+    "CurrencyConverterTool",
+    "CryptoTool",
+    # Phase 10.2 Data Science
+    "DataFrameTool",
+    "PlotTool",
+    "StatsTool",
+    # Phase 10.3 DevOps
+    "GitTool",
+    "DockerTool",
+    "SystemInfoTool",
+    "HTTPTool",
+    # Phase 10.4 Knowledge
+    "ArxivTool",
+    "StackOverflowTool",
+    "GitHubTool",
+    "WolframAlphaTool",
+    # Phase 10.5 Communication
+    "EmailDraftTool",
+    "SlackDraftTool",
+    "NotificationTool",
 ]
 
 
@@ -67,5 +90,61 @@ def __getattr__(name):
     elif name == "WikipediaTool":
         from .wikipedia_tool import WikipediaTool
         return WikipediaTool
+    # Phase 10.1 Finance
+    elif name == "StockPriceTool":
+        from .finance import StockPriceTool
+        return StockPriceTool
+    elif name == "CurrencyConverterTool":
+        from .finance import CurrencyConverterTool
+        return CurrencyConverterTool
+    elif name == "CryptoTool":
+        from .finance import CryptoTool
+        return CryptoTool
+    # Phase 10.2 Data Science
+    elif name == "DataFrameTool":
+        from .data_analysis import DataFrameTool
+        return DataFrameTool
+    elif name == "PlotTool":
+        from .data_analysis import PlotTool
+        return PlotTool
+    elif name == "StatsTool":
+        from .data_analysis import StatsTool
+        return StatsTool
+    # Phase 10.3 DevOps
+    elif name == "GitTool":
+        from .devops import GitTool
+        return GitTool
+    elif name == "DockerTool":
+        from .devops import DockerTool
+        return DockerTool
+    elif name == "SystemInfoTool":
+        from .devops import SystemInfoTool
+        return SystemInfoTool
+    elif name == "HTTPTool":
+        from .devops import HTTPTool
+        return HTTPTool
+    # Phase 10.4 Knowledge
+    elif name == "ArxivTool":
+        from .knowledge import ArxivTool
+        return ArxivTool
+    elif name == "StackOverflowTool":
+        from .knowledge import StackOverflowTool
+        return StackOverflowTool
+    elif name == "GitHubTool":
+        from .knowledge import GitHubTool
+        return GitHubTool
+    elif name == "WolframAlphaTool":
+        from .knowledge import WolframAlphaTool
+        return WolframAlphaTool
+    # Phase 10.5 Communication
+    elif name == "EmailDraftTool":
+        from .communication import EmailDraftTool
+        return EmailDraftTool
+    elif name == "SlackDraftTool":
+        from .communication import SlackDraftTool
+        return SlackDraftTool
+    elif name == "NotificationTool":
+        from .communication import NotificationTool
+        return NotificationTool
     else:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
