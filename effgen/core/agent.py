@@ -158,6 +158,8 @@ class AgentResponse:
     execution_tree: dict[str, Any] = field(default_factory=dict)
     routing_decision: RoutingDecision | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    citations: list[Any] = field(default_factory=list)
+    sources: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
@@ -172,7 +174,9 @@ class AgentResponse:
             "execution_trace": self.execution_trace,
             "execution_tree": self.execution_tree,
             "routing_decision": self.routing_decision.to_dict() if self.routing_decision else None,
-            "metadata": self.metadata
+            "metadata": self.metadata,
+            "citations": [c.to_dict() if hasattr(c, "to_dict") else c for c in self.citations],
+            "sources": self.sources,
         }
 
 

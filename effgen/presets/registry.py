@@ -102,6 +102,22 @@ _GENERAL_PRESET = PresetConfig(
     tags=["general", "all-purpose"],
 )
 
+_RAG_PRESET = PresetConfig(
+    name="rag",
+    description="Retrieval-Augmented Generation agent with hybrid search over a knowledge base.",
+    tool_names=["retrieval"],
+    system_prompt=(
+        "You are a retrieval-augmented assistant. When answering, ALWAYS "
+        "consult the knowledge base first using the retrieval tool. Cite "
+        "sources inline using [1], [2], ... markers matching the returned "
+        "citation list. If the knowledge base does not contain the answer, "
+        "say so explicitly rather than guessing."
+    ),
+    max_iterations=8,
+    temperature=0.3,
+    tags=["rag", "retrieval", "knowledge-base"],
+)
+
 _MINIMAL_PRESET = PresetConfig(
     name="minimal",
     description="Minimal agent with no tools — direct model inference only.",
@@ -121,6 +137,7 @@ PRESETS: dict[str, PresetConfig] = {
     "research": _RESEARCH_PRESET,
     "coding": _CODING_PRESET,
     "general": _GENERAL_PRESET,
+    "rag": _RAG_PRESET,
     "minimal": _MINIMAL_PRESET,
 }
 
@@ -200,6 +217,7 @@ def create_agent(
     *,
     agent_name: str | None = None,
     extra_tools: list | None = None,
+    knowledge_base: str | None = None,
     system_prompt: str | None = None,
     max_iterations: int | None = None,
     temperature: float | None = None,
@@ -232,6 +250,42 @@ def create_agent(
     cfg = get_preset(preset)
 
     tools = _instantiate_tools(cfg.tool_names)
+
+    # Special handling for RAG preset: ingest knowledge base on creation
+    if preset == "rag" and knowledge_base:
+        try:
+            from effgen.rag import DocumentIngester, HybridSearchEngine  # noqa: F401
+            from effgen.tools.builtin import Retrieval
+
+            ingester = DocumentIngester(show_progress=False)
+            chunks = ingester.ingest(knowledge_base)
+
+            # Find the Retrieval tool in tools and populate it
+            retrieval_tool = next(
+                (t for t in tools if t.metadata.name == "retrieval"), None
+            )
+            if retrieval_tool is None:
+                retrieval_tool = Retrieval()
+                tools.append(retrieval_tool)
+
+            docs = [
+                {
+                    "content": c.content,
+                    "id": c.id,
+                    "metadata": c.metadata,
+                }
+                for c in chunks
+            ]
+            if docs:
+                retrieval_tool.add_documents(docs, chunk=False)
+                logger.info(
+                    "RAG preset: ingested %d chunks from %s",
+                    len(docs),
+                    knowledge_base,
+                )
+        except Exception as exc:
+            logger.warning("RAG knowledge base ingestion failed: %s", exc)
+
     if extra_tools:
         tools.extend(extra_tools)
 

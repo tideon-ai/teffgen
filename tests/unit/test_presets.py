@@ -13,7 +13,7 @@ from effgen.presets.registry import (
 from tests.fixtures.mock_models import MockModel
 
 
-EXPECTED_PRESETS = {"math", "research", "coding", "general", "minimal"}
+EXPECTED_PRESETS = {"math", "research", "coding", "general", "rag", "minimal"}
 
 
 class TestListPresets:
