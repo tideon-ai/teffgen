@@ -70,6 +70,22 @@ from .tool_calling import (
     tools_to_definitions,
 )
 
+# Human-in-the-Loop (Phase 9)
+from .human_loop import (
+    ApprovalDecision,
+    ApprovalManager,
+    ApprovalMode,
+    HumanApproval,
+    HumanChoice,
+    HumanInput,
+)
+
+# Clarification (Phase 9)
+from .clarification import ClarificationDetector, ClarificationRequest
+
+# Feedback (Phase 9)
+from .feedback import FeedbackCollector, FeedbackEntry, FeedbackType
+
 # Sub-Agent Manager
 from .sub_agent_manager import (
     SubAgentConfig,
@@ -165,6 +181,23 @@ __all__ = [
     "StructuredOutputConfig",
     "constrain_output",
     "validate_json_schema",
+
+    # Human-in-the-Loop
+    "ApprovalMode",
+    "ApprovalDecision",
+    "ApprovalManager",
+    "HumanApproval",
+    "HumanInput",
+    "HumanChoice",
+
+    # Clarification
+    "ClarificationDetector",
+    "ClarificationRequest",
+
+    # Feedback
+    "FeedbackCollector",
+    "FeedbackEntry",
+    "FeedbackType",
 
     # Tool Calling Strategy
     "ToolCallingStrategy",

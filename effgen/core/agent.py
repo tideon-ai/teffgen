@@ -127,6 +127,12 @@ class AgentConfig:
     # Multi-model support (Phase 6)
     models: list[BaseModel | str] | None = None  # Additional models for routing
     speculative_execution: bool = False  # Run on 2 models, return first success
+    # Human-in-the-loop (Phase 9)
+    approval_callback: Callable[[str, str], bool] | None = None
+    approval_mode: str = "never"  # "always", "first_time", "never", "dangerous_only"
+    approval_timeout: float = 0.0  # seconds; 0 = wait forever
+    clarification_callback: Callable[[str, list[str]], int] | None = None
+    input_callback: Callable[[str], str] | None = None
 
 
 @dataclass
@@ -346,6 +352,18 @@ Question: {task}
 
         # Circuit breaker for tool failures
         self._circuit_breaker = CircuitBreaker()
+
+        # Human-in-the-loop approval manager (Phase 9)
+        from .human_loop import ApprovalManager, ApprovalMode
+        try:
+            _approval_mode = ApprovalMode(config.approval_mode)
+        except ValueError:
+            _approval_mode = ApprovalMode.NEVER
+        self._approval_manager = ApprovalManager(
+            mode=_approval_mode,
+            callback=config.approval_callback,
+            timeout=config.approval_timeout,
+        )
 
         # Auto-generate system prompt if tools are present and using default prompt
         self._system_prompt_builder = AgentSystemPromptBuilder(
@@ -1842,6 +1860,18 @@ Question: {task}
                 return f"Error executing tool '{tool_name}': blocked by guardrail — {gr.reason}"
             if gr.modified_content is not None:
                 tool_input = gr.modified_content
+
+        # Human-in-the-loop approval check (Phase 9)
+        tool_obj = self.tools.get(tool_name)
+        _requires_approval = getattr(
+            getattr(tool_obj, '_metadata', None), 'requires_approval', False
+        ) if tool_obj else False
+        if self._approval_manager.should_request_approval(tool_name, _requires_approval):
+            from .human_loop import ApprovalDecision
+            decision = self._approval_manager.request_approval(tool_name, tool_input)
+            if decision != ApprovalDecision.APPROVED:
+                logger.info("Tool '%s' denied by human approval (%s)", tool_name, decision.value)
+                return f"Error executing tool '{tool_name}': execution denied by human approval ({decision.value})"
 
         # Circuit breaker check
         if not self._circuit_breaker.is_available(tool_name):

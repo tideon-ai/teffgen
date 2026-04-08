@@ -130,6 +130,7 @@ class ToolMetadata:
     timeout_seconds: int = 30
     tags: list[str] = field(default_factory=list)
     examples: list[dict[str, Any]] = field(default_factory=list)
+    requires_approval: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         """Convert metadata to dictionary format."""
