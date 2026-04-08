@@ -35,7 +35,6 @@
 
 | | Date | Update |
 |:---:|:---|:---|
-| 🍎 | **4 Apr 2026** | **Apple Silicon + GUI Tools**: MLX & MLX-VLM backends for native Metal GPU acceleration, 6 Gradio GUI apps (Agent Builder, Chat, Agent Visualizer, Benchmark Dashboard, Tool Builder, Tool Tester), Python 3.14 support |
 | 🔧 | **25 Mar 2026** | **v0.1.3 Released**: Verification hardening — smarter loop detection, "skip the tool" prompting, model-aware token counting, sub-agent depth limits, circuit breaker persistence. [See changelog](CHANGELOG.md#013---2026-03-25) |
 | 🔧 | **12 Mar 2026** | **v0.1.2 Released**: Test-driven hardening — 10 example agents, 19 bug fixes, cross-model compatibility matrix (11 models, 73% pass rate). [See changelog](CHANGELOG.md#012---2026-03-12) |
 | 🔒 | **6 Mar 2026** | **v0.1.1 Released**: Stabilization — fixed license/metadata consistency, improved error handling, added 6 examples, expanded test suite. [See changelog](CHANGELOG.md#011---2026-03-06) |

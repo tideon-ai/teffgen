@@ -33,9 +33,26 @@ from effgen.models.base import (
     ModelType,
     TokenCount,
 )
+from effgen.models.capabilities import (
+    MODEL_CAPABILITIES,
+    ModelCapability,
+    estimate_capability,
+    get_model_capability,
+    list_registered_models,
+    register_model_capability,
+)
 from effgen.models.gemini_adapter import GeminiAdapter
 from effgen.models.model_loader import ModelLoader, load_model
 from effgen.models.openai_adapter import OpenAIAdapter
+from effgen.models.pool import ModelPool, PoolConfig
+from effgen.models.router import (
+    ComplexityEstimate,
+    ComplexityLevel,
+    ModelRouter,
+    RoutingConfig,
+    RoutingDecision,
+    estimate_complexity,
+)
 from effgen.models.transformers_engine import TransformersEngine
 from effgen.models.vllm_engine import VLLMEngine
 
@@ -76,4 +93,24 @@ __all__ = [
     # Loader
     "ModelLoader",
     "load_model",
+
+    # Router (Phase 6)
+    "ModelRouter",
+    "RoutingConfig",
+    "RoutingDecision",
+    "ComplexityEstimate",
+    "ComplexityLevel",
+    "estimate_complexity",
+
+    # Capabilities (Phase 6)
+    "ModelCapability",
+    "MODEL_CAPABILITIES",
+    "register_model_capability",
+    "get_model_capability",
+    "estimate_capability",
+    "list_registered_models",
+
+    # Pool (Phase 6)
+    "ModelPool",
+    "PoolConfig",
 ]

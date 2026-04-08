@@ -1445,6 +1445,12 @@ class CLIInterface:
             self._models_list(args)
         elif args.model_command == 'info':
             self._models_info(args)
+        elif args.model_command == 'load':
+            self._models_load(args)
+        elif args.model_command == 'unload':
+            self._models_unload(args)
+        elif args.model_command == 'status':
+            self._models_status(args)
         else:
             self.print_error(f"Unknown models command: {args.model_command}")
             return 1
@@ -1501,6 +1507,108 @@ class CLIInterface:
 
         self.print_header(f"Model: {args.name}")
         self.print("Model information coming soon...")
+
+    def _models_load(self, args):
+        """Pre-load a model into the model pool."""
+        from effgen.models.pool import ModelPool
+
+        model_name = args.name
+        engine = getattr(args, 'engine', None)
+        self.print(f"Loading model: {model_name}...")
+
+        try:
+            pool = ModelPool()
+            pool.get_or_load(model_name, engine=engine)
+            self.print_success(f"Model '{model_name}' loaded successfully")
+
+            # Show status
+            for entry in pool.status():
+                if entry["model_name"] == model_name:
+                    self.print(f"  GPU memory: ~{entry['gpu_memory_gb']:.1f} GB")
+        except Exception as e:
+            self.print_error(f"Failed to load model: {e}")
+            return 1
+
+    def _models_unload(self, args):
+        """Unload a model from memory."""
+        from effgen.models.model_loader import ModelLoader
+
+        model_name = args.name
+        self.print(f"Unloading model: {model_name}...")
+
+        try:
+            loader = ModelLoader()
+            if model_name in loader.loaded_models:
+                loader.unload_model(model_name)
+                self.print_success(f"Model '{model_name}' unloaded")
+            else:
+                self.print_warning(f"Model '{model_name}' is not currently loaded")
+        except Exception as e:
+            self.print_error(f"Failed to unload model: {e}")
+            return 1
+
+    def _models_status(self, args):
+        """Show loaded models and GPU memory status."""
+        self.print_header("Model & GPU Status")
+
+        # GPU memory info
+        try:
+            import torch
+            if torch.cuda.is_available():
+                num_gpus = torch.cuda.device_count()
+                if self.console:
+                    from rich.table import Table
+                    gpu_table = Table(title="GPU Status")
+                    gpu_table.add_column("GPU", style="cyan")
+                    gpu_table.add_column("Name", style="white")
+                    gpu_table.add_column("Total", style="white")
+                    gpu_table.add_column("Used", style="yellow")
+                    gpu_table.add_column("Free", style="green")
+
+                    for i in range(num_gpus):
+                        props = torch.cuda.get_device_properties(i)
+                        total_gb = props.total_memory / (1024**3)
+                        reserved = torch.cuda.memory_reserved(i) / (1024**3)
+                        free_gb = total_gb - reserved
+                        gpu_table.add_row(
+                            str(i), props.name,
+                            f"{total_gb:.1f} GB",
+                            f"{reserved:.1f} GB",
+                            f"{free_gb:.1f} GB",
+                        )
+                    self.console.print(gpu_table)
+                else:
+                    for i in range(num_gpus):
+                        props = torch.cuda.get_device_properties(i)
+                        total_gb = props.total_memory / (1024**3)
+                        reserved = torch.cuda.memory_reserved(i) / (1024**3)
+                        print(f"GPU {i}: {props.name} — "
+                              f"{total_gb:.1f} GB total, "
+                              f"{reserved:.1f} GB used, "
+                              f"{total_gb - reserved:.1f} GB free")
+            else:
+                self.print_warning("CUDA not available")
+        except ImportError:
+            self.print_warning("PyTorch not installed — cannot query GPU status")
+
+        # Loaded models
+        from effgen.models.model_loader import ModelLoader
+        loader = ModelLoader()
+        loaded = loader.get_loaded_models()
+
+        if loaded:
+            self.print("")
+            self.print_header("Loaded Models")
+            for name, model in loaded.items():
+                status = "loaded" if model.is_loaded() else "unloaded"
+                self.print(f"  {name}: {status}")
+        else:
+            self.print("\nNo models currently loaded in this process.")
+
+        # Capability registry
+        from effgen.models.capabilities import list_registered_models
+        registered = list_registered_models()
+        self.print(f"\nCapability profiles registered: {len(registered)}")
 
     def examples_commands(self, args):
         """
@@ -1678,6 +1786,15 @@ Examples:
 
     models_info = models_subparsers.add_parser('info', help='Show model information')
     models_info.add_argument('name', help='Model name')
+
+    models_load = models_subparsers.add_parser('load', help='Pre-load a model into memory')
+    models_load.add_argument('name', help='Model name (e.g. Qwen/Qwen2.5-1.5B-Instruct)')
+    models_load.add_argument('-e', '--engine', help='Engine (vllm, transformers)', default=None)
+
+    models_unload = models_subparsers.add_parser('unload', help='Unload a model from memory')
+    models_unload.add_argument('name', help='Model name')
+
+    models_subparsers.add_parser('status', help='Show loaded models and GPU memory status')
 
     # Examples commands
     examples_parser = subparsers.add_parser('examples', help='Run example scripts')

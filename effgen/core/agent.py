@@ -124,6 +124,9 @@ class AgentConfig:
         "long_term_persist_path": None,
         "auto_summarize": True,
     })
+    # Multi-model support (Phase 6)
+    models: list[BaseModel | str] | None = None  # Additional models for routing
+    speculative_execution: bool = False  # Run on 2 models, return first success
 
 
 @dataclass
@@ -263,6 +266,35 @@ Question: {task}
             # No model provided
             self.model_name = None
             self.model = None
+
+        # Multi-model router (Phase 6)
+        self._model_router = None
+        self._all_models: list[BaseModel] = []
+        if self.model is not None:
+            self._all_models.append(self.model)
+        if config.models:
+            for m in config.models:
+                if isinstance(m, BaseModel):
+                    self._all_models.append(m)
+                elif isinstance(m, str):
+                    try:
+                        loaded = self.model_loader.load_model(
+                            m, engine_config=config.model_config
+                        )
+                        self._all_models.append(loaded)
+                    except Exception as e:
+                        logger.warning("Failed to load additional model '%s': %s", m, e)
+
+        if len(self._all_models) > 1:
+            from ..models.router import ModelRouter
+            self._model_router = ModelRouter(models=self._all_models)
+            logger.info(
+                "Model router enabled with %d models: %s",
+                len(self._all_models),
+                [getattr(m, 'model_name', str(m)) for m in self._all_models],
+            )
+
+        self._speculative_execution = config.speculative_execution
 
         # Tools
         self.tools = {tool.name: tool for tool in config.tools}
@@ -1190,6 +1222,13 @@ Question: {task}
         Retries up to 3 times on empty responses with exponential backoff
         and slightly increasing temperature.
 
+        When a model router is configured (multi-model mode), the router
+        selects the best model for the query. On failure, the agent
+        automatically fails over to the next model in the pool.
+
+        If speculative_execution is enabled, runs on two models in parallel
+        and returns the first successful result.
+
         Args:
             prompt: Input prompt
             **kwargs: Generation parameters (temperature, max_tokens, etc.)
@@ -1200,11 +1239,37 @@ Question: {task}
         Raises:
             RuntimeError: If no model is loaded
         """
-        if self.model is None:
+        if self.model is None and not self._all_models:
             raise RuntimeError(
                 f"Agent '{self.name}' has no model loaded. "
                 "Provide a model in AgentConfig or use a mock for testing."
             )
+
+        # Speculative execution: run on 2 models, return first success
+        if self._speculative_execution and len(self._all_models) >= 2:
+            result = self._generate_speculative(prompt, **kwargs)
+            if result is not None:
+                return result
+            # Fall through to normal path if speculative failed
+
+        # Select model via router if available
+        active_model = self.model
+        if self._model_router is not None:
+            try:
+                task_hint = kwargs.pop("_task_hint", prompt[:500])
+                tools_list = list(self.tools.values()) if self.tools else None
+                decision = self._model_router.select(task_hint, tools_list)
+                active_model = decision.model
+                logger.info(
+                    "Router selected '%s' (reason: %s)",
+                    decision.model_name, decision.reason,
+                )
+            except Exception as e:
+                logger.warning("Router selection failed, using default model: %s", e)
+                active_model = self.model
+
+        if active_model is None:
+            active_model = self.model
 
         max_retries = 3
         backoff_delays = [0.5, 1.0, 2.0]
@@ -1219,62 +1284,78 @@ Question: {task}
 
         last_error = None
         total_tokens = 0
+        # Build ordered list of models to try: selected first, then others
+        failover_models = [active_model] + [
+            m for m in self._all_models if m is not active_model
+        ] if len(self._all_models) > 1 else [active_model]
 
-        for attempt in range(max_retries):
-            try:
-                # Slightly increase temperature on retries to get different output
-                retry_temperature = min(base_temperature + (attempt * 0.1), 1.0)
+        for model_idx, current_model in enumerate(failover_models):
+            if current_model is None:
+                continue
 
-                gen_config = GenerationConfig(
-                    temperature=retry_temperature,
-                    max_tokens=kwargs.get('max_tokens', 1024),
-                    top_p=kwargs.get('top_p', 0.9),
-                    stop_sequences=kwargs.get('stop_sequences', default_stop_sequences)
+            for attempt in range(max_retries):
+                try:
+                    # Slightly increase temperature on retries to get different output
+                    retry_temperature = min(base_temperature + (attempt * 0.1), 1.0)
+
+                    gen_config = GenerationConfig(
+                        temperature=retry_temperature,
+                        max_tokens=kwargs.get('max_tokens', 1024),
+                        top_p=kwargs.get('top_p', 0.9),
+                        stop_sequences=kwargs.get('stop_sequences', default_stop_sequences)
+                    )
+
+                    # Pass through extra kwargs (e.g. tools for native calling)
+                    extra_gen_kwargs = {}
+                    if "tools" in kwargs:
+                        extra_gen_kwargs["tools"] = kwargs["tools"]
+
+                    result = current_model.generate(prompt, config=gen_config, **extra_gen_kwargs)
+
+                    response_text = result.text if result and result.text else ""
+                    tokens_used = result.tokens_used if result and hasattr(result, 'tokens_used') else 0
+                    finish_reason = result.finish_reason if result and hasattr(result, 'finish_reason') else "unknown"
+                    total_tokens += tokens_used
+
+                    # If we got a non-empty response, return it
+                    if response_text.strip():
+                        return {
+                            "text": response_text,
+                            "tokens_used": total_tokens,
+                            "finish_reason": finish_reason,
+                            "metadata": result.metadata if result and hasattr(result, 'metadata') else {}
+                        }
+
+                    # Empty response — retry
+                    if attempt < max_retries - 1:
+                        logger.info(
+                            f"Empty response on attempt {attempt + 1}/{max_retries}, "
+                            f"retrying in {backoff_delays[attempt]}s with temperature={retry_temperature:.2f}"
+                        )
+                        time.sleep(backoff_delays[attempt])
+                    else:
+                        logger.warning(f"Empty response after {max_retries} attempts")
+
+                except Exception as e:
+                    last_error = e
+                    if attempt < max_retries - 1:
+                        logger.warning(
+                            f"Generation error on attempt {attempt + 1}/{max_retries}: {e}, "
+                            f"retrying in {backoff_delays[attempt]}s"
+                        )
+                        time.sleep(backoff_delays[attempt])
+                    else:
+                        logger.error(f"Generation failed after {max_retries} attempts: {e}")
+
+            # If we have more models to try, failover
+            if model_idx < len(failover_models) - 1:
+                next_name = getattr(failover_models[model_idx + 1], 'model_name', '?')
+                logger.warning(
+                    "Failing over to model '%s' after '%s' exhausted retries",
+                    next_name, getattr(current_model, 'model_name', '?'),
                 )
 
-                # Pass through extra kwargs (e.g. tools for native calling)
-                extra_gen_kwargs = {}
-                if "tools" in kwargs:
-                    extra_gen_kwargs["tools"] = kwargs["tools"]
-
-                result = self.model.generate(prompt, config=gen_config, **extra_gen_kwargs)
-
-                response_text = result.text if result and result.text else ""
-                tokens_used = result.tokens_used if result and hasattr(result, 'tokens_used') else 0
-                finish_reason = result.finish_reason if result and hasattr(result, 'finish_reason') else "unknown"
-                total_tokens += tokens_used
-
-                # If we got a non-empty response, return it
-                if response_text.strip():
-                    return {
-                        "text": response_text,
-                        "tokens_used": total_tokens,
-                        "finish_reason": finish_reason,
-                        "metadata": result.metadata if result and hasattr(result, 'metadata') else {}
-                    }
-
-                # Empty response — retry
-                if attempt < max_retries - 1:
-                    logger.info(
-                        f"Empty response on attempt {attempt + 1}/{max_retries}, "
-                        f"retrying in {backoff_delays[attempt]}s with temperature={retry_temperature:.2f}"
-                    )
-                    time.sleep(backoff_delays[attempt])
-                else:
-                    logger.warning(f"Empty response after {max_retries} attempts")
-
-            except Exception as e:
-                last_error = e
-                if attempt < max_retries - 1:
-                    logger.warning(
-                        f"Generation error on attempt {attempt + 1}/{max_retries}: {e}, "
-                        f"retrying in {backoff_delays[attempt]}s"
-                    )
-                    time.sleep(backoff_delays[attempt])
-                else:
-                    logger.error(f"Generation failed after {max_retries} attempts: {e}")
-
-        # All retries exhausted
+        # All models and retries exhausted
         if last_error:
             logger.warning(f"Returning empty response due to generation failure: {last_error}")
         return {
@@ -1283,6 +1364,69 @@ Question: {task}
             "finish_reason": "error",
             "metadata": {"error": str(last_error) if last_error else "empty_response"}
         }
+
+    def _generate_speculative(self, prompt: str, **kwargs) -> dict[str, Any] | None:
+        """Run generation on 2 models concurrently, return first success.
+
+        Uses asyncio.gather with return_when=FIRST_COMPLETED semantics via
+        asyncio.wait. Returns None if both fail.
+        """
+        if len(self._all_models) < 2:
+            return None
+
+        models_to_run = self._all_models[:2]
+        base_temperature = kwargs.get('temperature', self.config.temperature)
+
+        default_stop_sequences = [
+            "\nObservation:", "\nQuestion:", "\nHuman:", "\nUser:",
+        ]
+
+        gen_config = GenerationConfig(
+            temperature=base_temperature,
+            max_tokens=kwargs.get('max_tokens', 1024),
+            top_p=kwargs.get('top_p', 0.9),
+            stop_sequences=kwargs.get('stop_sequences', default_stop_sequences),
+        )
+
+        extra_gen_kwargs = {}
+        if "tools" in kwargs:
+            extra_gen_kwargs["tools"] = kwargs["tools"]
+
+        async def _run_model(model: BaseModel) -> dict[str, Any]:
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None, lambda: model.generate(prompt, config=gen_config, **extra_gen_kwargs)
+            )
+            text = result.text if result and result.text else ""
+            if not text.strip():
+                raise RuntimeError("Empty response")
+            return {
+                "text": text,
+                "tokens_used": result.tokens_used if result else 0,
+                "finish_reason": result.finish_reason if result else "unknown",
+                "metadata": result.metadata if result and hasattr(result, 'metadata') else {},
+            }
+
+        async def _speculate() -> dict[str, Any] | None:
+            tasks = [asyncio.create_task(_run_model(m)) for m in models_to_run]
+            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+
+            # Cancel remaining
+            for t in pending:
+                t.cancel()
+
+            for t in done:
+                if not t.cancelled() and t.exception() is None:
+                    return t.result()
+
+            # All failed
+            return None
+
+        try:
+            return self._run_coroutine_sync(_speculate())
+        except Exception as e:
+            logger.warning("Speculative execution failed: %s", e)
+            return None
 
     def _parse_react_response(self, text: str) -> dict[str, Any]:
         """
