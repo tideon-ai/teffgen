@@ -556,7 +556,7 @@ class CLIInterface:
                 self.print(f"Tools: {len(tools)} available")
                 self.print(f"Sub-agents: {'enabled' if agent_config.enable_sub_agents else 'disabled'}")
 
-                agent = Agent(agent_config)
+                agent = Agent(agent_config, session_id=getattr(args, 'session_id', None))
 
             # Determine execution mode
             mode = AgentMode.AUTO
@@ -585,7 +585,7 @@ class CLIInterface:
                         console=self.console
                     ) as progress:
                         progress.add_task("Thinking...", total=None)
-                        response = agent.run(args.task, mode=mode)
+                        response = agent.run(args.task, mode=mode, **_phase7_run_kwargs(args))
                 else:
                     self.print("Thinking...")
                     response = agent.run(args.task, mode=mode)
@@ -1739,6 +1739,29 @@ Examples:
                             help='Use a preset agent configuration')
     run_parser.add_argument('--explain', action='store_true',
                             help='Show why the agent chose each tool')
+    run_parser.add_argument('--checkpoint-dir', help='Directory to write agent checkpoints (Phase 7)')
+    run_parser.add_argument('--checkpoint-interval', type=int, default=0,
+                            help='Checkpoint every N iterations (requires --checkpoint-dir)')
+    run_parser.add_argument('--session-id', help='Persistent session id (Phase 7)')
+
+    # Resume command (Phase 7.1)
+    resume_parser = subparsers.add_parser('resume', help='Resume an agent run from a checkpoint')
+    resume_parser.add_argument('--checkpoint', required=True,
+                               help='Checkpoint id, JSON path, or directory (uses latest)')
+    resume_parser.add_argument('-m', '--model', help='Model to use')
+    resume_parser.add_argument('--preset', choices=['math', 'research', 'coding', 'general', 'minimal'])
+
+    # Sessions commands (Phase 7.2)
+    sessions_parser = subparsers.add_parser('sessions', help='Manage persistent sessions')
+    sessions_subparsers = sessions_parser.add_subparsers(dest='session_command', help='Sessions command')
+    sessions_subparsers.add_parser('list', help='List sessions')
+    sd = sessions_subparsers.add_parser('delete', help='Delete a session')
+    sd.add_argument('session_id', help='Session id')
+    se = sessions_subparsers.add_parser('export', help='Export a session')
+    se.add_argument('session_id', help='Session id')
+    se.add_argument('--format', choices=['json', 'text'], default='json')
+    sc = sessions_subparsers.add_parser('cleanup', help='Delete sessions older than N days')
+    sc.add_argument('--days', type=int, default=30)
 
     # Chat command
     chat_parser = subparsers.add_parser('chat', help='Interactive chat mode')
@@ -2073,6 +2096,78 @@ def _handle_batch_command(args, cli) -> int:
         return 1
 
 
+def _phase7_run_kwargs(args) -> dict:
+    """Extract Phase 7 run() kwargs from CLI args."""
+    out: dict = {}
+    if getattr(args, 'checkpoint_dir', None):
+        out['checkpoint_dir'] = args.checkpoint_dir
+    if getattr(args, 'checkpoint_interval', 0):
+        out['checkpoint_interval'] = args.checkpoint_interval
+    return out
+
+
+def _handle_resume_command(args, cli) -> int:
+    """Handle 'effgen resume' command."""
+    from effgen.core.checkpoint import CheckpointManager
+    from effgen import Agent, AgentConfig
+
+    cp_arg = args.checkpoint
+    # Determine directory + id
+    import os as _os
+    if _os.path.isdir(cp_arg):
+        ckpt_dir = cp_arg
+        cp_id = None
+    elif cp_arg.endswith(".json") and _os.path.exists(cp_arg):
+        ckpt_dir = _os.path.dirname(_os.path.abspath(cp_arg)) or "."
+        cp_id = cp_arg
+    else:
+        ckpt_dir = "./checkpoints"
+        cp_id = cp_arg
+
+    mgr = CheckpointManager(ckpt_dir)
+    cp = mgr.load(cp_id) if cp_id else mgr.load_latest()
+    cli.print(f"Resuming '{cp.task[:80]}' from iteration {cp.iteration}")
+
+    if getattr(args, 'preset', None):
+        from effgen.presets import create_agent as _create_preset_agent
+        agent = _create_preset_agent(args.preset, args.model or "Qwen/Qwen2.5-3B-Instruct")
+    else:
+        cfg = AgentConfig(name=cp.agent_name, model=args.model or "Qwen/Qwen2.5-3B-Instruct", tools=[])
+        agent = Agent(cfg)
+
+    response = agent.resume(checkpoint_id=cp_id, checkpoint_dir=ckpt_dir)
+    cli.print(response.output if hasattr(response, 'output') else str(response))
+    return 0 if getattr(response, 'success', True) else 1
+
+
+def _handle_sessions_command(args, cli) -> int:
+    """Handle 'effgen sessions' subcommands."""
+    from effgen.core.session import SessionManager
+    mgr = SessionManager()
+    cmd = getattr(args, 'session_command', None)
+    if cmd == 'list':
+        sessions = mgr.list_sessions()
+        if not sessions:
+            cli.print("No sessions found.")
+            return 0
+        for s in sessions:
+            cli.print(f"  {s['session_id']:36s}  msgs={s['messages']:<4d}  updated={s.get('updated_at')}")
+        return 0
+    if cmd == 'delete':
+        ok = mgr.delete(args.session_id)
+        cli.print("Deleted." if ok else "Not found.")
+        return 0 if ok else 1
+    if cmd == 'export':
+        cli.print(mgr.export(args.session_id, format=args.format))
+        return 0
+    if cmd == 'cleanup':
+        n = mgr.cleanup(older_than_days=args.days)
+        cli.print(f"Removed {n} old session(s).")
+        return 0
+    cli.print("Usage: effgen sessions [list|delete|export|cleanup]")
+    return 1
+
+
 def main():
     """Main entry point for CLI."""
     parser = create_parser()
@@ -2111,6 +2206,10 @@ def main():
             checker = HealthChecker()
             all_passed = checker.print_results()
             exit_code = 0 if all_passed else 1
+        elif args.command == 'resume':
+            exit_code = _handle_resume_command(args, cli)
+        elif args.command == 'sessions':
+            exit_code = _handle_sessions_command(args, cli)
         elif args.command == 'create-plugin':
             exit_code = _create_plugin_scaffold(args.plugin_name, args.output_dir)
         elif args.command == 'presets':

@@ -224,16 +224,32 @@ Begin!
 Question: {task}
 {scratchpad}"""
 
-    def __init__(self, config: AgentConfig):
+    def __init__(self, config: AgentConfig, session_id: str | None = None):
         """
         Initialize agent.
 
         Args:
             config: Agent configuration
+            session_id: Optional persistent session id. If provided, the
+                agent loads/creates a Session in ~/.effgen/sessions/ and
+                appends each run() turn to it.
         """
         self.config = config
         self.name = config.name
         self._closed = False
+
+        # Persistent session (Phase 7.2)
+        self._session_id = session_id
+        self.session = None
+        if session_id:
+            from .session import Session as _Session
+            self.session = _Session.load_or_create(session_id, agent_name=self.name)
+
+        # Background task runner (Phase 7.3) — lazy
+        self._bg_runner = None
+
+        # Last checkpoint info (Phase 7.1)
+        self._last_checkpoint_id: str | None = None
 
         # Model initialization
         self.model_loader = ModelLoader()
@@ -388,6 +404,16 @@ Question: {task}
         # Guardrails
         self._guardrail_chain = self._resolve_guardrails(config.guardrails)
 
+        # Hydrate short-term memory from persistent session if loaded
+        if self.session and self.session.messages:
+            for m in self.session.messages:
+                role = m.get("role")
+                content = m.get("content", "")
+                if role == "user":
+                    self.short_term_memory.add_user_message(content)
+                elif role == "assistant":
+                    self.short_term_memory.add_assistant_message(content)
+
     @staticmethod
     def _resolve_guardrails(guardrails: Any):
         """Resolve guardrails config to a GuardrailChain or None."""
@@ -461,6 +487,10 @@ Question: {task}
         self._current_depth = 0  # Reset depth at the start of each top-level run()
         debug = kwargs.pop("debug", False)
         run_id = generate_run_id()
+        # Phase 7: capture checkpoint args here so the outer run() can use
+        # them for the final-checkpoint write even after _run_single_agent
+        # consumes them from kwargs.
+        _outer_ckpt_dir = kwargs.get("checkpoint_dir") or context.get("checkpoint_dir")
 
         # Metrics: track request
         labels = {"agent_name": self.name}
@@ -597,6 +627,36 @@ Question: {task}
                             importance=ImportanceLevel.MEDIUM,
                             tags=["conversation"],
                         )
+
+                    # Persist to session (Phase 7.2)
+                    if self.session is not None:
+                        self.session.add_user_message(task)
+                        self.session.add_assistant_message(response.output)
+                        try:
+                            self.session.save()
+                        except Exception as _e:
+                            logger.warning("Failed to save session: %s", _e)
+
+                # Final checkpoint (Phase 7.1)
+                ckpt_dir = _outer_ckpt_dir
+                if ckpt_dir:
+                    try:
+                        from .checkpoint import CheckpointManager
+                        mgr = CheckpointManager(ckpt_dir)
+                        cp = CheckpointManager.snapshot_agent(
+                            self,
+                            task=task,
+                            iteration=getattr(response, "iterations", 0),
+                            scratchpad="",
+                            partial_output=response.output,
+                            tool_calls=response.tool_calls,
+                            tokens_used=response.tokens_used,
+                            metadata={"final": True, "success": response.success},
+                        )
+                        self._last_checkpoint_id = mgr.save(cp)
+                        response.metadata["checkpoint_id"] = self._last_checkpoint_id
+                    except Exception as _e:
+                        logger.warning("Failed to save final checkpoint: %s", _e)
 
                 return response
 
@@ -769,6 +829,11 @@ Question: {task}
         # Extract debug flags (set by run())
         debug = kwargs.pop("_debug", False)
         run_id = kwargs.pop("_run_id", "")
+        # Phase 7: pop custom kwargs so they don't leak to the model layer.
+        # We re-read them locally below before they would propagate further.
+        _ckpt_interval_arg = kwargs.pop("checkpoint_interval", 0) or 0
+        _ckpt_dir_arg = kwargs.pop("checkpoint_dir", None)
+        _resume_scratchpad_arg = kwargs.pop("_resume_scratchpad", None)
 
         # If no tools available, use direct inference instead of ReAct
         if not self.tools:
@@ -793,9 +858,37 @@ Question: {task}
 
         # ReAct loop
         previous_actions: list[tuple[str, str]] = []  # Track (action, input) pairs for loop detection
+        # Phase 7.1: optional periodic checkpointing
+        _ckpt_interval = _ckpt_interval_arg
+        _ckpt_dir = _ckpt_dir_arg
+        _ckpt_mgr = None
+        if _ckpt_interval and _ckpt_dir:
+            try:
+                from .checkpoint import CheckpointManager as _CM
+                _ckpt_mgr = _CM(_ckpt_dir)
+            except Exception as _e:
+                logger.warning("Failed to init CheckpointManager: %s", _e)
+        # Allow resuming with a seeded scratchpad
+        if _resume_scratchpad_arg:
+            scratchpad = _resume_scratchpad_arg
         while iterations < max_iterations:
             iterations += 1
             iter_start = time.time()
+            if _ckpt_mgr is not None and iterations > 1 and (iterations - 1) % _ckpt_interval == 0:
+                try:
+                    from .checkpoint import CheckpointManager as _CM2
+                    cp = _CM2.snapshot_agent(
+                        self,
+                        task=task,
+                        iteration=iterations,
+                        scratchpad=scratchpad,
+                        tool_calls=tool_calls,
+                        tokens_used=tokens_used,
+                        metadata={"interval": _ckpt_interval},
+                    )
+                    self._last_checkpoint_id = _ckpt_mgr.save(cp)
+                except Exception as _e:
+                    logger.warning("Periodic checkpoint failed: %s", _e)
 
             # Determine if we should use native tool calling prompt format
             use_native_prompt = (
@@ -2277,6 +2370,65 @@ Question: {task}
             format: Format (json or pickle)
         """
         self.state = AgentState.load(filepath, format)
+
+    # ------------------------------------------------------------------ Phase 7
+    def resume(self, checkpoint_id: str | None = None, checkpoint_dir: str = "./checkpoints", **kwargs) -> "AgentResponse":
+        """
+        Resume execution from a checkpoint.
+
+        Args:
+            checkpoint_id: Checkpoint id (or path to a JSON file). If None,
+                loads the most recent checkpoint in ``checkpoint_dir``.
+            checkpoint_dir: Directory containing checkpoints.
+            **kwargs: Additional run() kwargs.
+
+        Returns:
+            AgentResponse from continuing the task.
+        """
+        from .checkpoint import CheckpointManager
+        mgr = CheckpointManager(checkpoint_dir)
+        cp = mgr.load(checkpoint_id) if checkpoint_id else mgr.load_latest()
+        CheckpointManager.restore_to_agent(self, cp)
+        # Seed the next run with the saved scratchpad
+        kwargs.setdefault("_resume_scratchpad", cp.scratchpad)
+        kwargs.setdefault("checkpoint_dir", checkpoint_dir)
+        return self.run(cp.task, **kwargs)
+
+    def run_background(self, task: str, priority: int = 5, **run_kwargs) -> str:
+        """
+        Submit a task to the background runner and return its id.
+        """
+        if self._bg_runner is None:
+            from .background import BackgroundTaskRunner
+            self._bg_runner = BackgroundTaskRunner(self, max_workers=1)
+        return self._bg_runner.submit(task, priority=priority, **run_kwargs)
+
+    def get_task_status(self, task_id: str):
+        """Return the status of a background task."""
+        if self._bg_runner is None:
+            raise RuntimeError("No background runner active")
+        return self._bg_runner.get_status(task_id)
+
+    def get_task_result(self, task_id: str, wait: bool = False, timeout: float | None = None):
+        """Return the result of a background task (optionally blocking)."""
+        if self._bg_runner is None:
+            raise RuntimeError("No background runner active")
+        return self._bg_runner.get_result(task_id, wait=wait, timeout=timeout)
+
+    def cancel_task(self, task_id: str) -> bool:
+        if self._bg_runner is None:
+            return False
+        return self._bg_runner.cancel(task_id)
+
+    def pause_task(self, task_id: str) -> bool:
+        if self._bg_runner is None:
+            return False
+        return self._bg_runner.pause(task_id)
+
+    def resume_task(self, task_id: str) -> bool:
+        if self._bg_runner is None:
+            return False
+        return self._bg_runner.resume(task_id)
 
     def synthesize(self, synthesis_data: dict[str, Any]) -> str:
         """
