@@ -22,6 +22,18 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
+      - name: Verify critical imports
+        run: |
+          python -c "
+          import effgen; assert effgen.__version__ == '0.2.0'
+          from effgen.guardrails import GuardrailChain
+          from effgen.rag import DocumentIngester
+          from effgen.eval import AgentEvaluator
+          from effgen.domains import TechDomain
+          from effgen.cache import PromptCache
+          print('All imports OK')
+          "
+
       - name: Run all unit tests
         run: |
           pytest tests/unit/ -v --cov=effgen --cov-report=xml \

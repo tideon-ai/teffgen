@@ -131,6 +131,24 @@ mlx-vlm = [
     "mlx-lm>=0.18.0; sys_platform == 'darwin' and platform_machine == 'arm64'",
     "mlx-vlm>=0.1.0; sys_platform == 'darwin' and platform_machine == 'arm64'",
 ]
+rag = [
+    "sentence-transformers>=2.2.0",
+    "faiss-cpu>=1.7.4",
+]
+finance = [
+    "yfinance>=0.2.31",
+]
+data = [
+    "matplotlib>=3.7.0",
+    "plotly>=5.18.0",
+]
+eval = [
+    "rouge-score>=0.1.2",
+    "nltk>=3.8.0",
+]
+gguf = [
+    "llama-cpp-python>=0.2.0",
+]
 flash-attn = ["flash-attn>=2.3.0"]
 vector-db = [
     "faiss-cpu>=1.7.4",
@@ -167,6 +185,13 @@ all = [
     "azure-identity>=1.14.0",
     "wandb>=0.16.0",
     "tensorboard>=2.15.0",
+    "sentence-transformers>=2.2.0",
+    "yfinance>=0.2.31",
+    "matplotlib>=3.7.0",
+    "plotly>=5.18.0",
+    "rouge-score>=0.1.2",
+    "nltk>=3.8.0",
+    "llama-cpp-python>=0.2.0",
 ]
 
 [tool.setuptools.dynamic]

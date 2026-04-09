@@ -7,6 +7,160 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.0] - 2026-04-09
+
+### Highlights
+
+**effGen v0.2.0** is a major release that transforms the framework from a capable agent toolkit into a **production-grade agentic AI platform** — with native tool calling, guardrails, multi-agent orchestration, RAG pipelines, evaluation, and a production API server — all optimized for Small Language Models.
+
+### Added
+
+#### Critical Bug Fixes & Foundation Repairs
+- **ReAct parser hardening** — improved `Final Answer:` extraction with `Observation:`/`Human:` boundary splitting; `_clean_json_input()` handles trailing commas, markdown fences, unquoted keys; 28-case parser test suite
+- **Async/sync race condition fix** — replaced direct `asyncio.run()` with `_run_coroutine_sync()` for sub-agent parallel execution; works inside Jupyter/FastAPI/async contexts; configurable timeout (120s default)
+- **Memory performance fix** — `get_token_count()` uses cached `_current_token_count` instead of O(n) recalculation; structured summary format preserving facts/decisions/pending items
+- **Agent resource cleanup** — `Agent.close()` + sync context manager (`with Agent(config) as agent:`)
+- **MCP transport fix** — correlation-ID-based pending request tracking; SSE exponential backoff reconnection (max 5 retries)
+- **Tool security hardening** — BashTool blocks `${VAR:-$(cmd)}`, heredoc injection, process substitution; PythonREPL blocks `__import__`, `importlib`, `__builtins__`, `__subclasses__`; standardized 30s timeout / 100KB output limits
+- **Sub-agent depth tracking** — try/finally cleanup; reset on run() start
+- **Vision pass-through** — OpenAI, Anthropic adapters now support image_url/image blocks
+- **New examples** — `async_concurrent_agent.py`, Docker Compose deployment, `agent_communication.py`
+
+#### Native Tool Calling & Structured Output
+- **`ToolCallingStrategy`** — abstract strategy with `ReActStrategy`, `NativeFunctionCallingStrategy`, `HybridStrategy` implementations
+- **Native function calling** — `supports_tool_calling()` on all model backends; Qwen/Llama/Mistral/generic format parsers; tool JSON Schema definitions passed via chat template `tools` parameter
+- **`tool_calling_mode`** in `AgentConfig` — `"auto"`, `"native"`, `"react"`, `"hybrid"` modes
+- **Structured output** — `StructuredOutputConfig`, `constrain_output()`, `validate_json_schema()`; `output_schema` and `output_model` (Pydantic) parameters on `Agent.run()`; `output_format` and `output_schema` on `AgentConfig`
+- **`ToolDefinition`** — with OpenAI/Anthropic format converters and `tools_to_definitions()` utility
+
+#### Guardrails, Safety & Input/Output Validation
+- **`effgen.guardrails`** module — `Guardrail` ABC, `GuardrailChain`, `GuardrailPosition` enum
+- **Content guardrails** — `ToxicityGuardrail`, `PIIGuardrail` (SSN/email/phone/CC with Luhn/IP), `LengthGuardrail`, `TopicGuardrail`
+- **`PromptInjectionGuardrail`** — low/medium/high sensitivity with zero false positives on normal queries
+- **Tool safety** — `ToolInputGuardrail`, `ToolOutputGuardrail` (PII stripping, size limit), `ToolPermissionGuardrail` (allow/deny/require_approval)
+- **Agent integration** — `AgentConfig.guardrails` param; pre-run input check, pre/post-tool checks, pre-return output check
+- **Presets** — `get_guardrail_preset("strict"|"standard"|"minimal"|"none")`
+
+#### Advanced Multi-Agent Orchestration
+- **`MessageBus`** — pub/sub, mailbox, broadcast inter-agent communication with topic-based wildcard subscriptions and optional persistence
+- **`WorkflowDAG`** — DAG-based workflow engine with cycle detection (Kahn's topological sort), conditional branching, auto-parallelization via `asyncio.gather`; YAML workflow definitions; `effgen workflow run/validate` CLI
+- **`SharedState`** — thread-safe namespaced key-value store with per-namespace RLock, snapshots for rollback, event-sourced mutation log
+- **Agent lifecycle management** — `AgentLifecycleState` (8 states), `AgentEntry` state machine, `AgentPool` (pre-warmed), `AgentRegistry` (thread-safe); per-agent timeout and cancellation
+
+#### Batch Execution & Domain Scaling
+- **`BatchRunner`** — asyncio-based concurrent batch execution with semaphore, retry, timeout; JSONL/CSV/JSON/text I/O; `Agent.run_batch()` convenience; `effgen batch` CLI
+- **`ResultAggregator`** — exact hash + fuzzy Jaccard deduplication, ranking (confidence/relevance/speed/custom), merge strategies (first/best/consensus/union)
+- **`ToolResultCache`** — thread-safe LRU + TTL for cross-query tool result sharing
+- **`effgen.domains`** module — `Domain` base class, `KeywordExpander` (WordNet/template/LLM expansion); 5 built-in domains: `TechDomain`, `ScienceDomain`, `FinanceDomain`, `HealthDomain`, `LegalDomain`
+
+#### Observability, Tracing & Debugging
+- **OpenTelemetry upgrade** — full OTel SDK with Resource, BatchSpanProcessor, configurable exporters (OTLP/Jaeger/Zipkin/console); cross-agent trace propagation; no-op fallback
+- **Structured logging** — `EffGenJSONFormatter`, `StructuredLogger` with agent/tool/model/iteration events; `LogRunContext` with run_id/workflow_id/agent_name/session_id correlation
+- **Prometheus metrics upgrade** — response_latency/token_usage/tool_execution_time histograms with percentiles; GPU memory gauge; labels support
+- **Grafana dashboard** — 12 panels: latency p50/p95/p99, throughput, error rate, tool breakdown
+- **`effgen.debug`** module — `DebugAgent` wrapper with rich TUI step-through; `Agent.run(debug=True)` captures `DebugTrace` with per-iteration raw_prompt, raw_response, thought, action, observation, tokens, latency; `effgen debug` CLI
+
+#### Model Router & Auto-Selection
+- **`ModelRouter`** — routing by complexity, capabilities, loaded state, model size; `RoutingConfig`, `RoutingDecision`
+- **`estimate_complexity()`** — heuristic keyword analysis (code/math/reasoning/multilingual), query length, structural patterns; < 1ms execution
+- **`MODEL_CAPABILITIES`** — registry with pre-populated profiles for 12 models (Qwen 0.5B-7B, Llama 1B-3B, Phi-3/3.5/4, Mistral 7B, Gemma 2B/9B)
+- **Multi-model agent** — `models` list and `speculative_execution` in AgentConfig; ModelRouter auto-created; `_generate_speculative()` runs on 2 models via `asyncio.wait(FIRST_COMPLETED)`
+- **`ModelPool`** — LRU eviction, GPU memory-based eviction, hot-swap; `effgen models load|unload|status` CLI
+
+#### Community Contribution: MLX & MLX-VLM Backends (PR #4, commit e5b54f5)
+- **`MLXEngine`** — MLX (mlx-lm) text generation engine with streaming/batch support for Apple Silicon
+- **`MLXVLMEngine`** — MLX-VLM vision-language engine with image support (30+ architectures)
+- **`effgen.hardware`** module — `platform.py` with Apple Silicon/CUDA/MLX detection helpers and backend recommendation
+- **Model loader integration** — MLX/MLX-VLM auto-selection on Apple Silicon; `ModelType.MLX` and `ModelType.MLX_VLM`
+- **Optional deps** — `pip install effgen[mlx]` and `pip install effgen[mlx-vlm]` (darwin/arm64 only)
+- **5 new GUI examples** — `chat_gui_mlx.py`, `agent_viz_mlx.py`, `tool_builder_gui.py`, `tool_tester_gui.py`, `basic_agent_mlx.py` (Gradio-based)
+- **Unit tests** — `test_hardware_platform.py`, `test_mlx_engine.py`, `test_mlx_vlm_engine.py`
+
+#### Persistent Agent State & Checkpointing
+- **`CheckpointManager`** — save/restore full agent state (scratchpad, memory, tool states, iteration count, partial results); filesystem + SQLite backends
+- **Agent checkpoint/resume** — `agent.run("...", checkpoint_interval=3)` for periodic checkpointing; `agent.resume(checkpoint_id="...")` to resume; CLI: `effgen run --checkpoint-dir --checkpoint-interval`, `effgen resume --checkpoint`
+- **`Session`** / `SessionManager` — persistent conversation sessions with UUID management, expiry, cleanup; `Agent(config, session_id="user-123")` auto-loads/persists per turn; CLI: `effgen sessions list|delete|export|cleanup`
+- **`BackgroundTaskRunner`** — priority queue, pause/resume/cancel, threading workers; `Agent.run_background()` / `get_task_status()` / `get_task_result()` / `cancel_task()`
+
+#### Advanced RAG Pipeline
+- **`effgen.rag`** module — complete RAG pipeline
+- **`DocumentIngester`** — txt/md/json/jsonl/csv/html built-in loaders; pdf/docx/epub optional; SHA-256 deduplication; progress tracking
+- **Advanced chunking** — `SemanticChunker`, `CodeChunker` (py/js/ts/go/rust/java), `TableChunker`, `HierarchicalChunker`
+- **`HybridSearchEngine`** — dense + BM25 + keyword + metadata filter fused via Reciprocal Rank Fusion
+- **Reranking** — `CrossEncoderReranker` (optional), `LLMReranker` (free default), `RuleBasedReranker` (recency/authority/keyword/title)
+- **`ContextBuilder`** — token budget management, source deduplication, relevance/chronological ordering, inline `[N]` citations
+- **Source attribution** — `Citation` dataclass, `CitationTracker` with verify/extract; `AgentResponse.citations` and `.sources` fields
+- **RAG preset** — `create_agent("rag", model, knowledge_base="./docs/")`
+
+#### Human-in-the-Loop & Approval Workflows
+- **Human interaction points** — `HumanApproval`, `HumanInput`, `HumanChoice` (all with timeout via ThreadPoolExecutor)
+- **Tool approval** — `requires_approval` on `ToolMetadata`; `approval_callback`, `approval_mode` (`always`/`first_time`/`never`/`dangerous_only`), `approval_timeout` in `AgentConfig`; `ApprovalManager` wired into tool execution path
+- **Clarification** — `ClarificationRequest` (options + free-text), `ClarificationDetector` with heuristic ambiguity detection (short query, vague words, multiple-tool-match)
+- **Feedback collection** — `FeedbackCollector` (thumbs/rate/comment), `FeedbackEntry`, export to JSONL
+
+#### New Domain Tools (17 New Tools — 31 Total)
+- **Finance** — `StockPriceTool` (yfinance + Yahoo Finance v8 fallback), `CurrencyConverterTool` (frankfurter.app/ECB), `CryptoTool` (CoinGecko); all include "not financial advice" disclaimer
+- **Data Science** — `DataFrameTool` (pandas: load/head/describe/filter/aggregate), `PlotTool` (matplotlib: line/bar/scatter/hist → PNG), `StatsTool` (numpy: mean/median/std/correlation/regression)
+- **DevOps** — `GitTool` (read-only: status/log/diff/branch/show), `DockerTool` (read-only: ps/images/logs), `SystemInfoTool` (psutil: cpu/memory/disk/network), `HTTPTool` (urllib GET/POST)
+- **Knowledge** — `ArxivTool` (Atom feed), `StackOverflowTool` (SE API), `GitHubTool` (public search API), `WolframAlphaTool` (optional, requires API key)
+- **Communication** — `EmailDraftTool` (draft only, does NOT send), `SlackDraftTool` (draft only), `NotificationTool` (plyer desktop notifications, optional)
+- All external libraries handled as optional with clear install hints
+
+#### Evaluation, Benchmarking & Regression Testing
+- **`effgen.eval`** module — `AgentEvaluator`, `EvalResult`, `SuiteResults`, `TestCase`, `TestSuite`
+- **Scoring modes** — `EXACT_MATCH`, `CONTAINS`, `REGEX`, `SEMANTIC_SIMILARITY` (sentence-transformers optional), `LLM_JUDGE`
+- **5 built-in test suites** — `MathSuite` (77 cases), `ToolUseSuite` (93), `ReasoningSuite` (40), `SafetySuite` (40), `ConversationSuite` (20)
+- **`RegressionTracker`** — save/load/compare baselines; severity levels (warning/high/critical); thresholds: >5% accuracy drop, >20% latency increase
+- **`ModelComparison`** — multi-model matrix comparison with recommendations; markdown/JSON export
+- **CLI** — `effgen eval --suite <name>` and `effgen compare --models "a,b,c" --suite <name>`
+- **Nightly CI** — eval-regression job compares against stored baselines, opens GitHub issue on failure
+
+#### API Server v2 — Production Gateway
+- **OpenAI-compatible API** — `/v1/chat/completions` and `/v1/completions` with `tools` param and `stream: true` (SSE); model aliases (gpt-4 → Qwen2.5-7B, gpt-3.5-turbo → Qwen2.5-3B)
+- **`RequestQueue`** — priority queue with fair scheduling, deadlines, backpressure (`QueueFullError`)
+- **`AgentPool`** — min/max size, factory, idle TTL, health checking, acquire/release
+- **Multi-tenancy** — `TenantManager` (rate limits, model restrictions, tool permissions); `APIKey` management with hashed storage and constant-time resolution
+- **Production middleware** — CORS, request ID injection (X-Request-ID), GZip compression, graceful shutdown
+
+#### SDK, Client Libraries & Embedding API
+- **Python client SDK** — `EffGenClient` with sync + async via httpx; `chat()`, `embed()`, `health()`, `chat_stream_sync()`, `achat()`, `chat_stream()` (async iterator); retries with exponential backoff; 7 typed exception classes
+- **TypeScript/JavaScript client** — `clients/typescript/` with fetch-based `EffGenClient`; chat/embed/health/streaming; works in Node 18+/Deno/Bun/browser
+- **Local embedding API** — `/v1/embeddings` endpoint (OpenAI-compatible); `SentenceTransformerEmbedder` + `TFIDFEmbedder` fallback; model aliases; `LRUCache` + `SQLiteCache` for embedding caching
+
+#### Performance Optimization & Caching
+- **`effgen.cache`** module — `PromptCache` (LRU + TTL, sha256 fingerprint, thread-safe, hit/miss stats); `ResultCache` (LRU + per-tool TTL, optional semantic similarity via embed_fn + cosine)
+- **`TokenBudget`** — smart context window allocation (system 20% / tools 30% / history 40% / response 10%); `smart_truncate()` preserves head+tail; `fit_to_budget()` per-section truncation
+- **`LazyModel`** — defers `.load()` until first generate/count_tokens; idle_timeout-based eviction (default 600s)
+- **GGUF support** — `GGUFEngine` via optional llama-cpp-python; auto-routed by model_loader for `.gguf` files
+- **AWQ / GPTQ quantization** — `quantization="awq"` and `quantization="gptq"` in model_loader; optional deps with friendly install hints
+- **Speculative decoding** — `GenerationConfig.draft_model` field for backends that support draft-model decoding
+- **`ContinuousBatcher`** — coalesces concurrent submit() calls in background worker; max_batch_size / max_wait_ms flush; `BatchModel` fast path + sequential fallback
+
+### Changed
+- **7 inference backends** (was 5) — added MLX and MLX-VLM for Apple Silicon
+- **31 built-in tools** (was 14) — added 17 domain tools (finance, data science, DevOps, knowledge, communication)
+- Model backends now support `supports_tool_calling()` for native function calling
+- `AgentConfig` extended with `tool_calling_mode`, `output_format`, `output_schema`, `guardrails`, `models`, `speculative_execution`, `approval_mode`, `approval_callback`, `session_id`, `checkpoint_interval`, `checkpoint_dir`
+- `AgentResponse` extended with `citations` and `sources` fields
+- `Agent.run()` accepts `output_schema`, `output_model`, `debug`, `checkpoint_interval` parameters
+- Prometheus metrics now include histograms with percentiles, GPU memory gauge, and labels
+
+### Fixed
+- `asyncio.run()` crash when Agent used inside existing event loops (Jupyter, FastAPI)
+- ShortTermMemory `get_token_count()` O(n) recalculation on every call (now O(1))
+- MCP HTTP transport race condition with concurrent requests
+- Sub-agent `_current_depth` not reset on completion/failure
+- BashTool vulnerable to nested command substitution (`${VAR:-$(cmd)}`)
+- PythonREPL sandbox escape via `__import__`, `importlib`, `__builtins__`
+
+### Internal
+- 487+ unit tests passing (up from 157 in v0.1.3)
+- Real GPU integration tests across all phases (A40 GPUs)
+- Fresh conda environment validation after every phase
+- Nightly CI with eval regression detection and automated GitHub issue creation
+
+---
+
 ## [0.1.3] - 2026-03-25
 
 ### Added
@@ -349,7 +503,8 @@ Thank you to all contributors who helped make effGen possible!
 
 ---
 
-[Unreleased]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/ctrl-gaurav/effGen/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.3...v0.2.0
 [0.1.3]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.0...v0.1.1

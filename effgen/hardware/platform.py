@@ -121,3 +121,7 @@ def detect_platform() -> HardwarePlatform:
     if is_cuda_available():
         return HardwarePlatform.CUDA
     return HardwarePlatform.CPU_ONLY
+
+
+# Alias for backward compatibility
+recommend_backend = get_best_local_backend

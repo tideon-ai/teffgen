@@ -125,6 +125,186 @@ class MyTool(BaseTool):
 | WikipediaTool | `from effgen.tools.builtin import WikipediaTool` | Wikipedia lookup |
 | AgenticSearch | `from effgen.tools.builtin import AgenticSearch` | Local file search |
 | Retrieval | `from effgen.tools.builtin import Retrieval` | RAG retrieval |
+| StockPriceTool | `from effgen.tools.builtin import StockPriceTool` | Stock prices (yfinance/Yahoo) |
+| CurrencyConverterTool | `from effgen.tools.builtin import CurrencyConverterTool` | Currency conversion (ECB) |
+| CryptoTool | `from effgen.tools.builtin import CryptoTool` | Crypto prices (CoinGecko) |
+| DataFrameTool | `from effgen.tools.builtin import DataFrameTool` | Pandas DataFrame ops |
+| PlotTool | `from effgen.tools.builtin import PlotTool` | Matplotlib charts |
+| StatsTool | `from effgen.tools.builtin import StatsTool` | Statistical analysis |
+| GitTool | `from effgen.tools.builtin import GitTool` | Git operations (read-only) |
+| DockerTool | `from effgen.tools.builtin import DockerTool` | Docker operations (read-only) |
+| SystemInfoTool | `from effgen.tools.builtin import SystemInfoTool` | System monitoring |
+| HTTPTool | `from effgen.tools.builtin import HTTPTool` | HTTP requests |
+| ArxivTool | `from effgen.tools.builtin import ArxivTool` | arXiv paper search |
+| StackOverflowTool | `from effgen.tools.builtin import StackOverflowTool` | StackOverflow search |
+| GitHubTool | `from effgen.tools.builtin import GitHubTool` | GitHub search |
+| WolframAlphaTool | `from effgen.tools.builtin import WolframAlphaTool` | Wolfram Alpha (API key) |
+| EmailDraftTool | `from effgen.tools.builtin import EmailDraftTool` | Email drafting |
+| SlackDraftTool | `from effgen.tools.builtin import SlackDraftTool` | Slack message drafting |
+| NotificationTool | `from effgen.tools.builtin import NotificationTool` | Desktop notifications |
+
+---
+
+## Guardrails
+
+```python
+from effgen.guardrails import (
+    GuardrailChain, PIIGuardrail, PromptInjectionGuardrail,
+    ToxicityGuardrail, LengthGuardrail, TopicGuardrail,
+    ToolPermissionGuardrail, get_guardrail_preset,
+)
+
+# Use a preset
+chain = get_guardrail_preset("strict")
+
+# Or build custom
+chain = GuardrailChain([
+    PromptInjectionGuardrail(sensitivity="high"),
+    PIIGuardrail(),
+    LengthGuardrail(max_length=5000),
+])
+
+# Attach to agent
+config = AgentConfig(name="safe_agent", model=model, guardrails=chain)
+```
+
+---
+
+## RAG Pipeline
+
+```python
+from effgen.rag import DocumentIngester, HybridSearchEngine, ContextBuilder
+
+# Ingest documents
+ingester = DocumentIngester()
+chunks = ingester.ingest("./docs/")
+
+# Search
+engine = HybridSearchEngine(chunks)
+results = engine.search("scaling architecture", top_k=5)
+
+# Build context with citations
+builder = ContextBuilder(max_tokens=2048)
+context, citations = builder.build(results)
+
+# Or use the preset
+from effgen.presets import create_agent
+agent = create_agent("rag", model, knowledge_base="./docs/")
+result = agent.run("What does the architecture doc say about scaling?")
+print(result.citations)
+```
+
+---
+
+## Evaluation
+
+```python
+from effgen.eval import AgentEvaluator, MathSuite, RegressionTracker
+from effgen.eval.evaluator import ScoringMode
+
+evaluator = AgentEvaluator(agent, scoring=ScoringMode.CONTAINS)
+results = evaluator.run_suite(MathSuite())
+print(results.summary())
+
+# Regression tracking
+tracker = RegressionTracker()
+tracker.save_baseline("math", results, version="0.2.0")
+report = tracker.compare("math", new_results, version="0.2.1")
+```
+
+---
+
+## Model Router
+
+```python
+from effgen.models.router import ModelRouter
+from effgen.models.capabilities import MODEL_CAPABILITIES, estimate_complexity
+
+# Auto-routing
+config = AgentConfig(
+    name="smart_agent",
+    model=small_model,
+    models=[small_model, large_model],  # Router auto-created
+)
+
+# Complexity estimation
+level = estimate_complexity("Write a recursive merge sort in Python")
+# → ComplexityLevel.COMPLEX
+```
+
+---
+
+## Checkpointing & Sessions
+
+```python
+# Checkpointing
+agent.run("Long research task...", checkpoint_interval=3)
+# If interrupted:
+agent.resume(checkpoint_id="latest")
+
+# Sessions
+agent = Agent(config=config, session_id="user-123")
+agent.run("My name is Alice")
+# Later, even in new process:
+agent = Agent(config=config, session_id="user-123")
+result = agent.run("What's my name?")  # Recalls "Alice"
+```
+
+---
+
+## Human-in-the-Loop
+
+```python
+from effgen.core.human_loop import HumanApproval
+
+config = AgentConfig(
+    name="careful_agent",
+    model=model,
+    tools=[BashTool()],
+    approval_mode="dangerous_only",
+    approval_callback=HumanApproval.cli_callback,
+)
+```
+
+---
+
+## Observability
+
+```python
+# Debug mode
+result = agent.run("What is 2+2?", debug=True)
+trace = result.metadata["debug_trace"]
+trace.print_rich()  # Rich TUI output
+
+# Structured logging
+from effgen.utils.structured_logging import StructuredLogger
+logger = StructuredLogger("my_app")
+
+# Prometheus metrics
+from effgen.utils.prometheus_metrics import get_metrics
+metrics = get_metrics()
+print(metrics.export())
+```
+
+---
+
+## Client SDK
+
+```python
+from effgen.client import EffGenClient
+
+client = EffGenClient(base_url="http://localhost:8000", api_key="...")
+
+# Chat
+response = client.chat("What is 2+2?")
+
+# Streaming
+for chunk in client.chat_stream_sync("Tell me a story"):
+    print(chunk, end="")
+
+# Embeddings
+vectors = client.embed(["hello", "world"])
+```
 
 ---
 

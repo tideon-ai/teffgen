@@ -18,7 +18,8 @@
 <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10+-blue.svg?style=for-the-badge&logo=python&logoColor=white" alt="Python"/></a>
 <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-green.svg?style=for-the-badge" alt="License"/></a>
 
-<a href="https://pypi.org/project/effgen/"><img src="https://img.shields.io/pypi/dm/effgen.svg?style=for-the-badge&logo=pypi&logoColor=white&color=orange" alt="Downloads"/></a>
+<a href="https://pepy.tech/project/effgen"><img src="https://img.shields.io/pepy/dt/effgen?style=for-the-badge&logo=pypi&logoColor=white&color=brightgreen&label=Total%20Downloads" alt="Total Downloads"/></a>
+<a href="https://pypi.org/project/effgen/"><img src="https://img.shields.io/pypi/dm/effgen.svg?style=for-the-badge&logo=pypi&logoColor=white&color=orange" alt="Monthly Downloads"/></a>
 <a href="https://github.com/ctrl-gaurav/effGen"><img src="https://img.shields.io/github/stars/ctrl-gaurav/effGen?style=for-the-badge&logo=github&color=yellow" alt="Stars"/></a>
 <a href="https://github.com/ctrl-gaurav/effGen/fork"><img src="https://img.shields.io/github/forks/ctrl-gaurav/effGen?style=for-the-badge&logo=github&color=blue" alt="Forks"/></a>
 
@@ -36,6 +37,8 @@
 
 | | Date | Update |
 |:---:|:---|:---|
+| 🚀 | **9 Apr 2026** | **v0.2.0 Released**: Major release — native tool calling, guardrails, multi-agent orchestration, RAG pipeline, 31 tools, eval framework, production API server, MLX Apple Silicon support, Python & TypeScript SDKs. [See changelog](https://github.com/ctrl-gaurav/effGen/blob/main/CHANGELOG.md#020---2026-04-09) |
+| 🍎 | **8 Apr 2026** | **MLX & Apple Silicon support merged** (PR #4): Native Metal GPU acceleration via MLX & MLX-VLM backends. `pip install effgen[mlx]` |
 | 🔧 | **25 Mar 2026** | **v0.1.3 Released**: Verification hardening — smarter loop detection, "skip the tool" prompting, model-aware token counting, sub-agent depth limits, circuit breaker persistence. [See changelog](https://github.com/ctrl-gaurav/effGen/blob/main/CHANGELOG.md#013---2026-03-25) |
 | 🔧 | **12 Mar 2026** | **v0.1.2 Released**: Test-driven hardening — 10 example agents, 19 bug fixes, cross-model compatibility matrix (11 models, 73% pass rate). [See changelog](https://github.com/ctrl-gaurav/effGen/blob/main/CHANGELOG.md#012---2026-03-12) |
 | 🔒 | **6 Mar 2026** | **v0.1.1 Released**: Stabilization — fixed license/metadata consistency, improved error handling, added 6 examples, expanded test suite. [See changelog](https://github.com/ctrl-gaurav/effGen/blob/main/CHANGELOG.md#011---2026-03-06) |
@@ -83,10 +86,27 @@ print(f"Answer: {result.output}")
 pip install effgen
 ```
 
+### 🍎 Apple Silicon (MLX)
+
+```bash
+pip install effgen[mlx]          # Text models on Apple Silicon
+pip install effgen[mlx-vlm]      # Vision-Language models on Apple Silicon
+```
+
 ### 🚀 With vLLM for Faster Inference
 
 ```bash
 pip install effgen[vllm]
+```
+
+### 📊 Optional Extras
+
+```bash
+pip install effgen[rag]       # RAG pipeline (sentence-transformers, faiss-cpu)
+pip install effgen[finance]   # Finance tools (yfinance)
+pip install effgen[data]      # Data science tools (matplotlib, plotly)
+pip install effgen[eval]      # Evaluation (rouge-score, nltk)
+pip install effgen[gguf]      # GGUF model support (llama-cpp-python)
 ```
 
 ### 🔧 From Source
@@ -161,49 +181,49 @@ print(result.output)
 
 **🧠**<br/>
 SLM Optimized<br/>
-<sub>For smaller models</sub>
+<sub>Small models</sub>
 
 </td>
 <td align="center" width="14%">
 
-**🔄**<br/>
-Multi-Model<br/>
-<sub>HF, OpenAI, etc.</sub>
+**🍎**<br/>
+Apple Silicon<br/>
+<sub>MLX + Metal GPU</sub>
 
 </td>
 <td align="center" width="14%">
 
-**🔧**<br/>
-Tool Integration<br/>
-<sub>MCP, A2A, ACP</sub>
+**🛡️**<br/>
+Guardrails<br/>
+<sub>PII, injection, safety</sub>
 
 </td>
 <td align="center" width="14%">
 
-**🧩**<br/>
-Task Decomp<br/>
-<sub>Auto breakdown</sub>
+**📚**<br/>
+RAG Pipeline<br/>
+<sub>Ingest, search, cite</sub>
 
 </td>
 <td align="center" width="14%">
 
 **👥**<br/>
 Multi-Agent<br/>
-<sub>Coordination</sub>
+<sub>DAG workflows</sub>
 
 </td>
 <td align="center" width="14%">
 
-**💾**<br/>
-Memory<br/>
-<sub>Short & Long</sub>
+**🔧**<br/>
+31 Tools<br/>
+<sub>+ MCP/A2A/ACP</sub>
 
 </td>
 <td align="center" width="14%">
 
-**🔌**<br/>
-Plugins<br/>
-<sub>Extensible</sub>
+**🏭**<br/>
+Production API<br/>
+<sub>OpenAI-compat</sub>
 
 </td>
 </tr>
@@ -239,7 +259,7 @@ effgen run --preset research "Tell me about quantum computing"
 
 ---
 
-## 🛠️ Built-in Tools (14)
+## 🛠️ Built-in Tools (31)
 
 <div align="center">
 
