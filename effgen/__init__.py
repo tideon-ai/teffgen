@@ -121,6 +121,20 @@ try:
 except ImportError:
     pass
 
+# Eval imports
+try:
+    from effgen.eval import (
+        AgentEvaluator,
+        EvalResult,
+        ModelComparison,
+        RegressionTracker,
+        SuiteResults,
+        TestCase,
+        TestSuite,
+    )
+except ImportError:
+    pass
+
 # Execution imports
 from effgen.execution import (
     CodeExecutor,
@@ -210,6 +224,15 @@ __all__ = [
     "CircuitBreaker",
     "ToolPromptGenerator",
     "AgentSystemPromptBuilder",
+
+    # Eval
+    "AgentEvaluator",
+    "EvalResult",
+    "SuiteResults",
+    "TestCase",
+    "TestSuite",
+    "ModelComparison",
+    "RegressionTracker",
 
     # Execution
     "CodeExecutor",

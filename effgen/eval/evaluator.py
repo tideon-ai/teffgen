@@ -1,0 +1,337 @@
+"""
+Agent evaluation framework.
+
+Run agents against test suites and collect structured results with
+multiple scoring modes.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import re
+import time
+from dataclasses import dataclass, field
+from enum import Enum
+from pathlib import Path
+from typing import Any
+
+logger = logging.getLogger(__name__)
+
+
+class Difficulty(Enum):
+    """Test case difficulty levels."""
+    EASY = "easy"
+    MEDIUM = "medium"
+    HARD = "hard"
+
+
+class ScoringMode(Enum):
+    """Available scoring strategies."""
+    EXACT_MATCH = "exact_match"
+    CONTAINS = "contains"
+    REGEX = "regex"
+    SEMANTIC_SIMILARITY = "semantic_similarity"
+    LLM_JUDGE = "llm_judge"
+
+
+@dataclass
+class TestCase:
+    __test__ = False  # not a pytest test class
+    """A single evaluation test case.
+
+    Attributes:
+        query: The input query for the agent.
+        expected_output: Expected output text (used for exact/contains/regex).
+        expected_tools: Tool names the agent should invoke.
+        tags: Arbitrary tags for filtering / grouping.
+        difficulty: Difficulty level.
+        metadata: Extra data (e.g. multi-turn conversation history).
+    """
+    query: str
+    expected_output: str = ""
+    expected_tools: list[str] = field(default_factory=list)
+    tags: list[str] = field(default_factory=list)
+    difficulty: Difficulty = Difficulty.MEDIUM
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> TestCase:
+        """Create a TestCase from a dict (e.g. parsed JSONL line)."""
+        difficulty = data.get("difficulty", "medium")
+        if isinstance(difficulty, str):
+            difficulty = Difficulty(difficulty)
+        return cls(
+            query=data["query"],
+            expected_output=data.get("expected", data.get("expected_output", "")),
+            expected_tools=data.get("tools", data.get("expected_tools", [])),
+            tags=data.get("tags", []),
+            difficulty=difficulty,
+            metadata=data.get("metadata", {}),
+        )
+
+
+@dataclass
+class EvalResult:
+    """Result from evaluating a single test case.
+
+    Attributes:
+        test_case: The test case that was evaluated.
+        agent_output: Raw agent output text.
+        score: Numeric score in [0, 1].
+        passed: Whether the test case passed.
+        latency: Wall-clock seconds for agent.run().
+        tokens_used: Total tokens consumed.
+        tool_accuracy: Fraction of expected tools that were called.
+        tools_called: Names of tools the agent actually invoked.
+        scoring_mode: Which scoring mode produced the score.
+        details: Extra details (e.g. judge reasoning).
+    """
+    test_case: TestCase
+    agent_output: str = ""
+    score: float = 0.0
+    passed: bool = False
+    latency: float = 0.0
+    tokens_used: int = 0
+    tool_accuracy: float = 0.0
+    tools_called: list[str] = field(default_factory=list)
+    scoring_mode: ScoringMode = ScoringMode.CONTAINS
+    details: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class SuiteResults:
+    """Aggregated results from running a full test suite.
+
+    Attributes:
+        suite_name: Name of the suite.
+        results: Per-test-case results.
+        accuracy: Fraction of test cases that passed.
+        avg_latency: Mean latency across test cases (seconds).
+        total_tokens: Sum of tokens consumed.
+        avg_tool_accuracy: Mean tool accuracy.
+        metadata: Extra info (model name, timestamp, etc.).
+    """
+    suite_name: str = ""
+    results: list[EvalResult] = field(default_factory=list)
+    accuracy: float = 0.0
+    avg_latency: float = 0.0
+    total_tokens: int = 0
+    avg_tool_accuracy: float = 0.0
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def summary(self) -> dict[str, Any]:
+        """Return a JSON-serialisable summary."""
+        by_difficulty: dict[str, dict[str, Any]] = {}
+        for r in self.results:
+            d = r.test_case.difficulty.value
+            if d not in by_difficulty:
+                by_difficulty[d] = {"total": 0, "passed": 0}
+            by_difficulty[d]["total"] += 1
+            if r.passed:
+                by_difficulty[d]["passed"] += 1
+        for v in by_difficulty.values():
+            v["accuracy"] = v["passed"] / v["total"] if v["total"] else 0.0
+        return {
+            "suite": self.suite_name,
+            "total": len(self.results),
+            "passed": sum(1 for r in self.results if r.passed),
+            "accuracy": self.accuracy,
+            "avg_latency": round(self.avg_latency, 4),
+            "total_tokens": self.total_tokens,
+            "avg_tool_accuracy": round(self.avg_tool_accuracy, 4),
+            "by_difficulty": by_difficulty,
+            "metadata": self.metadata,
+        }
+
+    def to_json(self, indent: int = 2) -> str:
+        return json.dumps(self.summary(), indent=indent)
+
+
+# ---------------------------------------------------------------------------
+# Scoring helpers
+# ---------------------------------------------------------------------------
+
+def _score_exact_match(expected: str, actual: str) -> float:
+    return 1.0 if expected.strip().lower() == actual.strip().lower() else 0.0
+
+
+def _score_contains(expected: str, actual: str) -> float:
+    return 1.0 if expected.strip().lower() in actual.strip().lower() else 0.0
+
+
+def _score_regex(pattern: str, actual: str) -> float:
+    try:
+        return 1.0 if re.search(pattern, actual, re.IGNORECASE) else 0.0
+    except re.error:
+        logger.warning("Invalid regex pattern: %s", pattern)
+        return 0.0
+
+
+def _score_semantic_similarity(expected: str, actual: str) -> float:
+    """Score via sentence-transformers cosine similarity (optional dep)."""
+    try:
+        from sentence_transformers import SentenceTransformer, util as st_util
+    except ImportError:
+        logger.warning(
+            "sentence-transformers not installed — falling back to contains scoring"
+        )
+        return _score_contains(expected, actual)
+    model = SentenceTransformer("all-MiniLM-L6-v2")
+    emb = model.encode([expected, actual], convert_to_tensor=True)
+    sim = float(st_util.cos_sim(emb[0], emb[1])[0][0])
+    return max(0.0, min(1.0, sim))
+
+
+def _score_llm_judge(agent: Any, query: str, expected: str, actual: str) -> tuple[float, str]:
+    """Use the agent's own model as a judge. Returns (score, reasoning)."""
+    judge_prompt = (
+        "You are an evaluation judge. Score the following answer on a scale of 0 to 1.\n"
+        "Respond ONLY with a JSON object: {\"score\": <float>, \"reasoning\": \"<text>\"}\n\n"
+        f"Question: {query}\n"
+        f"Expected answer: {expected}\n"
+        f"Actual answer: {actual}\n"
+    )
+    try:
+        response = agent.run(judge_prompt)
+        text = response.output if hasattr(response, "output") else str(response)
+        # Try to parse JSON from the response
+        match = re.search(r'\{[^}]*"score"\s*:\s*([\d.]+)[^}]*\}', text)
+        if match:
+            parsed = json.loads(match.group(0))
+            return float(parsed.get("score", 0.0)), parsed.get("reasoning", "")
+        return 0.0, f"Could not parse judge response: {text[:200]}"
+    except Exception as exc:
+        return 0.0, f"LLM judge error: {exc}"
+
+
+def _compute_tool_accuracy(expected_tools: list[str], called_tools: list[str]) -> float:
+    if not expected_tools:
+        return 1.0
+    expected_set = set(t.lower() for t in expected_tools)
+    called_set = set(t.lower() for t in called_tools)
+    return len(expected_set & called_set) / len(expected_set)
+
+
+# ---------------------------------------------------------------------------
+# AgentEvaluator
+# ---------------------------------------------------------------------------
+
+class AgentEvaluator:
+    """Run an agent against a test suite and collect results.
+
+    Usage::
+
+        evaluator = AgentEvaluator(agent)
+        results = evaluator.run_suite(MathSuite())
+        print(results.accuracy)
+    """
+
+    def __init__(
+        self,
+        agent: Any,
+        scoring: ScoringMode = ScoringMode.CONTAINS,
+        pass_threshold: float = 0.5,
+    ) -> None:
+        self.agent = agent
+        self.scoring = scoring
+        self.pass_threshold = pass_threshold
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def run_suite(self, suite: Any) -> SuiteResults:
+        """Run all test cases in *suite* and return aggregated results."""
+        test_cases: list[TestCase] = suite.test_cases if hasattr(suite, "test_cases") else list(suite)
+        results: list[EvalResult] = []
+        for tc in test_cases:
+            results.append(self.run_case(tc))
+        return self._aggregate(suite.name if hasattr(suite, "name") else "custom", results)
+
+    def run_case(self, tc: TestCase) -> EvalResult:
+        """Evaluate a single test case."""
+        start = time.perf_counter()
+        try:
+            response = self.agent.run(tc.query)
+            output = response.output if hasattr(response, "output") else str(response)
+            tokens = response.tokens_used if hasattr(response, "tokens_used") else 0
+            # Extract tool names from execution trace
+            tools_called = self._extract_tools(response)
+        except Exception as exc:
+            logger.warning("Agent error on query %r: %s", tc.query[:60], exc)
+            output = f"ERROR: {exc}"
+            tokens = 0
+            tools_called = []
+        latency = time.perf_counter() - start
+
+        score, details = self._score(tc, output)
+        tool_acc = _compute_tool_accuracy(tc.expected_tools, tools_called)
+
+        return EvalResult(
+            test_case=tc,
+            agent_output=output,
+            score=score,
+            passed=score >= self.pass_threshold,
+            latency=latency,
+            tokens_used=tokens,
+            tool_accuracy=tool_acc,
+            tools_called=tools_called,
+            scoring_mode=self.scoring,
+            details=details,
+        )
+
+    # ------------------------------------------------------------------
+    # Internals
+    # ------------------------------------------------------------------
+
+    def _score(self, tc: TestCase, output: str) -> tuple[float, dict[str, Any]]:
+        details: dict[str, Any] = {}
+        if self.scoring == ScoringMode.EXACT_MATCH:
+            score = _score_exact_match(tc.expected_output, output)
+        elif self.scoring == ScoringMode.CONTAINS:
+            score = _score_contains(tc.expected_output, output)
+        elif self.scoring == ScoringMode.REGEX:
+            score = _score_regex(tc.expected_output, output)
+        elif self.scoring == ScoringMode.SEMANTIC_SIMILARITY:
+            score = _score_semantic_similarity(tc.expected_output, output)
+        elif self.scoring == ScoringMode.LLM_JUDGE:
+            score, reasoning = _score_llm_judge(
+                self.agent, tc.query, tc.expected_output, output,
+            )
+            details["judge_reasoning"] = reasoning
+        else:
+            score = _score_contains(tc.expected_output, output)
+        return score, details
+
+    @staticmethod
+    def _extract_tools(response: Any) -> list[str]:
+        """Best-effort extraction of tool names from an AgentResponse."""
+        tools: list[str] = []
+        trace = getattr(response, "execution_trace", None)
+        if trace:
+            for event in trace:
+                name = None
+                if hasattr(event, "tool_name"):
+                    name = event.tool_name
+                elif isinstance(event, dict):
+                    name = event.get("tool_name") or event.get("tool")
+                if name and name not in tools:
+                    tools.append(name)
+        return tools
+
+    def _aggregate(self, suite_name: str, results: list[EvalResult]) -> SuiteResults:
+        n = len(results) or 1
+        return SuiteResults(
+            suite_name=suite_name,
+            results=results,
+            accuracy=sum(1 for r in results if r.passed) / n,
+            avg_latency=sum(r.latency for r in results) / n,
+            total_tokens=sum(r.tokens_used for r in results),
+            avg_tool_accuracy=sum(r.tool_accuracy for r in results) / n,
+            metadata={
+                "scoring": self.scoring.value,
+                "pass_threshold": self.pass_threshold,
+                "num_cases": len(results),
+            },
+        )

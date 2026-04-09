@@ -1865,6 +1865,39 @@ Examples:
                               help='Use a preset agent configuration')
     batch_parser.add_argument('--query-field', default='query', help='Field name for queries in JSONL/CSV (default: query)')
 
+    # Eval command (Phase 11)
+    eval_parser = subparsers.add_parser('eval', help='Evaluate an agent against a test suite')
+    eval_parser.add_argument('--suite', required=True,
+                              help='Test suite name (math, tool_use, reasoning, safety, conversation)')
+    eval_parser.add_argument('-m', '--model', help='Model to use')
+    eval_parser.add_argument('--preset', choices=['math', 'research', 'coding', 'general', 'minimal'],
+                              help='Use a preset agent configuration')
+    eval_parser.add_argument('--scoring', choices=['exact_match', 'contains', 'regex', 'semantic_similarity', 'llm_judge'],
+                              default='contains', help='Scoring mode (default: contains)')
+    eval_parser.add_argument('--threshold', type=float, default=0.5,
+                              help='Pass threshold (default: 0.5)')
+    eval_parser.add_argument('--save-baseline', action='store_true',
+                              help='Save results as regression baseline')
+    eval_parser.add_argument('--compare-baseline', action='store_true',
+                              help='Compare results against stored baseline')
+    eval_parser.add_argument('-o', '--output', help='Output file for results (JSON)')
+    eval_parser.add_argument('--difficulty', choices=['easy', 'medium', 'hard'],
+                              help='Filter test cases by difficulty')
+
+    # Compare command (Phase 11)
+    compare_parser = subparsers.add_parser('compare', help='Compare multiple models on a test suite')
+    compare_parser.add_argument('--models', required=True,
+                                 help='Comma-separated model names')
+    compare_parser.add_argument('--suite', required=True,
+                                 help='Test suite name')
+    compare_parser.add_argument('--scoring', choices=['exact_match', 'contains', 'regex', 'semantic_similarity', 'llm_judge'],
+                                 default='contains', help='Scoring mode (default: contains)')
+    compare_parser.add_argument('--threshold', type=float, default=0.5,
+                                 help='Pass threshold (default: 0.5)')
+    compare_parser.add_argument('-o', '--output', help='Output file for results (JSON or Markdown)')
+    compare_parser.add_argument('--preset', choices=['math', 'research', 'coding', 'general', 'minimal'],
+                                 help='Use a preset agent configuration')
+
     # Debug command
     debug_parser = subparsers.add_parser('debug', help='Run an agent in interactive debug mode')
     debug_parser.add_argument('task', help='Task to execute')
@@ -2096,6 +2129,171 @@ def _handle_batch_command(args, cli) -> int:
         return 1
 
 
+def _handle_eval_command(args, cli) -> int:
+    """Handle 'effgen eval' subcommand."""
+    from effgen.eval import AgentEvaluator, RegressionTracker, get_suite, list_suites
+    from effgen.eval.evaluator import ScoringMode
+
+    suite_name = args.suite
+    model_name = getattr(args, 'model', None) or 'Qwen/Qwen2.5-1.5B-Instruct'
+    preset_name = getattr(args, 'preset', None)
+    scoring = ScoringMode(args.scoring)
+    threshold = args.threshold
+    difficulty = getattr(args, 'difficulty', None)
+
+    try:
+        # List suites if requested
+        if suite_name == 'list':
+            cli.print_header("Available Evaluation Suites")
+            for name, desc in list_suites().items():
+                cli.print(f"  {name:16s} — {desc}")
+            return 0
+
+        suite = get_suite(suite_name)
+
+        # Filter by difficulty if specified
+        if difficulty:
+            from effgen.eval.evaluator import Difficulty
+            suite.test_cases = suite.filter(difficulty=Difficulty(difficulty))
+            cli.print(f"Filtered to {len(suite.test_cases)} {difficulty} test cases")
+
+        cli.print(f"Loading model {model_name}...")
+
+        # Create agent
+        if preset_name:
+            from effgen.presets import create_agent
+            from effgen.models import load_model
+            model = load_model(model_name)
+            agent = create_agent(preset_name, model)
+        else:
+            from effgen.core.agent import Agent, AgentConfig
+            from effgen.models import load_model
+            model = load_model(model_name)
+            config = AgentConfig(name="eval-agent", model=model, max_iterations=10)
+            agent = Agent(config)
+
+        cli.print(f"Running {suite_name} suite ({len(suite)} cases, scoring={args.scoring})...")
+        evaluator = AgentEvaluator(agent, scoring=scoring, pass_threshold=threshold)
+        results = evaluator.run_suite(suite)
+
+        # Display results
+        summary = results.summary()
+        cli.print_header(f"Evaluation Results: {suite_name}")
+        cli.print(f"  Accuracy:       {summary['accuracy']:.1%} ({summary['passed']}/{summary['total']})")
+        cli.print(f"  Avg Latency:    {summary['avg_latency']:.4f}s")
+        cli.print(f"  Total Tokens:   {summary['total_tokens']}")
+        cli.print(f"  Tool Accuracy:  {summary['avg_tool_accuracy']:.1%}")
+
+        if summary.get('by_difficulty'):
+            cli.print("\n  By Difficulty:")
+            for d, info in sorted(summary['by_difficulty'].items()):
+                cli.print(f"    {d:8s}: {info['accuracy']:.1%} ({info['passed']}/{info['total']})")
+
+        # Show per-case details for failures
+        failures = [r for r in results.results if not r.passed]
+        if failures:
+            cli.print(f"\n  Failed cases ({len(failures)}):")
+            for r in failures[:10]:
+                cli.print(f"    - {r.test_case.query[:60]}...")
+                cli.print(f"      Expected: {r.test_case.expected_output[:40]}")
+                cli.print(f"      Got:      {r.agent_output[:40]}")
+
+        # Save baseline
+        if args.save_baseline:
+            from effgen import __version__
+            tracker = RegressionTracker()
+            path = tracker.save_baseline(suite_name, results, version=__version__)
+            cli.print(f"\n  Baseline saved to {path}")
+
+        # Compare baseline
+        if args.compare_baseline:
+            from effgen import __version__
+            tracker = RegressionTracker()
+            report = tracker.compare(suite_name, results, version=__version__)
+            cli.print(f"\n{report.to_markdown()}")
+
+        # Write output
+        if args.output:
+            Path(args.output).write_text(results.to_json(), encoding="utf-8")
+            cli.print(f"\n  Results written to {args.output}")
+
+        return 0 if results.accuracy >= 0.5 else 1
+
+    except KeyError as e:
+        cli.print(f"Error: {e}")
+        cli.print("Available suites:")
+        for name, desc in list_suites().items():
+            cli.print(f"  {name:16s} — {desc}")
+        return 1
+    except Exception as e:
+        cli.print(f"Evaluation failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
+
+
+def _handle_compare_command(args, cli) -> int:
+    """Handle 'effgen compare' subcommand."""
+    from effgen.eval import ModelComparison, get_suite
+    from effgen.eval.evaluator import ScoringMode
+
+    model_names = [m.strip() for m in args.models.split(',')]
+    suite_name = args.suite
+    scoring = ScoringMode(args.scoring)
+    threshold = args.threshold
+    preset_name = getattr(args, 'preset', None)
+
+    try:
+        suite = get_suite(suite_name)
+
+        # Load all models and create agents
+        from effgen.models import load_model
+        agents: dict = {}
+
+        for model_name in model_names:
+            cli.print(f"Loading model {model_name}...")
+            try:
+                model = load_model(model_name)
+                if preset_name:
+                    from effgen.presets import create_agent
+                    agent = create_agent(preset_name, model)
+                else:
+                    from effgen.core.agent import Agent, AgentConfig
+                    config = AgentConfig(name=f"compare-{model_name}", model=model, max_iterations=10)
+                    agent = Agent(config)
+                agents[model_name] = agent
+            except Exception as e:
+                cli.print(f"  Warning: Failed to load {model_name}: {e}")
+
+        if not agents:
+            cli.print("Error: No models loaded successfully.")
+            return 1
+
+        cli.print(f"\nComparing {len(agents)} models on {suite_name} ({len(suite)} cases)...")
+        comparison = ModelComparison(scoring=scoring, pass_threshold=threshold)
+        matrix = comparison.run(agents, [suite])
+
+        # Display
+        cli.print(matrix.to_markdown())
+
+        # Write output
+        if args.output:
+            output_path = args.output
+            if output_path.endswith('.md'):
+                Path(output_path).write_text(matrix.to_markdown(), encoding="utf-8")
+            else:
+                Path(output_path).write_text(matrix.to_json(), encoding="utf-8")
+            cli.print(f"\nResults written to {output_path}")
+
+        return 0
+
+    except Exception as e:
+        cli.print(f"Comparison failed: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
+
+
 def _phase7_run_kwargs(args) -> dict:
     """Extract Phase 7 run() kwargs from CLI args."""
     out: dict = {}
@@ -2223,6 +2421,10 @@ def main():
             exit_code = _handle_workflow_command(args, cli)
         elif args.command == 'batch':
             exit_code = _handle_batch_command(args, cli)
+        elif args.command == 'eval':
+            exit_code = _handle_eval_command(args, cli)
+        elif args.command == 'compare':
+            exit_code = _handle_compare_command(args, cli)
         elif args.command == 'debug':
             from effgen.debug.inspector import run_debug_cli
             run_debug_cli(
