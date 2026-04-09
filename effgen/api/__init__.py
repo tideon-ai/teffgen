@@ -21,6 +21,13 @@ from effgen.api.pool import AgentPool, PooledAgent
 from effgen.api.queue import QueuedRequest, RequestQueue, RequestPriority
 from effgen.api.tenancy import APIKey, Tenant, TenantManager
 from effgen.api.middleware import install_production_middleware
+from effgen.api.embeddings import (
+    EmbeddingEngine,
+    LRUCache as EmbeddingLRUCache,
+    SQLiteCache as EmbeddingSQLiteCache,
+    TFIDFEmbedder,
+    create_embeddings_router,
+)
 
 __all__ = [
     "MODEL_ALIASES",
@@ -38,4 +45,9 @@ __all__ = [
     "APIKey",
     "TenantManager",
     "install_production_middleware",
+    "EmbeddingEngine",
+    "EmbeddingLRUCache",
+    "EmbeddingSQLiteCache",
+    "TFIDFEmbedder",
+    "create_embeddings_router",
 ]
