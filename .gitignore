@@ -210,5 +210,11 @@ __marimo__/
 .DS_Store
 planning/
 
+# Node.js
+node_modules/
+
+# Build planning
+v0.2.0/
+
 # Generated config directory (created by install.sh)
 config/
