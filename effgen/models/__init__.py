@@ -55,6 +55,8 @@ from effgen.models.router import (
 )
 from effgen.models.transformers_engine import TransformersEngine
 from effgen.models.vllm_engine import VLLMEngine
+from effgen.models.lazy import LazyModel
+from effgen.models.batching import ContinuousBatcher
 
 # MLX engines (Apple Silicon only, lazy import)
 try:
@@ -113,4 +115,8 @@ __all__ = [
     # Pool (Phase 6)
     "ModelPool",
     "PoolConfig",
+
+    # Phase 14
+    "LazyModel",
+    "ContinuousBatcher",
 ]

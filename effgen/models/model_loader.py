@@ -112,6 +112,19 @@ class ModelLoader:
             logger.info(f"Model '{model_name}' already loaded, returning cached instance")
             return self.loaded_models[model_name]
 
+        # GGUF files take a dedicated path (llama-cpp-python).
+        if isinstance(model_name, str) and model_name.lower().endswith(".gguf"):
+            from .gguf_engine import GGUFEngine
+
+            gguf_params = dict(kwargs)
+            gguf_params.pop("apply_chat_template", None)
+            model = GGUFEngine(model_name=model_name, **gguf_params)
+            model.load()
+            self._validate_model(model)
+            self.loaded_models[model_name] = model
+            logger.info(f"GGUF model '{model_name}' loaded successfully")
+            return model
+
         # Detect model type
         model_type = self._detect_model_type(model_name)
         logger.info(f"Detected model type: {model_type.value}")
@@ -177,6 +190,11 @@ class ModelLoader:
         if "mlx-community/" in model_lower:
             logger.info(f"Detected MLX-community model: {model_name}")
             return ModelType.MLX
+
+        # GGUF files (Phase 14.3) — handled by a separate engine
+        if model_lower.endswith(".gguf"):
+            logger.info(f"Detected GGUF model file: {model_name}")
+            return ModelType.TRANSFORMERS  # routed to GGUFEngine in load path
 
         # Check if it's a local path
         if os.path.exists(model_name):
@@ -453,13 +471,33 @@ class ModelLoader:
         """
         logger.info(f"Loading with Transformers: {model_name}")
 
-        # Convert shorthand quantization="4bit"/"8bit" to quantization_bits
+        # Convert shorthand quantization="4bit"/"8bit"/"awq"/"gptq" to engine params.
         if "quantization" in params and "quantization_bits" not in params:
             q = params.pop("quantization")
             if q in ("4bit", "4"):
                 params["quantization_bits"] = 4
             elif q in ("8bit", "8"):
                 params["quantization_bits"] = 8
+            elif q == "awq":
+                # AWQ models carry their own quantization config; just verify
+                # autoawq is importable so we fail with a friendly message.
+                try:
+                    import awq  # type: ignore  # noqa: F401
+                except ImportError:
+                    logger.warning(
+                        "quantization='awq' requested but 'autoawq' is not installed. "
+                        "Install with: pip install autoawq"
+                    )
+                params["quantization_method"] = "awq"
+            elif q == "gptq":
+                try:
+                    import auto_gptq  # type: ignore  # noqa: F401
+                except ImportError:
+                    logger.warning(
+                        "quantization='gptq' requested but 'auto-gptq' is not installed. "
+                        "Install with: pip install auto-gptq"
+                    )
+                params["quantization_method"] = "gptq"
             elif q is not None:
                 logger.warning(
                     "Unknown quantization value '%s' for Transformers engine, ignoring.", q
@@ -472,6 +510,11 @@ class ModelLoader:
         # Set device map
         if "device_map" not in params:
             params["device_map"] = "auto" if torch.cuda.is_available() else None
+
+        # AWQ/GPTQ quantization is encoded in the model checkpoint config; the
+        # transformers engine just needs to load it as-is. Drop our internal
+        # marker so it isn't forwarded to from_pretrained.
+        params.pop("quantization_method", None)
 
         return TransformersEngine(model_name=model_name, **params)
 
