@@ -415,12 +415,10 @@ Wikipedia<br/>
 
 ```bash
 # Visual agent & tool development
-python examples/agent_builder/app.py              # Agent Builder — configure, test, export agents (port 7860)
 python examples/basic/chat_gui_mlx.py              # MLX Chat — streaming chat with Apple Silicon models (port 7860)
 python examples/basic/agent_viz_mlx.py             # Agent Visualizer — step-by-step reasoning + code editor (port 7860)
-python examples/basic/benchmark_gui.py             # Benchmark Dashboard — performance & eval leaderboard (port 7862)
 python examples/basic/tool_builder_gui.py          # Tool Builder — visually create custom tools (port 7863)
-python examples/basic/tool_tester_gui.py           # Tool Tester — browse, test, inspect all 14 tools (port 7864)
+python examples/basic/tool_tester_gui.py           # Tool Tester — browse, test, inspect all 31 tools (port 7864)
 ```
 
 ### 🍎 Apple Silicon (MLX)
@@ -461,7 +459,7 @@ python examples/web_retrieval/web_agent.py         # Web search agent
 python examples/web_retrieval/retrieval_agent.py   # RAG-based retrieval
 ```
 
-> 📊 See [examples/compatibility_matrix.md](examples/compatibility_matrix.md) for model compatibility across all agents.
+> 📊 See [examples/compatibility_matrix.md](examples/utils/compatibility_matrix.md) for model compatibility across all agents.
 
 <details>
 <summary><b>📖 More Examples</b></summary>
@@ -555,7 +553,7 @@ effGen supports **7 inference backends** and is tested across 11+ model families
 | Qwen2.5-7B-Instruct | 7B | 9/10 |
 | Llama-3.2-3B-Instruct | 3B | 8.5/10 |
 
-> Full matrix with 11 models x 10 agents: [compatibility_matrix.md](examples/compatibility_matrix.md)
+> Full matrix with 11 models x 10 agents: [compatibility_matrix.md](examples/utils/compatibility_matrix.md)
 
 ---
 

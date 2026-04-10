@@ -375,15 +375,15 @@ Wikipedia<br/>
 ## 📚 Examples
 
 ```bash
-python examples/basic_agent.py      # Basic agent (Transformers backend)
+python examples/basic/basic_agent.py               # Basic agent (Transformers backend)
 
-python examples/basic_agent_vllm.py # Basic agent (vLLM backend - 5-10x faster)
+python examples/basic/basic_agent_vllm.py          # Basic agent (vLLM backend - 5-10x faster)
 
-python examples/web_agent.py        # Web search agent
+python examples/web_retrieval/web_agent.py         # Web search agent
 
-python examples/retrieval_agent.py  # RAG-based retrieval
+python examples/web_retrieval/retrieval_agent.py   # RAG-based retrieval
 
-python examples/agentic_search_agent.py # Grep-based agentic search
+python examples/web_retrieval/agentic_search_agent.py # Grep-based agentic search
 ```
 
 <details>
