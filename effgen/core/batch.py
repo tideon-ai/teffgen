@@ -19,8 +19,6 @@ from __future__ import annotations
 
 import asyncio
 import csv
-import hashlib
-import io
 import json
 import logging
 import time

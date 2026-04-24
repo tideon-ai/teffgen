@@ -14,7 +14,7 @@ import sqlite3
 import time
 from dataclasses import dataclass, field
 from threading import Lock
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 def _hash_key(raw_key: str) -> str:
@@ -27,9 +27,9 @@ class Tenant:
     name: str
     rate_limit_per_min: int = 60
     daily_token_quota: int = 1_000_000
-    allowed_models: List[str] = field(default_factory=list)  # empty = all
-    allowed_tools: List[str] = field(default_factory=list)  # empty = all
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    allowed_models: list[str] = field(default_factory=list)  # empty = all
+    allowed_tools: list[str] = field(default_factory=list)  # empty = all
+    metadata: dict[str, Any] = field(default_factory=dict)
     created_at: float = field(default_factory=time.time)
 
     def allows_model(self, model: str) -> bool:
@@ -89,12 +89,12 @@ class TenantManager:
         """,
     ]
 
-    def __init__(self, db_path: Optional[str] = None) -> None:
+    def __init__(self, db_path: str | None = None) -> None:
         self.db_path = db_path or os.path.expanduser("~/.effgen/tenancy.db")
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self._lock = Lock()
         # Rolling window rate-limit tracker: tenant_id -> list[timestamps]
-        self._rate_window: Dict[str, List[float]] = {}
+        self._rate_window: dict[str, list[float]] = {}
         self._init_db()
 
     # ------------------------------------------------------------------ db
@@ -117,12 +117,12 @@ class TenantManager:
         self,
         name: str,
         *,
-        tenant_id: Optional[str] = None,
+        tenant_id: str | None = None,
         rate_limit_per_min: int = 60,
         daily_token_quota: int = 1_000_000,
-        allowed_models: Optional[List[str]] = None,
-        allowed_tools: Optional[List[str]] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        allowed_models: list[str] | None = None,
+        allowed_tools: list[str] | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> Tenant:
         tenant = Tenant(
             id=tenant_id or secrets.token_hex(8),
@@ -152,7 +152,7 @@ class TenantManager:
             conn.commit()
         return tenant
 
-    def get_tenant(self, tenant_id: str) -> Optional[Tenant]:
+    def get_tenant(self, tenant_id: str) -> Tenant | None:
         with self._connect() as conn:
             row = conn.execute(
                 "SELECT * FROM tenants WHERE id = ?", (tenant_id,)
@@ -170,7 +170,7 @@ class TenantManager:
             created_at=row["created_at"],
         )
 
-    def list_tenants(self) -> List[Tenant]:
+    def list_tenants(self) -> list[Tenant]:
         with self._connect() as conn:
             rows = conn.execute("SELECT id FROM tenants").fetchall()
         return [t for t in (self.get_tenant(r["id"]) for r in rows) if t]
@@ -225,7 +225,7 @@ class TenantManager:
             )
             conn.commit()
 
-    def resolve_api_key(self, raw_key: str) -> Optional[Tenant]:
+    def resolve_api_key(self, raw_key: str) -> Tenant | None:
         """Look up a tenant by raw API key. Returns None if invalid/revoked."""
         key_hash = _hash_key(raw_key)
         with self._connect() as conn:
@@ -237,7 +237,7 @@ class TenantManager:
             return None
         return self.get_tenant(row["tenant_id"])
 
-    def list_keys(self, tenant_id: str) -> List[APIKey]:
+    def list_keys(self, tenant_id: str) -> list[APIKey]:
         with self._connect() as conn:
             rows = conn.execute(
                 "SELECT * FROM api_keys WHERE tenant_id = ?", (tenant_id,)
@@ -284,7 +284,7 @@ class TenantManager:
             )
             conn.commit()
 
-    def get_usage(self, tenant_id: str, day: Optional[str] = None) -> Dict[str, int]:
+    def get_usage(self, tenant_id: str, day: str | None = None) -> dict[str, int]:
         day = day or time.strftime("%Y-%m-%d", time.gmtime())
         with self._connect() as conn:
             row = conn.execute(

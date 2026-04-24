@@ -11,8 +11,7 @@ import os
 import tempfile
 import time
 
-# Force GPU 3 (free)
-os.environ["CUDA_VISIBLE_DEVICES"] = "3"
+import pytest
 
 from effgen.core.agent import Agent, AgentConfig
 from effgen.core.human_loop import (
@@ -32,12 +31,27 @@ from effgen.tools.builtin.calculator import Calculator as CalculatorTool
 MODEL_NAME = "Qwen/Qwen2.5-1.5B-Instruct"
 
 
-def get_model():
-    """Load model once for all tests."""
-    return load_model(MODEL_NAME)
+@pytest.fixture(scope="module")
+def human_loop_model(gpu_id):
+    """Load the human-loop test model once per module to avoid GPU pressure."""
+    if gpu_id is None:
+        pytest.skip("No GPU available")
+    os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+    model = load_model(MODEL_NAME)
+    yield model
+    try:
+        model.unload()
+    except Exception:
+        pass
+    try:
+        import torch
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
+    except Exception:
+        pass
 
 
-def test_approval_callback_blocks_tool():
+def test_approval_callback_blocks_tool(human_loop_model):
     """
     Test 1: Approval callback DENIES tool execution.
     Agent should NOT execute calculator and should report denial.
@@ -49,10 +63,9 @@ def test_approval_callback_blocks_tool():
         approvals.append({"tool": tool_name, "args": tool_args, "decision": "deny"})
         return False  # DENY
 
-    model = get_model()
     config = AgentConfig(
         name="deny_test",
-        model=model,
+        model=human_loop_model,
         tools=[CalculatorTool()],
         approval_callback=deny_callback,
         approval_mode="always",
@@ -70,7 +83,7 @@ def test_approval_callback_blocks_tool():
     agent.close()
 
 
-def test_approval_callback_allows_tool():
+def test_approval_callback_allows_tool(human_loop_model):
     """
     Test 2: Approval callback ALLOWS tool execution.
     Agent should execute calculator and return correct answer.
@@ -82,10 +95,9 @@ def test_approval_callback_allows_tool():
         approvals.append({"tool": tool_name, "args": tool_args, "decision": "allow"})
         return True  # ALLOW
 
-    model = get_model()
     config = AgentConfig(
         name="allow_test",
-        model=model,
+        model=human_loop_model,
         tools=[CalculatorTool()],
         approval_callback=allow_callback,
         approval_mode="always",
@@ -102,7 +114,7 @@ def test_approval_callback_allows_tool():
     agent.close()
 
 
-def test_first_time_mode_only_asks_once():
+def test_first_time_mode_only_asks_once(human_loop_model):
     """
     Test 3: FIRST_TIME mode only asks approval on first use of a tool.
     """
@@ -114,10 +126,9 @@ def test_first_time_mode_only_asks_once():
         approval_count += 1
         return True
 
-    model = get_model()
     config = AgentConfig(
         name="first_time_test",
-        model=model,
+        model=human_loop_model,
         tools=[CalculatorTool()],
         approval_callback=counting_callback,
         approval_mode="first_time",
@@ -140,7 +151,7 @@ def test_first_time_mode_only_asks_once():
     agent.close()
 
 
-def test_dangerous_only_mode():
+def test_dangerous_only_mode(human_loop_model):
     """
     Test 4: DANGEROUS_ONLY mode only asks for dangerous tools.
     Calculator is not dangerous, so no approval should be requested.
@@ -153,10 +164,9 @@ def test_dangerous_only_mode():
         approval_count += 1
         return True
 
-    model = get_model()
     config = AgentConfig(
         name="dangerous_test",
-        model=model,
+        model=human_loop_model,
         tools=[CalculatorTool()],
         approval_callback=counting_callback,
         approval_mode="dangerous_only",
@@ -173,15 +183,14 @@ def test_dangerous_only_mode():
     agent.close()
 
 
-def test_no_approval_baseline():
+def test_no_approval_baseline(human_loop_model):
     """
     Test 5: Default mode (never) — no approval at all, tool executes freely.
     """
     print("\n=== Test 5: No-approval baseline ===")
-    model = get_model()
     config = AgentConfig(
         name="baseline_test",
-        model=model,
+        model=human_loop_model,
         tools=[CalculatorTool()],
         max_iterations=5,
     )
@@ -194,15 +203,14 @@ def test_no_approval_baseline():
     agent.close()
 
 
-def test_feedback_collector_with_real_agent():
+def test_feedback_collector_with_real_agent(human_loop_model):
     """
     Test 6: FeedbackCollector records feedback and exports JSONL after real agent run.
     """
     print("\n=== Test 6: FeedbackCollector with real agent ===")
-    model = get_model()
     config = AgentConfig(
         name="feedback_test",
-        model=model,
+        model=human_loop_model,
         tools=[CalculatorTool()],
         max_iterations=5,
     )
@@ -273,7 +281,7 @@ def test_clarification_detector_heuristic():
     print("  PASS: Ambiguity detection works correctly")
 
 
-def test_requires_approval_on_tool_metadata():
+def test_requires_approval_on_tool_metadata(human_loop_model):
     """
     Test 8: ToolMetadata.requires_approval integrates with DANGEROUS_ONLY mode.
     Create a calculator with requires_approval=True, verify it triggers approval.
@@ -289,10 +297,9 @@ def test_requires_approval_on_tool_metadata():
     calc = CalculatorTool()
     calc._metadata.requires_approval = True
 
-    model = get_model()
     config = AgentConfig(
         name="metadata_approval_test",
-        model=model,
+        model=human_loop_model,
         tools=[calc],
         approval_callback=tracking_callback,
         approval_mode="dangerous_only",
@@ -314,31 +321,4 @@ if __name__ == "__main__":
     print("Human-in-the-Loop Real GPU Integration Tests")
     print(f"Model: {MODEL_NAME}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES', 'not set')}")
-    print("=" * 60)
-
-    tests = [
-        test_approval_callback_blocks_tool,
-        test_approval_callback_allows_tool,
-        test_first_time_mode_only_asks_once,
-        test_dangerous_only_mode,
-        test_no_approval_baseline,
-        test_feedback_collector_with_real_agent,
-        test_clarification_detector_heuristic,
-        test_requires_approval_on_tool_metadata,
-    ]
-
-    passed = 0
-    failed = 0
-    for test_fn in tests:
-        try:
-            test_fn()
-            passed += 1
-        except Exception as e:
-            failed += 1
-            print(f"  FAIL: {e}")
-            import traceback
-            traceback.print_exc()
-
-    print("\n" + "=" * 60)
-    print(f"Results: {passed}/{passed + failed} PASSED, {failed} FAILED")
     print("=" * 60)

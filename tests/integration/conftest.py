@@ -48,21 +48,18 @@ def gpu_id():
     return gid
 
 
-@pytest.fixture(scope="session")
-def real_model(gpu_id):
-    """Session-scoped fixture that loads a real model once for all integration tests."""
-    if gpu_id is None:
-        pytest.skip("No GPU available")
-
+def _load_and_yield(gpu_id, quantization=None):
+    """Load a model and clean up CUDA state on teardown."""
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
-
     from effgen import load_model
-    try:
-        model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization="4bit")
-    except Exception:
+    if quantization:
+        try:
+            model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization=quantization)
+        except Exception:
+            model = load_model("Qwen/Qwen2.5-3B-Instruct")
+    else:
         model = load_model("Qwen/Qwen2.5-3B-Instruct")
     yield model
-    # Cleanup
     try:
         model.unload()
     except Exception:
@@ -70,5 +67,32 @@ def real_model(gpu_id):
     try:
         import torch
         torch.cuda.empty_cache()
+        torch.cuda.synchronize()
     except Exception:
         pass
+
+
+@pytest.fixture(scope="module")
+def real_model(gpu_id):
+    """Module-scoped fixture that loads a real model once per test module.
+
+    Module scope (not session) prevents bitsandbytes 4-bit CUDA state from
+    accumulating across test modules, which causes TextIteratorStreamer to
+    deadlock in the streaming tests.
+    """
+    if gpu_id is None:
+        pytest.skip("No GPU available")
+    yield from _load_and_yield(gpu_id, quantization="4bit")
+
+
+@pytest.fixture(scope="module")
+def streaming_model(gpu_id):
+    """Module-scoped fixture for streaming tests — loads WITHOUT 4-bit quantization.
+
+    bitsandbytes 4-bit kernels leave CUDA stream state that causes
+    TextIteratorStreamer.text_queue.get() to block indefinitely.  Loading
+    the model in fp16 / bf16 avoids those kernels entirely.
+    """
+    if gpu_id is None:
+        pytest.skip("No GPU available")
+    yield from _load_and_yield(gpu_id, quantization=None)

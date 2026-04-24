@@ -13,7 +13,7 @@ import json
 import logging
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -843,7 +843,7 @@ async def create_capability_token(
     token_id = str(uuid.uuid4())
     expires = None
     if expires_in:
-        expires = (datetime.utcnow() + timedelta(seconds=expires_in)).isoformat()
+        expires = (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat()
 
     return CapabilityToken(
         tokenId=token_id,

@@ -6,8 +6,8 @@ Provides pre-configured guardrail chains for common use cases.
 
 from __future__ import annotations
 
-from .base import GuardrailChain, GuardrailPosition
-from .content import LengthGuardrail, PIIGuardrail, TopicGuardrail, ToxicityGuardrail
+from .base import GuardrailChain
+from .content import LengthGuardrail, PIIGuardrail, ToxicityGuardrail
 from .injection import PromptInjectionGuardrail
 from .tool_safety import ToolInputGuardrail, ToolOutputGuardrail, ToolPermissionGuardrail
 

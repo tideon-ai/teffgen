@@ -13,7 +13,7 @@ import logging
 from collections.abc import Iterator
 from typing import Any
 
-from effgen.models.base import GenerationConfig, GenerationResult, ModelType, TokenCount
+from effgen.models.base import GenerationConfig, GenerationResult, ModelType
 from effgen.models.mlx_engine import MLXEngine
 
 logger = logging.getLogger(__name__)

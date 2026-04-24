@@ -34,7 +34,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -116,13 +116,13 @@ def _basic_validate(data: Any, schema: dict[str, Any]) -> tuple[bool, str | None
     elif schema_type == "string":
         return (True, None) if isinstance(data, str) else (False, f"Expected string, got {type(data).__name__}")
     elif schema_type == "integer":
-        return (True, None) if isinstance(data, int) and not isinstance(data, bool) else (False, f"Expected integer")
+        return (True, None) if isinstance(data, int) and not isinstance(data, bool) else (False, "Expected integer")
     elif schema_type == "number":
-        return (True, None) if isinstance(data, (int, float)) and not isinstance(data, bool) else (False, f"Expected number")
+        return (True, None) if isinstance(data, (int, float)) and not isinstance(data, bool) else (False, "Expected number")
     elif schema_type == "boolean":
-        return (True, None) if isinstance(data, bool) else (False, f"Expected boolean")
+        return (True, None) if isinstance(data, bool) else (False, "Expected boolean")
     elif schema_type == "null":
-        return (True, None) if data is None else (False, f"Expected null")
+        return (True, None) if data is None else (False, "Expected null")
 
     # No type constraint or unknown type — accept
     return True, None
@@ -250,8 +250,9 @@ def _try_grammar_constrained(
 ) -> tuple[str, Any] | None:
     """Try grammar-constrained decoding via outlines library."""
     try:
-        import outlines
-        from outlines import generate, models as outlines_models
+        import outlines  # noqa: F401
+        from outlines import generate
+        from outlines import models as outlines_models
 
         logger.info("Using outlines grammar-constrained decoding for structured output")
         # outlines requires access to the underlying HF model

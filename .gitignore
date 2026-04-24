@@ -215,6 +215,7 @@ node_modules/
 
 # Build planning
 v0.2.0/
+build_plan/
 
 # Generated config directory (created by install.sh)
 config/

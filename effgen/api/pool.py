@@ -10,8 +10,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ class AgentPool:
         max_size: int = 8,
         idle_ttl: float = 300.0,
         health_check_interval: float = 60.0,
-        health_checker: Optional[Callable[[Any], bool]] = None,
+        health_checker: Callable[[Any], bool] | None = None,
     ) -> None:
         if min_size < 0 or max_size < min_size:
             raise ValueError("require 0 <= min_size <= max_size")
@@ -68,11 +69,11 @@ class AgentPool:
         self.idle_ttl = idle_ttl
         self.health_check_interval = health_check_interval
         self._health_checker = health_checker or self._default_health_checker
-        self._agents: List[PooledAgent] = []
+        self._agents: list[PooledAgent] = []
         self._lock = asyncio.Lock()
         self._cond = asyncio.Condition(self._lock)
         self._closed = False
-        self._health_task: Optional[asyncio.Task] = None
+        self._health_task: asyncio.Task | None = None
 
     # ------------------------------------------------------------------ lifecycle
 
@@ -102,7 +103,7 @@ class AgentPool:
 
     # ------------------------------------------------------------------ checkout
 
-    async def acquire(self, timeout: Optional[float] = None) -> PooledAgent:
+    async def acquire(self, timeout: float | None = None) -> PooledAgent:
         """Borrow a healthy agent. Creates one on-demand up to ``max_size``."""
         end = time.time() + timeout if timeout is not None else None
         async with self._cond:
@@ -174,7 +175,7 @@ class AgentPool:
     async def _sweep_once(self) -> None:
         now = time.time()
         async with self._lock:
-            survivors: List[PooledAgent] = []
+            survivors: list[PooledAgent] = []
             for pa in self._agents:
                 if pa.in_use:
                     survivors.append(pa)
@@ -211,10 +212,10 @@ class AgentPool:
         }
 
     class _CtxManager:
-        def __init__(self, pool: "AgentPool", timeout: Optional[float]) -> None:
+        def __init__(self, pool: "AgentPool", timeout: float | None) -> None:
             self.pool = pool
             self.timeout = timeout
-            self.pa: Optional[PooledAgent] = None
+            self.pa: PooledAgent | None = None
 
         async def __aenter__(self) -> PooledAgent:
             self.pa = await self.pool.acquire(self.timeout)
@@ -224,6 +225,6 @@ class AgentPool:
             if self.pa is not None:
                 await self.pool.release(self.pa)
 
-    def borrow(self, timeout: Optional[float] = None) -> "AgentPool._CtxManager":
+    def borrow(self, timeout: float | None = None) -> "AgentPool._CtxManager":
         """`async with pool.borrow() as pa:` context manager."""
         return AgentPool._CtxManager(self, timeout)

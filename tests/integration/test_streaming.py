@@ -10,10 +10,10 @@ from effgen.tools.builtin import Calculator
 class TestStreaming:
     """Test real token streaming."""
 
-    def test_stream_produces_chunks(self, real_model):
+    def test_stream_produces_chunks(self, streaming_model):
         agent = Agent(config=AgentConfig(
             name="stream_test",
-            model=real_model,
+            model=streaming_model,
             tools=[Calculator()],
             max_iterations=3,
             enable_memory=False,
@@ -25,10 +25,10 @@ class TestStreaming:
         full_response = "".join(chunks)
         assert len(full_response) > 0
 
-    def test_stream_with_callbacks(self, real_model):
+    def test_stream_with_callbacks(self, streaming_model):
         agent = Agent(config=AgentConfig(
             name="callback_test",
-            model=real_model,
+            model=streaming_model,
             tools=[Calculator()],
             max_iterations=3,
             enable_memory=False,

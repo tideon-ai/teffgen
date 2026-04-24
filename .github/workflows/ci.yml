@@ -10,31 +10,31 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+permissions:
+  contents: read
+
 jobs:
-  # NOTE: Lint job disabled for now. Uncomment when codebase is formatted.
-  # lint:
-  #   name: Lint & Format
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Set up Python
-  #       uses: actions/setup-python@v5
-  #       with:
-  #         python-version: "3.11"
-  #     - name: Install lint dependencies
-  #       run: |
-  #         python -m pip install --upgrade pip
-  #         pip install black isort flake8 mypy
-  #     - name: Check formatting with black
-  #       run: black --check --diff effgen/
-  #     - name: Check import sorting with isort
-  #       run: isort --check --diff effgen/
-  #     - name: Lint with flake8
-  #       run: |
-  #         flake8 effgen/ --count --select=E9,F63,F7,F82 --show-source --statistics
-  #         flake8 effgen/ --count --exit-zero --max-complexity=15 --max-line-length=100 --statistics
-  #     - name: Type check with mypy
-  #       run: mypy effgen/ --ignore-missing-imports --no-error-summary || true
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install lint dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+
+      - name: Ruff lint (zero-error policy)
+        run: ruff check effgen/
 
   test-unit:
     name: Unit Tests (Python ${{ matrix.python-version }})
@@ -66,7 +66,7 @@ jobs:
       - name: Verify critical imports
         run: |
           python -c "
-          import effgen; assert effgen.__version__ == '0.2.0'
+          import effgen; print(f'effgen {effgen.__version__}')
           from effgen.guardrails import GuardrailChain
           from effgen.rag import DocumentIngester
           from effgen.eval import AgentEvaluator
@@ -76,9 +76,10 @@ jobs:
           print('All imports OK')
           "
 
-      - name: Run unit tests
+      - name: Run unit + benchmark tests
         run: |
-          pytest tests/unit/ -v --cov=effgen --cov-report=xml --cov-report=term-missing \
+          pytest tests/unit/ tests/benchmarks/ -v \
+            --cov=effgen --cov-report=xml --cov-report=term-missing \
             -m "not gpu and not api and not docker" \
             --tb=short --no-header
 
@@ -108,7 +109,8 @@ jobs:
       - name: Run integration tests (no GPU, no API)
         run: |
           pytest tests/integration/ -v -m "not gpu and not api and not docker" \
-            --tb=short --no-header || true
+            --ignore=tests/e2e \
+            --tb=short --no-header
 
   security:
     name: Security Scan

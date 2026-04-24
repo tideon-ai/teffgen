@@ -13,13 +13,12 @@ from __future__ import annotations
 
 import asyncio
 import enum
-import heapq
 import itertools
 import time
 import uuid
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from typing import Any, Deque, Dict, List, Optional
+from typing import Any
 
 
 class RequestPriority(enum.IntEnum):
@@ -45,10 +44,10 @@ class QueuedRequest:
     tenant_id: str = field(compare=False, default="default")
     payload: Any = field(compare=False, default=None)
     enqueued_at: float = field(compare=False, default_factory=time.time)
-    deadline: Optional[float] = field(compare=False, default=None)
-    future: Optional["asyncio.Future[Any]"] = field(compare=False, default=None)
+    deadline: float | None = field(compare=False, default=None)
+    future: "asyncio.Future[Any]" | None = field(compare=False, default=None)
 
-    def expired(self, now: Optional[float] = None) -> bool:
+    def expired(self, now: float | None = None) -> bool:
         if self.deadline is None:
             return False
         return (now or time.time()) >= self.deadline
@@ -70,17 +69,17 @@ class RequestQueue:
     def __init__(
         self,
         max_size: int = 1000,
-        default_timeout: Optional[float] = 30.0,
+        default_timeout: float | None = 30.0,
     ) -> None:
         self.max_size = max_size
         self.default_timeout = default_timeout
         self._counter = itertools.count()
         # Per-(priority, tenant) FIFO of pending requests.
-        self._buckets: Dict[int, Dict[str, Deque[QueuedRequest]]] = defaultdict(
+        self._buckets: dict[int, dict[str, deque[QueuedRequest]]] = defaultdict(
             lambda: defaultdict(deque)
         )
         # Round-robin tenant order per priority.
-        self._rr_order: Dict[int, Deque[str]] = defaultdict(deque)
+        self._rr_order: dict[int, deque[str]] = defaultdict(deque)
         self._size = 0
         self._lock = asyncio.Lock()
         self._cond = asyncio.Condition(self._lock)
@@ -106,7 +105,7 @@ class RequestQueue:
         *,
         tenant_id: str = "default",
         priority: RequestPriority = RequestPriority.NORMAL,
-        timeout: Optional[float] = None,
+        timeout: float | None = None,
     ) -> QueuedRequest:
         """Add a request to the queue. Raises ``QueueFullError`` on overflow."""
         async with self._cond:
@@ -139,7 +138,7 @@ class RequestQueue:
             self._cond.notify()
             return req
 
-    async def dequeue(self, timeout: Optional[float] = None) -> Optional[QueuedRequest]:
+    async def dequeue(self, timeout: float | None = None) -> QueuedRequest | None:
         """Pop the next request. Returns None if ``timeout`` elapses empty."""
         async with self._cond:
             end = time.time() + timeout if timeout is not None else None
@@ -159,7 +158,7 @@ class RequestQueue:
                 except asyncio.TimeoutError:
                     return None
 
-    def _pop_next_locked(self) -> Optional[QueuedRequest]:
+    def _pop_next_locked(self) -> QueuedRequest | None:
         now = time.time()
         for priority in sorted(self._buckets.keys()):
             order = self._rr_order[priority]
@@ -188,7 +187,7 @@ class RequestQueue:
             self._closed = True
             self._cond.notify_all()
 
-    def snapshot_stats(self) -> Dict[str, Any]:
+    def snapshot_stats(self) -> dict[str, Any]:
         return {
             **self.stats,
             "size": self._size,

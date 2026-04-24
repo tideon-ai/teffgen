@@ -119,7 +119,7 @@ class ClarificationDetector:
             if len(matching_tools) > 2:
                 reasons.append(f"matches {len(matching_tools)} tools")
                 return ClarificationRequest(
-                    question=f"Your query could use multiple tools. Which would you prefer?",
+                    question="Your query could use multiple tools. Which would you prefer?",
                     options=[f"{name}: {getattr(t, 'description', name)}"
                              for name, t in matching_tools[:5]],
                     context="; ".join(reasons),

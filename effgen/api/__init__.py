@@ -9,6 +9,18 @@ Phase 12 modules:
 """
 from __future__ import annotations
 
+from effgen.api.embeddings import (
+    EmbeddingEngine,
+    TFIDFEmbedder,
+    create_embeddings_router,
+)
+from effgen.api.embeddings import (
+    LRUCache as EmbeddingLRUCache,
+)
+from effgen.api.embeddings import (
+    SQLiteCache as EmbeddingSQLiteCache,
+)
+from effgen.api.middleware import install_production_middleware
 from effgen.api.openai_compat import (
     MODEL_ALIASES,
     ChatCompletionRequest,
@@ -18,16 +30,8 @@ from effgen.api.openai_compat import (
     resolve_model_alias,
 )
 from effgen.api.pool import AgentPool, PooledAgent
-from effgen.api.queue import QueuedRequest, RequestQueue, RequestPriority
+from effgen.api.queue import QueuedRequest, RequestPriority, RequestQueue
 from effgen.api.tenancy import APIKey, Tenant, TenantManager
-from effgen.api.middleware import install_production_middleware
-from effgen.api.embeddings import (
-    EmbeddingEngine,
-    LRUCache as EmbeddingLRUCache,
-    SQLiteCache as EmbeddingSQLiteCache,
-    TFIDFEmbedder,
-    create_embeddings_router,
-)
 
 __all__ = [
     "MODEL_ALIASES",

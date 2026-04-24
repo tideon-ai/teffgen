@@ -9,7 +9,8 @@ from __future__ import annotations
 import json
 import time
 import uuid
-from typing import Any, Callable, Dict, List, Optional, Union
+from collections.abc import Callable
+from typing import Any
 
 try:
     from pydantic import BaseModel, Field
@@ -24,7 +25,7 @@ except Exception:  # pragma: no cover
 # Model aliasing
 # ---------------------------------------------------------------------------
 
-MODEL_ALIASES: Dict[str, str] = {
+MODEL_ALIASES: dict[str, str] = {
     "gpt-4": "Qwen/Qwen2.5-7B-Instruct",
     "gpt-4-turbo": "Qwen/Qwen2.5-7B-Instruct",
     "gpt-4o": "Qwen/Qwen2.5-7B-Instruct",
@@ -46,41 +47,41 @@ def resolve_model_alias(model: str) -> str:
 
 class ChatMessage(BaseModel):  # type: ignore[misc]
     role: str
-    content: Optional[Union[str, List[Dict[str, Any]]]] = None
-    name: Optional[str] = None
-    tool_calls: Optional[List[Dict[str, Any]]] = None
-    tool_call_id: Optional[str] = None
+    content: str | list[dict[str, Any]] | None = None
+    name: str | None = None
+    tool_calls: list[dict[str, Any]] | None = None
+    tool_call_id: str | None = None
 
 
 class ChatCompletionRequest(BaseModel):  # type: ignore[misc]
     model: str
-    messages: List[ChatMessage]
-    temperature: Optional[float] = 1.0
-    top_p: Optional[float] = 1.0
-    n: Optional[int] = 1
-    stream: Optional[bool] = False
-    max_tokens: Optional[int] = None
-    presence_penalty: Optional[float] = 0.0
-    frequency_penalty: Optional[float] = 0.0
-    user: Optional[str] = None
-    tools: Optional[List[Dict[str, Any]]] = None
-    tool_choice: Optional[Union[str, Dict[str, Any]]] = None
-    response_format: Optional[Dict[str, Any]] = None
-    seed: Optional[int] = None
-    stop: Optional[Union[str, List[str]]] = None
+    messages: list[ChatMessage]
+    temperature: float | None = 1.0
+    top_p: float | None = 1.0
+    n: int | None = 1
+    stream: bool | None = False
+    max_tokens: int | None = None
+    presence_penalty: float | None = 0.0
+    frequency_penalty: float | None = 0.0
+    user: str | None = None
+    tools: list[dict[str, Any]] | None = None
+    tool_choice: str | dict[str, Any] | None = None
+    response_format: dict[str, Any] | None = None
+    seed: int | None = None
+    stop: str | list[str] | None = None
 
 
 class CompletionRequest(BaseModel):  # type: ignore[misc]
     model: str
-    prompt: Union[str, List[str]]
-    temperature: Optional[float] = 1.0
-    top_p: Optional[float] = 1.0
-    n: Optional[int] = 1
-    stream: Optional[bool] = False
-    max_tokens: Optional[int] = 16
-    stop: Optional[Union[str, List[str]]] = None
-    user: Optional[str] = None
-    seed: Optional[int] = None
+    prompt: str | list[str]
+    temperature: float | None = 1.0
+    top_p: float | None = 1.0
+    n: int | None = 1
+    stream: bool | None = False
+    max_tokens: int | None = 16
+    stop: str | list[str] | None = None
+    user: str | None = None
+    seed: int | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -109,12 +110,12 @@ def build_chat_completion(
     model: str,
     content: str,
     *,
-    tool_calls: Optional[List[Dict[str, Any]]] = None,
+    tool_calls: list[dict[str, Any]] | None = None,
     prompt_tokens: int = 0,
     finish_reason: str = "stop",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build an OpenAI-format chat.completion response dict."""
-    message: Dict[str, Any] = {"role": "assistant", "content": content or None}
+    message: dict[str, Any] = {"role": "assistant", "content": content or None}
     if tool_calls:
         message["tool_calls"] = tool_calls
         finish_reason = "tool_calls"
@@ -145,12 +146,12 @@ def build_chat_chunk(
     model: str,
     delta_content: str,
     *,
-    chat_id: Optional[str] = None,
-    finish_reason: Optional[str] = None,
-    role: Optional[str] = None,
-) -> Dict[str, Any]:
+    chat_id: str | None = None,
+    finish_reason: str | None = None,
+    role: str | None = None,
+) -> dict[str, Any]:
     """Build one chat.completion.chunk for SSE streaming."""
-    delta: Dict[str, Any] = {}
+    delta: dict[str, Any] = {}
     if role:
         delta["role"] = role
     if delta_content:
@@ -176,7 +177,7 @@ def build_text_completion(
     *,
     prompt_tokens: int = 0,
     finish_reason: str = "stop",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     completion_tokens = _approx_tokens(text)
     return {
         "id": _cmpl_id(),
@@ -208,13 +209,13 @@ def build_text_completion(
 Runner = Callable[..., Any]
 
 
-def _messages_to_prompt(messages: List[Any]) -> str:
+def _messages_to_prompt(messages: list[Any]) -> str:
     """Flatten a chat message list into a single prompt string.
 
     Used as a fallback path when an effGen agent is invoked directly rather
     than a chat-native model. The format mirrors ChatML loosely.
     """
-    parts: List[str] = []
+    parts: list[str] = []
     for msg in messages:
         role = getattr(msg, "role", None) if not isinstance(msg, dict) else msg.get("role")
         content = getattr(msg, "content", None) if not isinstance(msg, dict) else msg.get("content")
@@ -253,7 +254,7 @@ def create_openai_router(runner: Runner) -> Any:
     router = APIRouter(prefix="/v1", tags=["openai-compat"])
 
     @router.get("/models")
-    async def list_models() -> Dict[str, Any]:
+    async def list_models() -> dict[str, Any]:
         now = _now()
         data = [
             {

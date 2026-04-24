@@ -190,3 +190,51 @@ def fixtures_dir():
 def knowledge_base_dir(fixtures_dir):
     """Path to the knowledge base fixtures."""
     return fixtures_dir / "knowledge_base"
+
+
+# ---------------------------------------------------------------------------
+# GPU test isolation
+# ---------------------------------------------------------------------------
+#
+# e2e tests load models with bitsandbytes 4-bit quantization. The bnb kernels
+# leave CUDA state that historically caused the integration streaming tests
+# (TextIteratorStreamer) to deadlock when they ran AFTER e2e in the same
+# pytest session. Two-part defense:
+#
+#   1. Reorder collection so all tests/e2e/* items run LAST, after unit +
+#      integration. This way any CUDA-state corruption happens after
+#      everything downstream has already completed.
+#   2. Between each module we force a CUDA cleanup via an autouse
+#      module-scoped fixture. Cheap when CUDA is absent; essential when
+#      GPU tests and streaming tests coexist.
+
+
+def pytest_collection_modifyitems(config, items):
+    """Run tests/e2e/* last so bitsandbytes CUDA state cannot leak forward."""
+
+    def _bucket(item):
+        p = str(item.fspath)
+        if "/tests/e2e/" in p or "\\tests\\e2e\\" in p:
+            return 2
+        if "/tests/integration/" in p or "\\tests\\integration\\" in p:
+            return 1
+        return 0
+
+    items.sort(key=_bucket)
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _cuda_state_hygiene():
+    """Flush CUDA caches between modules to reduce state leakage."""
+    yield
+    try:
+        import gc
+
+        import torch
+
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+            torch.cuda.empty_cache()
+    except Exception:
+        pass

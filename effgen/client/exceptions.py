@@ -1,7 +1,7 @@
 """Typed exceptions for the effGen client SDK."""
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 
 class EffGenClientError(Exception):
@@ -22,8 +22,8 @@ class EffGenAPIError(EffGenClientError):
     def __init__(
         self,
         message: str,
-        status_code: Optional[int] = None,
-        payload: Optional[Any] = None,
+        status_code: int | None = None,
+        payload: Any | None = None,
     ) -> None:
         super().__init__(message)
         self.status_code = status_code

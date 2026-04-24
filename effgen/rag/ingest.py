@@ -16,13 +16,13 @@ import hashlib
 import json
 import logging
 import re
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any
 
 from effgen.tools.builtin.retrieval import (
     Document,
-    FixedSizeChunker,
     RecursiveChunker,
 )
 

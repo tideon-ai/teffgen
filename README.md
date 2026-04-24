@@ -98,6 +98,26 @@ pip install effgen[mlx-vlm]      # Vision-Language models on Apple Silicon
 pip install effgen[vllm]
 ```
 
+### 🎁 Everything in one shot
+
+```bash
+pip install effgen[all]    # installs vLLM + RAG + vector-DB + search + cloud-secrets + monitoring + …
+```
+
+### ⚡ Optional: flash-attn (NVIDIA GPUs only — 2 steps)
+
+> `flash-attn` is **not** in `[all]` on purpose: its own `setup.py` imports
+> `torch` before pip's isolated build environment has torch installed (a
+> well-known upstream bug), so bundling it would break `pip install effgen[all]`
+> for everyone. Install it in two steps instead:
+
+```bash
+pip install effgen[all]                       # step 1: gets torch + the rest
+pip install flash-attn --no-build-isolation   # step 2: reuses the torch from step 1
+```
+
+See [docs/installation.md](docs/installation.md) for the full guide.
+
 ### 🔧 From Source
 
 ```bash

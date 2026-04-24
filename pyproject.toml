@@ -115,6 +115,7 @@ dev = [
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.1.0",
     "pytest-timeout>=2.2.0",
+    "pytest-forked>=1.6.0",
     "black>=23.12.0",
     "isort>=5.13.0",
     "flake8>=6.1.0",
@@ -171,8 +172,11 @@ monitoring = [
     "tensorboard>=2.15.0",
 ]
 all = [
+    # NOTE: flash-attn is intentionally NOT in [all]. Its setup.py imports
+    # torch before pip's isolated build env has torch installed (well-known
+    # upstream bug), which makes `pip install effgen[all]` always fail.
+    # Install flash-attn separately: see docs/installation.md.
     "vllm>=0.2.7",
-    "flash-attn>=2.3.0",
     "faiss-cpu>=1.7.4",
     "chromadb>=0.4.18",
     "qdrant-client>=1.7.0",
@@ -264,9 +268,15 @@ disallow_incomplete_defs = false
 check_untyped_defs = true
 no_implicit_optional = true
 warn_redundant_casts = true
-warn_unused_ignores = true
+# Disabled: `# type: ignore` comments may appear "unused" on one Python/lib
+# version but genuinely needed on another (optional-dep stubs, Python-version
+# gated code). Enforcing this cross-version is flaky, so we trust the comment.
+warn_unused_ignores = false
 warn_no_return = true
-warn_unreachable = true
+# Unreachable-code warnings flap across Python/library versions (e.g. a sys.version
+# branch mypy proves dead on one interpreter is live on another). Disabling here;
+# dead code is caught by ruff (F) and tests.
+warn_unreachable = false
 strict_equality = true
 show_error_codes = true
 show_column_numbers = true

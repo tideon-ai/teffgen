@@ -33,6 +33,7 @@ from effgen.models.base import (
     ModelType,
     TokenCount,
 )
+from effgen.models.batching import ContinuousBatcher
 from effgen.models.capabilities import (
     MODEL_CAPABILITIES,
     ModelCapability,
@@ -42,6 +43,7 @@ from effgen.models.capabilities import (
     register_model_capability,
 )
 from effgen.models.gemini_adapter import GeminiAdapter
+from effgen.models.lazy import LazyModel
 from effgen.models.model_loader import ModelLoader, load_model
 from effgen.models.openai_adapter import OpenAIAdapter
 from effgen.models.pool import ModelPool, PoolConfig
@@ -55,8 +57,6 @@ from effgen.models.router import (
 )
 from effgen.models.transformers_engine import TransformersEngine
 from effgen.models.vllm_engine import VLLMEngine
-from effgen.models.lazy import LazyModel
-from effgen.models.batching import ContinuousBatcher
 
 # MLX engines (Apple Silicon only, lazy import)
 try:

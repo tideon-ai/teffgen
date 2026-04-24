@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from .base import BaseModel, GenerationConfig, GenerationResult, ModelType, TokenCount
 

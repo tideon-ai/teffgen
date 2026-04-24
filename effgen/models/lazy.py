@@ -13,7 +13,8 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from .base import BaseModel, GenerationConfig, GenerationResult, TokenCount
 

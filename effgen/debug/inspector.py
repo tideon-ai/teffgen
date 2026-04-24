@@ -15,10 +15,8 @@ Usage:
 
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, field
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Trace data structures
@@ -161,7 +159,7 @@ def run_debug_cli(
         from rich.console import Console
         from rich.panel import Panel
         from rich.table import Table
-        from rich.text import Text
+        from rich.text import Text  # noqa: F401
     except ImportError:
         print("rich library required for debug CLI. Install with: pip install rich")
         return

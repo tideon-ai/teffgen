@@ -14,8 +14,8 @@ Default split (Phase 14):
 """
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from typing import Callable, Iterable
 
 DEFAULT_SHARES: dict[str, float] = {
     "system": 0.20,

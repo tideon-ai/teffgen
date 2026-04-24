@@ -186,9 +186,13 @@ class TestRagRealModel:
         # scaling query — this verifies the KB was actually indexed.
         import asyncio
 
-        res = asyncio.get_event_loop().run_until_complete(
-            retrieval._execute(query="horizontal scaling", top_k=2)
-        )
+        loop = asyncio.new_event_loop()
+        try:
+            res = loop.run_until_complete(
+                retrieval._execute(query="horizontal scaling", top_k=2)
+            )
+        finally:
+            loop.close()
         assert res["total_found"] >= 1
         top = res["results"][0]
         assert "architecture.md" in top["metadata"].get("source", "")

@@ -12,6 +12,7 @@ accelerate>=0.24.0
 safetensors>=0.4.0
 sentencepiece>=0.1.99
 protobuf>=3.20.0
+bitsandbytes>=0.46.1
 
 # vLLM for fast inference (5-10x faster, requires CUDA)
 vllm>=0.14.0

@@ -12,7 +12,7 @@ import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
 from typing import Any
 
@@ -326,7 +326,7 @@ class ACPServer:
     def _update_manifest(self) -> None:
         """Update manifest with current capabilities."""
         self.manifest.capabilities = self.registry.list_capabilities()
-        self.manifest.updated = datetime.utcnow().isoformat()
+        self.manifest.updated = datetime.now(timezone.utc).isoformat()
 
     def register_capability(
         self,

@@ -20,7 +20,6 @@ from effgen.models.base import BaseModel
 from effgen.models.capabilities import (
     ModelCapability,
     estimate_capability,
-    get_model_capability,
 )
 
 logger = logging.getLogger(__name__)
@@ -117,7 +116,6 @@ def estimate_complexity(
         )
 
     words = set(query.lower().split())
-    query_lower = query.lower()
     score = 0.0
     capabilities: list[str] = []
 

@@ -53,6 +53,21 @@ from effgen.utils.logging import (
     setup_logger,
 )
 
+# Metrics utilities
+from effgen.utils.metrics import (
+    MODEL_PRICING,
+    ExecutionMetric,
+    MetricsCollector,
+    ResourceSnapshot,
+    TokenMetric,
+    get_global_metrics,
+)
+
+# Prometheus metrics
+from effgen.utils.prometheus_metrics import (
+    metrics as prometheus_metrics,
+)
+
 # Structured logging
 from effgen.utils.structured_logging import (
     EffGenJSONFormatter,
@@ -71,21 +86,6 @@ from effgen.utils.tracing import (
     shutdown_tracing,
     trace_agent_run,
     trace_tool_execute,
-)
-
-# Prometheus metrics
-from effgen.utils.prometheus_metrics import (
-    metrics as prometheus_metrics,
-)
-
-# Metrics utilities
-from effgen.utils.metrics import (
-    MODEL_PRICING,
-    ExecutionMetric,
-    MetricsCollector,
-    ResourceSnapshot,
-    TokenMetric,
-    get_global_metrics,
 )
 
 # Validation utilities

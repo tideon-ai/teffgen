@@ -2088,8 +2088,8 @@ def _handle_batch_command(args, cli) -> int:
     try:
         # Create agent
         if preset_name:
-            from effgen.presets import create_agent
             from effgen.models import load_model
+            from effgen.presets import create_agent
             model = load_model(model_name)
             agent = create_agent(preset_name, model)
         else:
@@ -2161,8 +2161,8 @@ def _handle_eval_command(args, cli) -> int:
 
         # Create agent
         if preset_name:
-            from effgen.presets import create_agent
             from effgen.models import load_model
+            from effgen.presets import create_agent
             model = load_model(model_name)
             agent = create_agent(preset_name, model)
         else:
@@ -2306,8 +2306,8 @@ def _phase7_run_kwargs(args) -> dict:
 
 def _handle_resume_command(args, cli) -> int:
     """Handle 'effgen resume' command."""
-    from effgen.core.checkpoint import CheckpointManager
     from effgen import Agent, AgentConfig
+    from effgen.core.checkpoint import CheckpointManager
 
     cp_arg = args.checkpoint
     # Determine directory + id

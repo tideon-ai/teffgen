@@ -13,7 +13,6 @@ import re
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -171,7 +170,8 @@ def _score_regex(pattern: str, actual: str) -> float:
 def _score_semantic_similarity(expected: str, actual: str) -> float:
     """Score via sentence-transformers cosine similarity (optional dep)."""
     try:
-        from sentence_transformers import SentenceTransformer, util as st_util
+        from sentence_transformers import SentenceTransformer
+        from sentence_transformers import util as st_util
     except ImportError:
         logger.warning(
             "sentence-transformers not installed — falling back to contains scoring"
@@ -208,8 +208,8 @@ def _score_llm_judge(agent: Any, query: str, expected: str, actual: str) -> tupl
 def _compute_tool_accuracy(expected_tools: list[str], called_tools: list[str]) -> float:
     if not expected_tools:
         return 1.0
-    expected_set = set(t.lower() for t in expected_tools)
-    called_set = set(t.lower() for t in called_tools)
+    expected_set = {t.lower() for t in expected_tools}
+    called_set = {t.lower() for t in called_tools}
     return len(expected_set & called_set) / len(expected_set)
 
 

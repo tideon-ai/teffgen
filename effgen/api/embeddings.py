@@ -24,7 +24,7 @@ import re
 import sqlite3
 import threading
 from collections import OrderedDict
-from typing import Any, List, Optional, Union
+from typing import Any
 
 # Model aliases — OpenAI-style names mapped to local models.
 MODEL_ALIASES = {
@@ -44,7 +44,7 @@ class LRUCache:
 
     def __init__(self, max_size: int = 1024) -> None:
         self.max_size = max_size
-        self._data: "OrderedDict[str, List[float]]" = OrderedDict()
+        self._data: "OrderedDict[str, list[float]]" = OrderedDict()
         self._lock = threading.Lock()
 
     @staticmethod
@@ -52,7 +52,7 @@ class LRUCache:
         h = hashlib.sha256(text.encode("utf-8")).hexdigest()
         return f"{model}:{h}"
 
-    def get(self, model: str, text: str) -> Optional[List[float]]:
+    def get(self, model: str, text: str) -> list[float] | None:
         k = self.key(model, text)
         with self._lock:
             val = self._data.get(k)
@@ -60,7 +60,7 @@ class LRUCache:
                 self._data.move_to_end(k)
             return val
 
-    def put(self, model: str, text: str, vec: List[float]) -> None:
+    def put(self, model: str, text: str, vec: list[float]) -> None:
         k = self.key(model, text)
         with self._lock:
             self._data[k] = vec
@@ -72,7 +72,7 @@ class LRUCache:
 class SQLiteCache:
     """Persistent embedding cache backed by SQLite."""
 
-    def __init__(self, path: Optional[str] = None) -> None:
+    def __init__(self, path: str | None = None) -> None:
         self.path = path or os.path.expanduser("~/.effgen/embeddings_cache.db")
         os.makedirs(os.path.dirname(self.path), exist_ok=True)
         self._lock = threading.Lock()
@@ -92,7 +92,7 @@ class SQLiteCache:
     def _hash(text: str) -> str:
         return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
-    def get(self, model: str, text: str) -> Optional[List[float]]:
+    def get(self, model: str, text: str) -> list[float] | None:
         with self._lock:
             row = self._conn.execute(
                 "SELECT vector, dim FROM embeddings WHERE model=? AND text_hash=?",
@@ -105,7 +105,7 @@ class SQLiteCache:
 
         return list(struct.unpack(f"{dim}f", blob))
 
-    def put(self, model: str, text: str, vec: List[float]) -> None:
+    def put(self, model: str, text: str, vec: list[float]) -> None:
         import struct
 
         blob = struct.pack(f"{len(vec)}f", *vec)
@@ -135,11 +135,11 @@ class TFIDFEmbedder:
     def __init__(self, dim: int = DEFAULT_DIM) -> None:
         self.dim = dim
 
-    def _tokenize(self, text: str) -> List[str]:
+    def _tokenize(self, text: str) -> list[str]:
         return [t.lower() for t in _WORD_RE.findall(text)]
 
-    def embed(self, texts: List[str]) -> List[List[float]]:
-        out: List[List[float]] = []
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        out: list[list[float]] = []
         for text in texts:
             vec = [0.0] * self.dim
             tokens = self._tokenize(text)
@@ -169,7 +169,7 @@ class SentenceTransformerEmbedder:
         self.model_name = model_name
         self.model = SentenceTransformer(model_name)
 
-    def embed(self, texts: List[str]) -> List[List[float]]:
+    def embed(self, texts: list[str]) -> list[list[float]]:
         vecs = self.model.encode(texts, normalize_embeddings=True)
         return [list(map(float, v)) for v in vecs]
 
@@ -184,10 +184,10 @@ class EmbeddingEngine:
         self,
         lru_size: int = 1024,
         persistent_cache: bool = True,
-        cache_path: Optional[str] = None,
+        cache_path: str | None = None,
     ) -> None:
         self.lru = LRUCache(max_size=lru_size)
-        self.sqlite: Optional[SQLiteCache]
+        self.sqlite: SQLiteCache | None
         try:
             self.sqlite = SQLiteCache(cache_path) if persistent_cache else None
         except Exception:
@@ -210,15 +210,15 @@ class EmbeddingEngine:
             self._backends[resolved] = backend
             return backend
 
-    def embed(self, texts: List[str], model: str = "text-embedding-small") -> List[List[float]]:
+    def embed(self, texts: list[str], model: str = "text-embedding-small") -> list[list[float]]:
         if not texts:
             return []
         resolved = self._resolve_model(model)
 
         # Lookup caches
-        results: List[Optional[List[float]]] = [None] * len(texts)
-        missing_idx: List[int] = []
-        missing_texts: List[str] = []
+        results: list[list[float] | None] = [None] * len(texts)
+        missing_idx: list[int] = []
+        missing_texts: list[str] = []
         for i, t in enumerate(texts):
             cached = self.lru.get(resolved, t)
             if cached is None and self.sqlite is not None:
@@ -250,16 +250,17 @@ class EmbeddingEngine:
 # FastAPI router (optional dependency)
 # ---------------------------------------------------------------------------
 try:
-    from pydantic import BaseModel as _PydBaseModel, Field as _PydField  # type: ignore
+    from pydantic import BaseModel as _PydBaseModel  # type: ignore
+    from pydantic import Field as _PydField
 
     class EmbeddingRequest(_PydBaseModel):
         model: str = _PydField(default="text-embedding-small")
-        input: Union[str, List[str]]
+        input: str | list[str]
 
     class EmbeddingItem(_PydBaseModel):
         object: str = "embedding"
         index: int
-        embedding: List[float]
+        embedding: list[float]
 
     class EmbeddingUsage(_PydBaseModel):
         prompt_tokens: int = 0
@@ -267,7 +268,7 @@ try:
 
     class EmbeddingResponse(_PydBaseModel):
         object: str = "list"
-        data: List[EmbeddingItem]
+        data: list[EmbeddingItem]
         model: str
         usage: EmbeddingUsage
 except Exception:  # pragma: no cover - pydantic optional
@@ -277,13 +278,13 @@ except Exception:  # pragma: no cover - pydantic optional
     EmbeddingResponse = None  # type: ignore
 
 
-def create_embeddings_router(engine: Optional[EmbeddingEngine] = None) -> Any:
+def create_embeddings_router(engine: EmbeddingEngine | None = None) -> Any:
     """Create a FastAPI router exposing ``/v1/embeddings``.
 
     Requires ``fastapi`` and ``pydantic`` to be installed. Otherwise import
     of this function will raise.
     """
-    from fastapi import APIRouter, HTTPException, Body  # type: ignore
+    from fastapi import APIRouter, Body, HTTPException  # type: ignore
 
     eng = engine or EmbeddingEngine()
 

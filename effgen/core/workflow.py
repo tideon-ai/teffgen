@@ -16,9 +16,10 @@ import asyncio
 import logging
 import time
 from collections import defaultdict, deque
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -193,7 +194,7 @@ class WorkflowDAG:
         Kahn's algorithm. Returns topological order or raises
         ``ValueError`` if a cycle exists.
         """
-        in_degree: dict[str, int] = {nid: 0 for nid in self._nodes}
+        in_degree: dict[str, int] = dict.fromkeys(self._nodes, 0)
         for edge in self._edges:
             in_degree[edge.target] += 1
 

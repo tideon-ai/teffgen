@@ -21,7 +21,7 @@ import socket
 import ssl
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ class HealthCheckResult:
     passed: bool
     message: str
     response_time_ms: float = 0.0
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
 class HealthChecker:
@@ -160,7 +160,10 @@ class HealthChecker:
                 )
 
             expires = datetime.strptime(expires_str, "%b %d %H:%M:%S %Y %Z")
-            days_left = (expires - datetime.utcnow()).days
+            # strptime with %Z returns naive datetime; treat as UTC
+            if expires.tzinfo is None:
+                expires = expires.replace(tzinfo=timezone.utc)
+            days_left = (expires - datetime.now(timezone.utc)).days
             passed = days_left > warn_days
 
             return HealthCheckResult(

@@ -13,8 +13,9 @@ import asyncio
 import json
 import random
 import time
+from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator, Iterator, List, Optional
+from typing import Any
 
 from effgen.client.exceptions import (
     EffGenAPIError,
@@ -34,8 +35,8 @@ class ChatResponse:
     """Response from a chat call."""
 
     content: str
-    model: Optional[str] = None
-    tool_calls: List[Any] = field(default_factory=list)
+    model: str | None = None
+    tool_calls: list[Any] = field(default_factory=list)
     usage: dict = field(default_factory=dict)
     raw: dict = field(default_factory=dict)
 
@@ -73,7 +74,7 @@ class EffGenClient:
     def __init__(
         self,
         base_url: str = "http://localhost:8000",
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         timeout: float = 60.0,
         max_retries: int = 3,
         backoff_base: float = 0.5,
@@ -87,7 +88,7 @@ class EffGenClient:
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    def _headers(self, extra: Optional[dict] = None) -> dict:
+    def _headers(self, extra: dict | None = None) -> dict:
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
@@ -128,7 +129,7 @@ class EffGenClient:
     # ------------------------------------------------------------------
     # Sync request primitive (requests)
     # ------------------------------------------------------------------
-    def _request_sync(self, method: str, path: str, json_body: Optional[dict] = None) -> Any:
+    def _request_sync(self, method: str, path: str, json_body: dict | None = None) -> Any:
         try:
             import requests  # type: ignore
         except ImportError as e:  # pragma: no cover
@@ -136,7 +137,7 @@ class EffGenClient:
                 "The 'requests' package is required for sync EffGenClient calls"
             ) from e
 
-        last_exc: Optional[BaseException] = None
+        last_exc: BaseException | None = None
         for attempt in range(self.max_retries + 1):
             try:
                 resp = requests.request(
@@ -171,7 +172,7 @@ class EffGenClient:
     # Async request primitive (httpx)
     # ------------------------------------------------------------------
     async def _request_async(
-        self, method: str, path: str, json_body: Optional[dict] = None
+        self, method: str, path: str, json_body: dict | None = None
     ) -> Any:
         try:
             import httpx  # type: ignore
@@ -180,7 +181,7 @@ class EffGenClient:
                 "The 'httpx' package is required for async EffGenClient calls"
             ) from e
 
-        last_exc: Optional[BaseException] = None
+        last_exc: BaseException | None = None
         for attempt in range(self.max_retries + 1):
             try:
                 async with httpx.AsyncClient(timeout=self.timeout) as hx:
@@ -217,8 +218,8 @@ class EffGenClient:
     def chat(
         self,
         message: str,
-        tools: Optional[List[str]] = None,
-        model: Optional[str] = None,
+        tools: list[str] | None = None,
+        model: str | None = None,
         **kwargs: Any,
     ) -> ChatResponse:
         """Send a single-turn chat message and return the response."""
@@ -234,9 +235,9 @@ class EffGenClient:
 
     def embed(
         self,
-        texts: List[str],
+        texts: list[str],
         model: str = "text-embedding-small",
-    ) -> List[List[float]]:
+    ) -> list[list[float]]:
         """Compute embeddings for a list of input texts."""
         payload = self._request_sync(
             "POST",
@@ -254,7 +255,7 @@ class EffGenClient:
             return HealthStatus(status=str(payload.get("status", "unknown")), details=payload)
         return HealthStatus(status=str(payload))
 
-    def chat_stream_sync(self, message: str, model: Optional[str] = None) -> Iterator[str]:
+    def chat_stream_sync(self, message: str, model: str | None = None) -> Iterator[str]:
         """Synchronous streaming chat — yields text chunks."""
         try:
             import requests  # type: ignore
@@ -286,8 +287,8 @@ class EffGenClient:
     async def achat(
         self,
         message: str,
-        tools: Optional[List[str]] = None,
-        model: Optional[str] = None,
+        tools: list[str] | None = None,
+        model: str | None = None,
         **kwargs: Any,
     ) -> ChatResponse:
         body: dict = {
@@ -301,8 +302,8 @@ class EffGenClient:
         return self._parse_chat(payload)
 
     async def aembed(
-        self, texts: List[str], model: str = "text-embedding-small"
-    ) -> List[List[float]]:
+        self, texts: list[str], model: str = "text-embedding-small"
+    ) -> list[list[float]]:
         payload = await self._request_async(
             "POST", "/v1/embeddings", {"model": model, "input": texts}
         )
@@ -317,7 +318,7 @@ class EffGenClient:
         return HealthStatus(status=str(payload))
 
     async def chat_stream(
-        self, message: str, model: Optional[str] = None
+        self, message: str, model: str | None = None
     ) -> AsyncIterator[str]:
         """Asynchronous streaming chat — yields text chunks."""
         try:
@@ -353,7 +354,7 @@ class EffGenClient:
         if not isinstance(payload, dict):
             raise EffGenAPIError("Malformed chat response", payload=payload)
         content = ""
-        tool_calls: List[Any] = []
+        tool_calls: list[Any] = []
         choices = payload.get("choices") or []
         if choices:
             msg = choices[0].get("message") or {}
@@ -368,7 +369,7 @@ class EffGenClient:
         )
 
 
-def _parse_sse_line(line: str) -> Optional[str]:
+def _parse_sse_line(line: str) -> str | None:
     """Parse a single SSE line and return the text delta, or None."""
     if not line or not line.startswith("data:"):
         return None

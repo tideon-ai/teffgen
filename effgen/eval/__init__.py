@@ -7,7 +7,9 @@ models/configurations.
 
 from __future__ import annotations
 
+from .comparison import ModelComparison
 from .evaluator import AgentEvaluator, EvalResult, SuiteResults, TestCase
+from .regression import RegressionTracker
 from .suites import (
     ConversationSuite,
     MathSuite,
@@ -18,8 +20,6 @@ from .suites import (
     get_suite,
     list_suites,
 )
-from .regression import RegressionTracker
-from .comparison import ModelComparison
 
 __all__ = [
     "AgentEvaluator",

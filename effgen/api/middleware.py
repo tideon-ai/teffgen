@@ -15,7 +15,8 @@ import asyncio
 import logging
 import signal
 import uuid
-from typing import Any, Iterable, Optional
+from collections.abc import Iterable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 def install_production_middleware(
     app: Any,
     *,
-    cors_origins: Optional[Iterable[str]] = None,
+    cors_origins: Iterable[str] | None = None,
     enable_gzip: bool = True,
     gzip_min_size: int = 500,
     enable_request_id: bool = True,

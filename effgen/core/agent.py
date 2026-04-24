@@ -56,9 +56,7 @@ from .router import RoutingDecision, RoutingStrategy, SubAgentRouter
 from .state import AgentState
 from .sub_agent_manager import SubAgentManager
 from .tool_calling import (
-    ReActStrategy,
     ToolCallResult,
-    ToolCallingStrategy,
     get_strategy,
 )
 
@@ -1002,13 +1000,21 @@ Question: {task}
             # Capture debug iteration data
             cur_observation = None  # filled later if tool runs
 
-            def _build_response(output: str, success: bool = True, **extra_meta: Any) -> AgentResponse:
+            def _build_response(
+                output: str,
+                success: bool = True,
+                _tokens_used: int = tokens_used,
+                _iterations: int = iterations,
+                _tool_calls: int = tool_calls,
+                _iter_start: float = iter_start,
+                **extra_meta: Any,
+            ) -> AgentResponse:
                 """Helper to build response and attach debug trace."""
                 meta: dict[str, Any] = {"tool_calling_strategy": self._tool_calling_strategy.name}
                 meta.update(extra_meta)
                 if debug_trace is not None:
-                    debug_trace.total_tokens = tokens_used
-                    debug_trace.total_latency = time.time() - (iter_start - (iterations - 1) * 0.001)
+                    debug_trace.total_tokens = _tokens_used
+                    debug_trace.total_latency = time.time() - (_iter_start - (_iterations - 1) * 0.001)
                     debug_trace.final_answer = output if success else None
                     debug_trace.success = success
                     meta["debug_trace"] = debug_trace
@@ -1016,9 +1022,9 @@ Question: {task}
                     output=output,
                     success=success,
                     mode=AgentMode.SINGLE,
-                    iterations=iterations,
-                    tool_calls=tool_calls,
-                    tokens_used=tokens_used,
+                    iterations=_iterations,
+                    tool_calls=_tool_calls,
+                    tokens_used=_tokens_used,
                     metadata=meta,
                 )
 

@@ -13,11 +13,14 @@ This module contains the core agent system components:
 # Agent
 from .agent import Agent, AgentConfig, AgentMode, AgentResponse
 
+# Result Aggregation
+from .aggregation import AggregatedResult, MergeStrategy, ResultAggregator, ToolResultCache
+
 # Batch Execution
 from .batch import BatchConfig, BatchResult, BatchRunner
 
-# Result Aggregation
-from .aggregation import AggregatedResult, MergeStrategy, ResultAggregator, ToolResultCache
+# Clarification (Phase 9)
+from .clarification import ClarificationDetector, ClarificationRequest
 
 # Complexity Analyzer
 from .complexity_analyzer import ComplexityAnalyzer, ComplexityScore
@@ -34,41 +37,8 @@ from .execution_tracker import (
     ExecutionTracker,
 )
 
-# Orchestrator
-from .orchestrator import MultiAgentOrchestrator, OrchestrationPattern, TeamConfig, TeamResponse
-
-# Router
-from .router import RoutingDecision, RoutingStrategy, SubAgentRouter
-
-# Lifecycle Management
-from .lifecycle import AgentEntry, AgentLifecycleState, AgentPool, AgentRegistry
-
-# Message Bus
-from .message_bus import AgentMessage, MessageBus, MessageType
-
-# Shared State
-from .shared_state import SharedState, StateMutation
-
-# State
-from .state import AgentState
-
-# Workflow
-from .workflow import WorkflowDAG, WorkflowEdge, WorkflowNode, WorkflowResult
-
-# Structured Output
-from .structured_output import StructuredOutputConfig, constrain_output, validate_json_schema
-
-# Tool Calling Strategy
-from .tool_calling import (
-    HybridStrategy,
-    NativeFunctionCallingStrategy,
-    ReActStrategy,
-    ToolCallResult,
-    ToolCallingStrategy,
-    ToolDefinition,
-    get_strategy,
-    tools_to_definitions,
-)
+# Feedback (Phase 9)
+from .feedback import FeedbackCollector, FeedbackEntry, FeedbackType
 
 # Human-in-the-Loop (Phase 9)
 from .human_loop import (
@@ -80,11 +50,26 @@ from .human_loop import (
     HumanInput,
 )
 
-# Clarification (Phase 9)
-from .clarification import ClarificationDetector, ClarificationRequest
+# Lifecycle Management
+from .lifecycle import AgentEntry, AgentLifecycleState, AgentPool, AgentRegistry
 
-# Feedback (Phase 9)
-from .feedback import FeedbackCollector, FeedbackEntry, FeedbackType
+# Message Bus
+from .message_bus import AgentMessage, MessageBus, MessageType
+
+# Orchestrator
+from .orchestrator import MultiAgentOrchestrator, OrchestrationPattern, TeamConfig, TeamResponse
+
+# Router
+from .router import RoutingDecision, RoutingStrategy, SubAgentRouter
+
+# Shared State
+from .shared_state import SharedState, StateMutation
+
+# State
+from .state import AgentState
+
+# Structured Output
+from .structured_output import StructuredOutputConfig, constrain_output, validate_json_schema
 
 # Sub-Agent Manager
 from .sub_agent_manager import (
@@ -96,6 +81,21 @@ from .sub_agent_manager import (
 
 # Task
 from .task import SubTask, Task, TaskPriority, TaskStatus
+
+# Tool Calling Strategy
+from .tool_calling import (
+    HybridStrategy,
+    NativeFunctionCallingStrategy,
+    ReActStrategy,
+    ToolCallingStrategy,
+    ToolCallResult,
+    ToolDefinition,
+    get_strategy,
+    tools_to_definitions,
+)
+
+# Workflow
+from .workflow import WorkflowDAG, WorkflowEdge, WorkflowNode, WorkflowResult
 
 __all__ = [
     # Agent

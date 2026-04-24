@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 import warnings
 from collections.abc import Iterator
+from typing import Any
 
 import torch
 from transformers import (
@@ -560,7 +561,8 @@ class TransformersEngine(BatchModel):
             streamer = TextIteratorStreamer(
                 self.tokenizer,
                 skip_special_tokens=True,
-                skip_prompt=True
+                skip_prompt=True,
+                timeout=30.0,  # prevent indefinite block if generation thread dies
             )
 
             # Note: stop_sequences not fully supported in streaming mode
@@ -574,13 +576,25 @@ class TransformersEngine(BatchModel):
                 **kwargs
             }
 
-            thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
+            gen_exception: list[BaseException] = []
+
+            def _generate_with_error_capture() -> None:
+                try:
+                    self.model.generate(**generation_kwargs)
+                except BaseException as exc:
+                    gen_exception.append(exc)
+                    # Unblock the streamer queue so yield-from terminates
+                    streamer.end()
+
+            thread = Thread(target=_generate_with_error_capture, daemon=True)
             thread.start()
 
             # Yield tokens as they're generated
             yield from streamer
 
-            thread.join()
+            thread.join(timeout=5.0)
+            if gen_exception:
+                raise gen_exception[0]
 
         except Exception as e:
             logger.error(f"Streaming generation failed: {e}")

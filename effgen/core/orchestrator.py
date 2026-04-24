@@ -18,7 +18,7 @@ from typing import Any
 
 from .agent import Agent, AgentMode
 from .execution_tracker import EventType, ExecutionEvent, ExecutionTracker
-from .lifecycle import AgentLifecycleState, AgentRegistry
+from .lifecycle import AgentRegistry
 from .message_bus import AgentMessage, MessageBus, MessageType
 from .shared_state import SharedState
 

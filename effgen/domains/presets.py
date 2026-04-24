@@ -18,33 +18,33 @@ from .base import Domain
 
 def TechDomain(**overrides) -> Domain:  # noqa: N802
     """Software engineering, programming, and DevOps domain."""
-    defaults = dict(
-        name="tech",
-        description="Software engineering, programming languages, DevOps, and cloud computing.",
-        keywords=[
+    defaults = {
+        "name": "tech",
+        "description": "Software engineering, programming languages, DevOps, and cloud computing.",
+        "keywords": [
             "Python", "JavaScript", "TypeScript", "Rust", "Go",
             "machine learning", "deep learning", "Docker", "Kubernetes",
             "REST API", "microservices", "CI/CD", "Git", "SQL",
             "cloud computing", "Linux", "algorithms", "data structures",
             "web development", "cybersecurity",
         ],
-        system_prompt=(
+        "system_prompt": (
             "You are a technology expert specializing in software engineering, "
             "programming, DevOps, and cloud computing. Provide accurate, "
             "up-to-date technical information with code examples when relevant."
         ),
-        tool_names=["code_executor", "python_repl", "web_search", "bash"],
-    )
+        "tool_names": ["code_executor", "python_repl", "web_search", "bash"],
+    }
     defaults.update(overrides)
     return Domain(**defaults)
 
 
 def ScienceDomain(**overrides) -> Domain:  # noqa: N802
     """Physics, chemistry, biology, and general science domain."""
-    defaults = dict(
-        name="science",
-        description="Physics, chemistry, biology, astronomy, and general sciences.",
-        keywords=[
+    defaults = {
+        "name": "science",
+        "description": "Physics, chemistry, biology, astronomy, and general sciences.",
+        "keywords": [
             "quantum mechanics", "organic chemistry", "molecular biology",
             "genetics", "astrophysics", "thermodynamics", "evolution",
             "neuroscience", "ecology", "particle physics",
@@ -52,23 +52,23 @@ def ScienceDomain(**overrides) -> Domain:  # noqa: N802
             "electromagnetism", "relativity", "cell biology",
             "periodic table", "DNA", "photosynthesis",
         ],
-        system_prompt=(
+        "system_prompt": (
             "You are a science expert covering physics, chemistry, biology, "
             "and related fields. Explain concepts clearly, reference established "
             "theories, and use formulas or diagrams when helpful."
         ),
-        tool_names=["calculator", "python_repl", "web_search", "wikipedia"],
-    )
+        "tool_names": ["calculator", "python_repl", "web_search", "wikipedia"],
+    }
     defaults.update(overrides)
     return Domain(**defaults)
 
 
 def FinanceDomain(**overrides) -> Domain:  # noqa: N802
     """Markets, banking, crypto, and personal finance domain."""
-    defaults = dict(
-        name="finance",
-        description="Financial markets, banking, cryptocurrency, and personal finance.",
-        keywords=[
+    defaults = {
+        "name": "finance",
+        "description": "Financial markets, banking, cryptocurrency, and personal finance.",
+        "keywords": [
             "stock market", "cryptocurrency", "blockchain", "banking",
             "investment", "portfolio management", "risk analysis",
             "financial modeling", "interest rates", "inflation",
@@ -76,23 +76,23 @@ def FinanceDomain(**overrides) -> Domain:  # noqa: N802
             "fintech", "insurance", "accounting", "taxation",
             "real estate", "venture capital",
         ],
-        system_prompt=(
+        "system_prompt": (
             "You are a finance expert covering markets, banking, cryptocurrency, "
             "and personal finance. Provide factual analysis, explain financial "
             "concepts clearly, and note that your responses are not financial advice."
         ),
-        tool_names=["calculator", "web_search", "python_repl"],
-    )
+        "tool_names": ["calculator", "web_search", "python_repl"],
+    }
     defaults.update(overrides)
     return Domain(**defaults)
 
 
 def HealthDomain(**overrides) -> Domain:  # noqa: N802
     """Medical, wellness, and nutrition domain."""
-    defaults = dict(
-        name="health",
-        description="Medical science, wellness, nutrition, and public health.",
-        keywords=[
+    defaults = {
+        "name": "health",
+        "description": "Medical science, wellness, nutrition, and public health.",
+        "keywords": [
             "nutrition", "exercise", "mental health", "cardiology",
             "immunology", "pharmacology", "epidemiology", "oncology",
             "diabetes", "vaccines", "public health", "anatomy",
@@ -100,25 +100,25 @@ def HealthDomain(**overrides) -> Domain:  # noqa: N802
             "sleep science", "stress management", "preventive medicine",
             "clinical trials", "telemedicine",
         ],
-        system_prompt=(
+        "system_prompt": (
             "You are a health and medical information expert. Provide accurate, "
             "evidence-based health information. Always note that your responses "
             "are for informational purposes and not a substitute for professional "
             "medical advice."
         ),
-        tool_names=["web_search", "wikipedia", "calculator"],
-        guardrails="standard",
-    )
+        "tool_names": ["web_search", "wikipedia", "calculator"],
+        "guardrails": "standard",
+    }
     defaults.update(overrides)
     return Domain(**defaults)
 
 
 def LegalDomain(**overrides) -> Domain:  # noqa: N802
     """Law, regulations, and compliance domain."""
-    defaults = dict(
-        name="legal",
-        description="Law, regulations, compliance, and legal concepts.",
-        keywords=[
+    defaults = {
+        "name": "legal",
+        "description": "Law, regulations, compliance, and legal concepts.",
+        "keywords": [
             "contract law", "intellectual property", "copyright",
             "patent law", "criminal law", "civil rights", "tort law",
             "corporate law", "employment law", "data privacy",
@@ -126,15 +126,15 @@ def LegalDomain(**overrides) -> Domain:  # noqa: N802
             "constitutional law", "international law", "arbitration",
             "compliance", "litigation", "legal ethics",
         ],
-        system_prompt=(
+        "system_prompt": (
             "You are a legal information expert. Explain legal concepts, "
             "regulations, and compliance requirements clearly. Always note "
             "that your responses are for informational purposes and not "
             "legal advice. Recommend consulting a licensed attorney for "
             "specific legal matters."
         ),
-        tool_names=["web_search", "wikipedia"],
-        guardrails="standard",
-    )
+        "tool_names": ["web_search", "wikipedia"],
+        "guardrails": "standard",
+    }
     defaults.update(overrides)
     return Domain(**defaults)
