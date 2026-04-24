@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import pytest
 from dotenv import load_dotenv
-from pathlib import Path
 
 load_dotenv(Path.home() / ".effgen" / ".env", override=False)
 
@@ -95,8 +95,8 @@ class TestCerebrasNativeTools:
 class TestCerebrasAgentWithTools:
     def test_agent_math_task_llama(self):
         """Agent with Calculator on a multi-step math task using llama3.1-8b."""
-        from effgen.models.cerebras_adapter import CerebrasAdapter
         from effgen.core.agent import Agent, AgentConfig
+        from effgen.models.cerebras_adapter import CerebrasAdapter
         from effgen.tools.builtin.calculator import Calculator
 
         adapter = CerebrasAdapter("llama3.1-8b", enable_rate_limiting=False)
@@ -121,8 +121,8 @@ class TestCerebrasAgentWithTools:
 
     def test_agent_math_task_qwen(self):
         """Agent with Calculator on a multi-step task using qwen-3-235b."""
-        from effgen.models.cerebras_adapter import CerebrasAdapter
         from effgen.core.agent import Agent, AgentConfig
+        from effgen.models.cerebras_adapter import CerebrasAdapter
         from effgen.tools.builtin.calculator import Calculator
 
         adapter = CerebrasAdapter(

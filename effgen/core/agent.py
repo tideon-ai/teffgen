@@ -878,6 +878,7 @@ Question: {task}
 
         # ReAct loop
         previous_actions: list[tuple[str, str]] = []  # Track (action, input) pairs for loop detection
+        _batch_tool_runs = 0  # Count of batch native-tool runs; cap at 2 to prevent infinite loops
         # Optional periodic checkpointing
         _ckpt_interval = _ckpt_interval_arg
         _ckpt_dir = _ckpt_dir_arg
@@ -920,6 +921,9 @@ Question: {task}
 
             # Build prompt
             gen_kwargs = dict(kwargs)
+            # After 2 multi-tool batches, stop passing tools to force synthesis.
+            if _batch_tool_runs >= 2:
+                use_native_prompt = False
             if use_native_prompt and not self.config.system_prompt_template:
                 # Native/hybrid mode: use a simple user message and pass
                 # tool definitions via the chat template's tools parameter.
@@ -988,14 +992,43 @@ Question: {task}
             # tool call (empty text + structured tool_calls in metadata), use
             # it directly — no text parsing needed.
             native_tool_calls = response.get("tool_calls") or []
-            if native_tool_calls:
+
+            # Execute ALL native tool calls in one batch (OpenAI/Cerebras can
+            # return multiple tool_calls in a single response).
+            if len(native_tool_calls) > 1 and self.tools:
+                batch_observations: list[str] = []
+                for _tc in native_tool_calls:
+                    _fn = _tc.get("function", _tc)
+                    _tname = _fn.get("name", "")
+                    _targs = _fn.get("arguments", {})
+                    if isinstance(_targs, str):
+                        try:
+                            _targs = json.loads(_targs)
+                        except (json.JSONDecodeError, TypeError):
+                            _targs = {"__raw_input__": _targs}
+                    if _tname in self.tools:
+                        _obs = self._execute_tool(_tname, json.dumps(_targs))
+                        tool_calls += 1
+                        batch_observations.append(f"[{_tname}({_targs})] → {_obs}")
+                        scratchpad += f"\nAction: {_tname}\nAction Input: {json.dumps(_targs)}\nObservation: {_obs}"
+                    else:
+                        batch_observations.append(f"[{_tname}] → Tool not found")
+                # After batch execution, nudge model to synthesize a final answer.
+                scratchpad += "\n[Tool results computed above. Continue or provide Final Answer:]"
+                _batch_tool_runs += 1
+                parsed = {"thought": "", "action": None, "action_input": None, "final_answer": None}
+                cur_observation = "\n".join(batch_observations)
+                logger.info(f"[Batch native tool calls] {len(native_tool_calls)} calls executed (batch run #{_batch_tool_runs})")
+            elif native_tool_calls:
                 strategy_result = self._parse_native_tool_calls(native_tool_calls)
+                # Convert to legacy dict format for compatibility with rest of loop
+                parsed = self._tool_call_result_to_dict(strategy_result)
             else:
                 strategy_result = self._tool_calling_strategy.parse_response(
                     response["text"], tools=self.tools,
                 )
-            # Convert to legacy dict format for compatibility with rest of loop
-            parsed = self._tool_call_result_to_dict(strategy_result)
+                # Convert to legacy dict format for compatibility with rest of loop
+                parsed = self._tool_call_result_to_dict(strategy_result)
 
             # Debug: Log what was parsed
             logger.info(f"[Iteration {iterations}] Parsed - Action: {parsed.get('action')}, Input: {parsed.get('action_input')}, Final: {parsed.get('final_answer')}")

@@ -205,15 +205,15 @@ def test_tool(impl_code: str, test_input_json: str) -> str:
         return f"Invalid JSON input: {e}"
 
     # Build a function from the implementation code
-    func_code = f"def _test_execute(**kwargs):\n"
+    func_code = "def _test_execute(**kwargs):\n"
     for line in impl_code.splitlines():
         func_code += f"    {line}\n"
 
     # Execute with restricted builtins (no os, subprocess, etc.)
-    import io
     import contextlib
-    import math
     import datetime
+    import io
+    import math
     import re
 
     _SAFE_BUILTIN_NAMES = {

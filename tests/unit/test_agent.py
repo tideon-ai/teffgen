@@ -1,9 +1,6 @@
 """Unit tests for the Agent class."""
 
-import pytest
-from effgen.core.agent import Agent, AgentConfig, AgentResponse, AgentMode
-from effgen.models.base import GenerationConfig, GenerationResult
-from tests.fixtures.mock_models import MockModel, MockToolCallingModel
+from effgen.core.agent import Agent, AgentConfig, AgentMode, AgentResponse
 
 
 class TestAgentConfig:

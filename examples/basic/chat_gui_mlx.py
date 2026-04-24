@@ -18,7 +18,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from typing import Iterator
+from collections.abc import Iterator
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -39,7 +39,9 @@ def load_mlx_model(model_id: str) -> str:
     if _model is not None:
         del _model, _tokenizer
         _model = _tokenizer = None
-        import gc; gc.collect()
+        import gc
+
+        gc.collect()
 
     try:
         from mlx_lm import load

@@ -23,8 +23,8 @@ if not os.getenv("CEREBRAS_API_KEY"):
     raise SystemExit("Set CEREBRAS_API_KEY in ~/.effgen/.env or the environment.")
 
 from effgen.core.agent import Agent, AgentConfig  # noqa: E402
-from effgen.models.cerebras_adapter import CerebrasAdapter  # noqa: E402
 from effgen.models._cost import CostTracker  # noqa: E402
+from effgen.models.cerebras_adapter import CerebrasAdapter  # noqa: E402
 from effgen.tools.builtin.calculator import Calculator  # noqa: E402
 
 

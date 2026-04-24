@@ -64,7 +64,7 @@ def orchestrate(task: str):
         f"Rewrite the following research into a clear paragraph:\n\n"
         f"{research_result.output}"
     )
-    print(f"[Orchestrator] Sending to writer...")
+    print("[Orchestrator] Sending to writer...")
     writer_result = writer.run(writer_prompt)
     print(f"[Writer]       {writer_result.output}\n")
 

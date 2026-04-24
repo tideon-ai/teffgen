@@ -1,6 +1,7 @@
 """Integration tests for calculator agent with real model."""
 
 import pytest
+
 from effgen import Agent
 from effgen.core.agent import AgentConfig
 from effgen.tools.builtin import Calculator

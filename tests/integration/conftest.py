@@ -3,8 +3,8 @@ Integration test fixtures requiring real GPU models.
 """
 
 import os
-import sys
 import warnings
+
 import pytest
 
 warnings.filterwarnings("ignore", category=ImportWarning)
@@ -20,7 +20,7 @@ def _find_free_gpu():
         min_mem = float("inf")
         best = 0
         for i in range(torch.cuda.device_count()):
-            props = torch.cuda.get_device_properties(i)
+            torch.cuda.get_device_properties(i)
             mem_used = torch.cuda.memory_allocated(i)
             # Also check via nvidia-ml-py if available
             try:

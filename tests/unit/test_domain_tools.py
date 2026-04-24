@@ -17,14 +17,12 @@ from __future__ import annotations
 
 import asyncio
 import csv
-import json
 import os
 import socket
-import tempfile
-import urllib.request
 
 import pytest
 
+from effgen.tools.base_tool import ToolResult
 from effgen.tools.builtin import (
     ArxivTool,
     CryptoTool,
@@ -44,8 +42,6 @@ from effgen.tools.builtin import (
     SystemInfoTool,
     WolframAlphaTool,
 )
-from effgen.tools.base_tool import ToolResult
-
 
 # ---------------------------------------------------------------------------
 # helpers
@@ -313,7 +309,7 @@ def test_git_log_returns_commits():
     out = _ok(_run(GitTool().execute(operation="log", n=3, cwd=".")))
     assert out["returncode"] == 0
     # Repo has at least 3 commits (per git history)
-    lines = [l for l in out["stdout"].splitlines() if l.strip()]
+    lines = [ln for ln in out["stdout"].splitlines() if ln.strip()]
     assert len(lines) >= 1
 
 

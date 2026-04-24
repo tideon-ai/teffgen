@@ -1,6 +1,7 @@
 """Integration tests for tool fallback chains."""
 
 import pytest
+
 from effgen import Agent
 from effgen.core.agent import AgentConfig
 from effgen.tools.builtin import Calculator

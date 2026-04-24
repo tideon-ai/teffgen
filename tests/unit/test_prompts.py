@@ -1,9 +1,7 @@
 """Unit tests for prompt engineering modules."""
 
-import pytest
-from effgen.prompts.tool_prompt_generator import ToolPromptGenerator
 from effgen.prompts.agent_system_prompt import AgentSystemPromptBuilder
-from effgen.tools.builtin import Calculator, DateTimeTool
+from effgen.prompts.tool_prompt_generator import ToolPromptGenerator
 
 
 class TestToolPromptGenerator:

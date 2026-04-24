@@ -22,8 +22,8 @@ load_dotenv(Path.home() / ".effgen" / ".env", override=False)
 if not os.getenv("CEREBRAS_API_KEY"):
     raise SystemExit("Set CEREBRAS_API_KEY in ~/.effgen/.env or the environment.")
 
-from effgen.models.cerebras_adapter import CerebrasAdapter  # noqa: E402
 from effgen.models._cost import CostTracker  # noqa: E402
+from effgen.models.cerebras_adapter import CerebrasAdapter  # noqa: E402
 
 
 def print_summary(label: str) -> None:

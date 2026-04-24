@@ -81,7 +81,7 @@ def download_arc_dataset(output_dir: str = None, split: str = "test", challenge:
             entry = {
                 "id": item["id"],
                 "question": question,
-                "choices": {label: text for label, text in zip(choice_labels, choice_texts)},
+                "choices": dict(zip(choice_labels, choice_texts)),
                 "answer_key": answer_key,
                 "answer": correct_answer,
             }
@@ -105,7 +105,7 @@ def download_arc_dataset(output_dir: str = None, split: str = "test", challenge:
                 "content": f"Question: {question}\nAnswer: {correct_answer}",
                 "question": question,
                 "answer": correct_answer,
-                "choices": {label: text for label, text in zip(choice_labels, choice_texts)},
+                "choices": dict(zip(choice_labels, choice_texts)),
                 "answer_key": answer_key,
             }
             kb_entries.append(kb_entry)
@@ -113,7 +113,7 @@ def download_arc_dataset(output_dir: str = None, split: str = "test", challenge:
         # Write KB JSON
         json.dump(kb_entries, kb_f, indent=2)
 
-    print(f"Dataset saved to:")
+    print("Dataset saved to:")
     print(f"  - JSONL: {jsonl_path}")
     print(f"  - Text: {txt_path}")
     print(f"  - KB JSON: {kb_path}")
@@ -152,7 +152,7 @@ def create_sample_knowledge_base(output_dir: str = None, num_samples: int = 100)
     # Create sample
     sample_path = output_dir / f"arc_sample_{num_samples}.txt"
 
-    with open(full_txt, "r", encoding="utf-8") as f:
+    with open(full_txt, encoding="utf-8") as f:
         content = f.read()
 
     # Split by question markers

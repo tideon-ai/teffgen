@@ -8,8 +8,9 @@ covering real-world SLM outputs, edge cases, and regression tests.
 from __future__ import annotations
 
 import pytest
-from tests.fixtures.mock_models import MockModel
+
 from effgen.core.agent import Agent, AgentConfig
+from tests.fixtures.mock_models import MockModel
 
 
 @pytest.fixture

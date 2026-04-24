@@ -1,7 +1,6 @@
 """Unit tests for memory systems."""
 
-import pytest
-from effgen.memory.short_term import ShortTermMemory, Message, MessageRole
+from effgen.memory.short_term import Message, MessageRole, ShortTermMemory
 
 
 class TestMessage:

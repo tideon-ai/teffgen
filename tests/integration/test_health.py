@@ -1,6 +1,5 @@
 """Integration tests for health checking utilities."""
 
-import pytest
 
 
 class TestHealthChecker:

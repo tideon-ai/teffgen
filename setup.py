@@ -6,18 +6,19 @@ powerful agentic systems through tool integration, advanced prompt engineering,
 and smart sub-agent decomposition.
 """
 
-from setuptools import setup, find_packages
 import os
+
+from setuptools import find_packages, setup
 
 # Read version from __init__.py
 version = {}
-with open(os.path.join("effgen", "__init__.py"), "r", encoding="utf-8") as f:
+with open(os.path.join("effgen", "__init__.py"), encoding="utf-8") as f:
     for line in f:
         if line.startswith("__version__"):
             version["__version__"] = line.split("=")[1].strip().strip('"').strip("'")
             break
 
-with open("README.md", "r", encoding="utf-8") as fh:
+with open("README.md", encoding="utf-8") as fh:
     long_description = fh.read()
 
 # Read requirements, filtering out comments and empty lines
@@ -27,7 +28,7 @@ def read_requirements(filename):
     if not os.path.exists(filename):
         return requirements
 
-    with open(filename, "r", encoding="utf-8") as fh:
+    with open(filename, encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
             # Skip empty lines, comments, and -r references

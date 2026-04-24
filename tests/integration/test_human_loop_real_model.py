@@ -9,22 +9,12 @@ from __future__ import annotations
 import json
 import os
 import tempfile
-import time
 
 import pytest
 
 from effgen.core.agent import Agent, AgentConfig
-from effgen.core.human_loop import (
-    ApprovalDecision,
-    ApprovalManager,
-    ApprovalMode,
-    HumanApproval,
-    HumanChoice,
-    HumanInput,
-    is_tool_dangerous,
-)
-from effgen.core.clarification import ClarificationDetector, ClarificationRequest
-from effgen.core.feedback import FeedbackCollector, FeedbackType
+from effgen.core.clarification import ClarificationDetector
+from effgen.core.feedback import FeedbackCollector
 from effgen.models import load_model
 from effgen.tools.builtin.calculator import Calculator as CalculatorTool
 
@@ -178,7 +168,7 @@ def test_dangerous_only_mode(human_loop_model):
     print(f"  Approval count: {approval_count}")
     print(f"  Response: {response.output[:200]}")
     assert approval_count == 0, f"Calculator is not dangerous; expected 0 approvals, got {approval_count}"
-    assert "56" in response.output, f"Expected 56 in response"
+    assert "56" in response.output, "Expected 56 in response"
     print("  PASS: Non-dangerous tool ran without approval, answer=56")
     agent.close()
 
@@ -198,7 +188,7 @@ def test_no_approval_baseline(human_loop_model):
     response = agent.run("What is 99 + 1?")
 
     print(f"  Response: {response.output[:200]}")
-    assert "100" in response.output, f"Expected 100 in response"
+    assert "100" in response.output, "Expected 100 in response"
     print("  PASS: Baseline (no approval) works, answer=100")
     agent.close()
 

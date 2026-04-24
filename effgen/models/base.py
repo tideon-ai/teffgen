@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 
 class ModelType(Enum):
@@ -40,6 +40,10 @@ class GenerationConfig:
     # Optional draft model for speculative decoding. Backends that
     # do not support speculative decoding should ignore this field.
     draft_model: Any = None
+    # Reasoning model controls (OpenAI o-series). Both default to None
+    # for full back-compat — non-reasoning models silently ignore them.
+    reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = None
+    max_reasoning_tokens: int | None = None
 
 
 @dataclass

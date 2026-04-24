@@ -1,6 +1,6 @@
 """Unit tests for MLX engine implementation."""
 
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 

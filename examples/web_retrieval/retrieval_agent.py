@@ -17,7 +17,7 @@ from pathlib import Path
 
 from effgen import Agent, load_model
 from effgen.core.agent import AgentConfig
-from effgen.tools.builtin import Retrieval, Calculator
+from effgen.tools.builtin import Calculator, Retrieval
 
 # ============================================================================
 # CONFIGURATION: Set to True for detailed logging, False for minimal logging

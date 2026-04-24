@@ -1,6 +1,7 @@
 """End-to-end tests for math workflow."""
 
 import pytest
+
 from effgen import Agent
 from effgen.core.agent import AgentConfig
 from effgen.tools.builtin import Calculator

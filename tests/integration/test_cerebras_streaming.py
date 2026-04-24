@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import os
 import time
+from pathlib import Path
 
 import pytest
 from dotenv import load_dotenv
-from pathlib import Path
 
 load_dotenv(Path.home() / ".effgen" / ".env", override=False)
 
@@ -74,8 +74,8 @@ class TestCerebrasStreaming:
             adapter.unload()
 
     def test_stream_passes_config(self):
-        from effgen.models.cerebras_adapter import CerebrasAdapter
         from effgen.models.base import GenerationConfig
+        from effgen.models.cerebras_adapter import CerebrasAdapter
 
         adapter = CerebrasAdapter("llama3.1-8b", enable_rate_limiting=False)
         adapter.load()
@@ -89,8 +89,8 @@ class TestCerebrasStreaming:
             adapter.unload()
 
     def test_stream_cost_tracker_records(self):
-        from effgen.models.cerebras_adapter import CerebrasAdapter
         from effgen.models._cost import CostTracker
+        from effgen.models.cerebras_adapter import CerebrasAdapter
 
         CostTracker.reset()
         adapter = CerebrasAdapter(

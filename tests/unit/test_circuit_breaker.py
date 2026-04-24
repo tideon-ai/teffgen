@@ -1,8 +1,6 @@
 """Tests for CircuitBreaker — open/closed/half-open states."""
 
 import time
-import pytest
-from unittest.mock import patch
 
 from effgen.utils.circuit_breaker import CircuitBreaker, CircuitState
 

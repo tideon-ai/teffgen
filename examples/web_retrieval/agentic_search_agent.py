@@ -13,8 +13,8 @@ The AgenticSearch tool:
 - Extracts keywords from queries and searches for them
 """
 
-import logging
 import asyncio
+import logging
 from pathlib import Path
 
 from effgen import Agent, load_model

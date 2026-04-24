@@ -23,7 +23,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 import time
@@ -32,12 +31,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from effgen import load_model
 from effgen.core.agent import Agent, AgentConfig
-from effgen.tools.builtin.calculator import Calculator
-from effgen.tools.builtin.python_repl import PythonREPL
-from effgen.tools.builtin.datetime_tool import DateTimeTool
 from effgen.tools.builtin.bash_tool import BashTool
+from effgen.tools.builtin.calculator import Calculator
+from effgen.tools.builtin.datetime_tool import DateTimeTool
+from effgen.tools.builtin.python_repl import PythonREPL
 from effgen.tools.builtin.text_processing import TextProcessingTool
-
 
 MULTI_TOOL_SYSTEM_PROMPT = """You are a helpful AI assistant with access to multiple tools.
 
@@ -105,7 +103,7 @@ def run_test(agent, test_id, description, question, expected_keywords,
     if check_fn:
         custom_pass = check_fn(output, resp)
         if not custom_pass:
-            print(f"  Custom check FAILED")
+            print("  Custom check FAILED")
 
     # Check tool was used
     tool_pass = True
@@ -199,10 +197,10 @@ def run_all_tests(agent, model_name="unknown"):
     fb_pass = has_fb and "python_repl" in fb_list
     # Check if fallback was triggered (result should contain [Fallback: used python_repl])
     if "[Fallback:" in fb_result:
-        print(f"  Fallback triggered! ✓")
+        print("  Fallback triggered! ✓")
         fb_pass = True
     elif fb_result.startswith("Error"):
-        print(f"  Calculator failed, fallback should have triggered")
+        print("  Calculator failed, fallback should have triggered")
         # Fallback may not trigger if python_repl also can't handle "import math" as expression
         # The chain exists, just the fallback input might also fail
         fb_pass = has_fb  # Chain is properly configured even if both fail on this input
@@ -223,7 +221,7 @@ def run_all_tests(agent, model_name="unknown"):
     print("Test: T7 — Circuit Breaker (programmatic test)")
     cb = agent._circuit_breaker
     # Simulate 3 failures
-    for i in range(3):
+    for _i in range(3):
         cb.record_failure("test_broken_tool")
     state = cb.get_state("test_broken_tool")
     available = cb.is_available("test_broken_tool")
@@ -301,7 +299,7 @@ def main():
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 
-    print(f"\nLoading model...")
+    print("\nLoading model...")
     t0 = time.time()
     model = load_model(args.model)
     print(f"Model loaded in {time.time() - t0:.1f}s")

@@ -14,7 +14,7 @@ os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 
-from effgen import load_model, create_agent
+from effgen import create_agent, load_model
 
 MODEL_ID = "Qwen/Qwen2.5-3B-Instruct"
 

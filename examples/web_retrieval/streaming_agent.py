@@ -8,7 +8,6 @@ Usage:
 
 import logging
 import os
-import sys
 
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
 
@@ -39,6 +38,7 @@ print("=" * 60 + "\n")
 
 # Stream tokens as they arrive (with timeout to prevent hanging)
 import signal
+
 
 class StreamTimeout(Exception):
     pass

@@ -5,14 +5,15 @@ These models return predetermined responses, allowing tests to run
 without GPU or real model inference.
 """
 
-from typing import List, Optional, Dict, Any, Iterator
-from effgen.models.base import BaseModel, ModelType, GenerationConfig, GenerationResult, TokenCount
+from collections.abc import Iterator
+
+from effgen.models.base import BaseModel, GenerationConfig, GenerationResult, ModelType, TokenCount
 
 
 class MockModel(BaseModel):
     """Model that returns predetermined responses for testing."""
 
-    def __init__(self, responses: List[str], model_name: str = "mock-model"):
+    def __init__(self, responses: list[str], model_name: str = "mock-model"):
         super().__init__(model_name=model_name, model_type=ModelType.TRANSFORMERS)
         self.responses = responses
         self._idx = 0
@@ -23,7 +24,7 @@ class MockModel(BaseModel):
         self._is_loaded = True
 
     def generate(
-        self, prompt: str, config: Optional[GenerationConfig] = None, **kwargs
+        self, prompt: str, config: GenerationConfig | None = None, **kwargs
     ) -> GenerationResult:
         response = self.responses[self._idx % len(self.responses)]
         self._idx += 1
@@ -36,7 +37,7 @@ class MockModel(BaseModel):
         )
 
     def generate_stream(
-        self, prompt: str, config: Optional[GenerationConfig] = None, **kwargs
+        self, prompt: str, config: GenerationConfig | None = None, **kwargs
     ) -> Iterator[str]:
         result = self.generate(prompt, config, **kwargs)
         for token in result.text.split():
@@ -56,7 +57,7 @@ class MockModel(BaseModel):
         return self._idx
 
     @property
-    def last_prompt(self) -> Optional[str]:
+    def last_prompt(self) -> str | None:
         if self._generate_calls:
             return self._generate_calls[-1]["prompt"]
         return None
@@ -65,7 +66,7 @@ class MockModel(BaseModel):
 class MockToolCallingModel(MockModel):
     """Mock model that produces ReAct-formatted tool call responses."""
 
-    def __init__(self, tool_sequence: List[Dict[str, str]], model_name: str = "mock-tool-model"):
+    def __init__(self, tool_sequence: list[dict[str, str]], model_name: str = "mock-tool-model"):
         """
         Args:
             tool_sequence: List of dicts with keys:
@@ -88,8 +89,7 @@ class MockStreamingModel(MockModel):
     """Mock model that simulates token-by-token streaming."""
 
     def generate_stream(
-        self, prompt: str, config: Optional[GenerationConfig] = None, **kwargs
+        self, prompt: str, config: GenerationConfig | None = None, **kwargs
     ) -> Iterator[str]:
         result = self.generate(prompt, config, **kwargs)
-        for char in result.text:
-            yield char
+        yield from result.text

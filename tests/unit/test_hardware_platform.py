@@ -3,8 +3,6 @@
 import subprocess
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from effgen.hardware.platform import (
     HardwarePlatform,
     detect_platform,

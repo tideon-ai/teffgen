@@ -1,17 +1,15 @@
 """Tests for preset registry and create_agent factory."""
 
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from effgen.presets.registry import (
-    list_presets,
-    get_preset,
-    create_agent,
-    PRESETS,
     PresetConfig,
+    create_agent,
+    get_preset,
+    list_presets,
 )
 from tests.fixtures.mock_models import MockModel
-
 
 EXPECTED_PRESETS = {"math", "research", "coding", "general", "rag", "minimal"}
 
@@ -25,7 +23,7 @@ class TestListPresets:
 
     def test_returns_descriptions(self):
         presets = list_presets()
-        for name, desc in presets.items():
+        for _name, desc in presets.items():
             assert isinstance(desc, str)
             assert len(desc) > 0
 

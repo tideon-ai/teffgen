@@ -10,7 +10,6 @@ Usage:
     CUDA_VISIBLE_DEVICES=0 python examples/plugin_example.py
 """
 
-import asyncio
 import logging
 import os
 
@@ -20,9 +19,14 @@ logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 
 from effgen import Agent, AgentConfig, load_model
 from effgen.tools.base_tool import (
-    BaseTool, ToolCategory, ToolMetadata, ParameterSpec, ParameterType, ToolResult,
+    BaseTool,
+    ParameterSpec,
+    ParameterType,
+    ToolCategory,
+    ToolMetadata,
+    ToolResult,
 )
-from effgen.tools.plugin import ToolPlugin, PluginManager
+from effgen.tools.plugin import PluginManager, ToolPlugin
 
 
 # Step 1: Define a custom tool

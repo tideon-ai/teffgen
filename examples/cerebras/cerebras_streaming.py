@@ -24,8 +24,8 @@ load_dotenv(Path.home() / ".effgen" / ".env", override=False)
 if not os.getenv("CEREBRAS_API_KEY"):
     raise SystemExit("Set CEREBRAS_API_KEY in ~/.effgen/.env or the environment.")
 
-from effgen.models.cerebras_adapter import CerebrasAdapter  # noqa: E402
 from effgen.models._cost import CostTracker  # noqa: E402
+from effgen.models.cerebras_adapter import CerebrasAdapter  # noqa: E402
 
 
 def stream_demo(model_id: str, prompt: str) -> None:
@@ -42,7 +42,7 @@ def stream_demo(model_id: str, prompt: str) -> None:
 
     try:
         for chunk in adapter.generate_stream(prompt):
-            elapsed = time.monotonic() - start
+            time.monotonic() - start
             chunks.append(chunk)
             sys.stdout.write(chunk)
             sys.stdout.flush()
@@ -50,7 +50,7 @@ def stream_demo(model_id: str, prompt: str) -> None:
         adapter.unload()
 
     total_time = time.monotonic() - start
-    print(f"\n\n--- Stats ---")
+    print("\n\n--- Stats ---")
     print(f"Chunks received: {len(chunks)}")
     print(f"Total characters: {sum(len(c) for c in chunks)}")
     print(f"Wall time: {total_time:.2f}s")

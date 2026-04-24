@@ -121,7 +121,7 @@ def run_test(agent, tracker, test_id, desc, task, checks, timeout_sec=120, **str
     old_handler = signal.signal(signal.SIGALRM, _alarm_handler)
     try:
         signal.alarm(timeout_sec)
-        print(f"\n--- Stream Output ---")
+        print("\n--- Stream Output ---")
         for token in agent.stream(
             task,
             on_thought=tracker.on_thought,
@@ -169,12 +169,12 @@ def run_test(agent, tracker, test_id, desc, task, checks, timeout_sec=120, **str
 def run_streaming_tests(model_name: str):
     """Run all streaming tests."""
     print(f"\n{'#'*60}")
-    print(f"effGen — Advanced Streaming Agent")
+    print("effGen — Advanced Streaming Agent")
     print(f"Model: {model_name}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES', 'not set')}")
     print(f"{'#'*60}")
 
-    print(f"\nLoading model...")
+    print("\nLoading model...")
     t0 = time.time()
     model = load_model(model_name, quantization="4bit")
     print(f"Model loaded in {time.time()-t0:.1f}s")
@@ -303,11 +303,11 @@ def run_regression(model_name: str):
 
     from effgen.presets import create_agent as create_preset_agent
     from effgen.tools.builtin.bash_tool import BashTool
+    from effgen.tools.builtin.json_tool import JSONTool
     from effgen.tools.builtin.python_repl import PythonREPL
     from effgen.tools.builtin.text_processing import TextProcessingTool
-    from effgen.tools.builtin.json_tool import JSONTool
 
-    print(f"\nLoading model...")
+    print("\nLoading model...")
     t0 = time.time()
     model = load_model(model_name, quantization="4bit")
     print(f"Model loaded in {time.time()-t0:.1f}s")

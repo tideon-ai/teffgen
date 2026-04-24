@@ -17,7 +17,6 @@ via the `real_model` session fixture and verifies grounded answers.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -37,7 +36,6 @@ from effgen.rag import (
     TableChunker,
 )
 from effgen.rag.ingest import IngestedChunk
-
 
 # ---------------------------------------------------------------------------
 # DocumentIngester

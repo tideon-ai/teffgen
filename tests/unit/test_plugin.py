@@ -2,12 +2,13 @@
 
 import asyncio
 import os
-import pytest
 from pathlib import Path
 from unittest.mock import patch
 
-from effgen.tools.plugin import ToolPlugin, PluginManager
-from effgen.tools.registry import ToolRegistry, get_registry
+import pytest
+
+from effgen.tools.plugin import PluginManager, ToolPlugin
+from effgen.tools.registry import get_registry
 
 
 @pytest.fixture(autouse=True)
@@ -122,5 +123,5 @@ class TempPlugin(ToolPlugin):
     def test_load_plugin_manually(self):
         plugin = ToolPlugin(name="manual_plugin")
         mgr = PluginManager()
-        registered = mgr.load_plugin(plugin)
+        mgr.load_plugin(plugin)
         assert "manual_plugin" in mgr.loaded_plugins

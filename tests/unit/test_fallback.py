@@ -1,6 +1,5 @@
 """Tests for ToolFallbackChain."""
 
-import pytest
 from effgen.tools.fallback import ToolFallbackChain
 
 

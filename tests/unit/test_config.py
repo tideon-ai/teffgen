@@ -1,8 +1,8 @@
 """Unit tests for configuration system."""
 
-import pytest
 import os
-from pathlib import Path
+
+import pytest
 
 from effgen.config.loader import Config, ConfigLoader
 
@@ -56,7 +56,7 @@ class TestConfigLoader:
 
     def test_load_nonexistent_file(self):
         loader = ConfigLoader()
-        with pytest.raises(Exception):
+        with pytest.raises((OSError, FileNotFoundError)):
             loader.load_config("/nonexistent/path/config.yaml")
 
     def test_env_variable_substitution(self, tmp_dir):

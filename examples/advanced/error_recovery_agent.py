@@ -34,26 +34,22 @@ import asyncio
 import logging
 import os
 import sys
-import time
 import threading
+import time
 import traceback
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from effgen import load_model
-from effgen.core.agent import Agent, AgentConfig, AgentResponse
-from effgen.presets import create_agent
+from effgen.core.agent import Agent, AgentConfig
 from effgen.tools.base_tool import (
     BaseTool,
     ParameterSpec,
     ParameterType,
     ToolCategory,
     ToolMetadata,
-    ToolResult,
 )
-from effgen.tools.fallback import ToolFallbackChain
-from effgen.utils.circuit_breaker import CircuitBreaker, CircuitState
-
+from effgen.utils.circuit_breaker import CircuitState
 
 # ── Custom Tools ─────────────────────────────────────────────────────────────
 
@@ -252,7 +248,7 @@ def run_test(agent, test_id, description, question,
             custom_pass = False
             print(f"  Custom check EXCEPTION: {e}")
         if not custom_pass:
-            print(f"  Custom check FAILED")
+            print("  Custom check FAILED")
 
     # Check tool was used
     tool_pass = True
@@ -343,7 +339,7 @@ def test_p7_t2_tool_crash(model, model_name):
     state = cb.get_state("broken_tool")
     print(f"  Circuit breaker state for broken_tool: {state}")
     if state == CircuitState.OPEN:
-        print(f"  VERIFIED: Circuit breaker opened after repeated failures")
+        print("  VERIFIED: Circuit breaker opened after repeated failures")
         result["passed"] = True
     else:
         # The model may not have called it 3 times — check failure count
@@ -353,7 +349,7 @@ def test_p7_t2_tool_crash(model, model_name):
             print(f"  PARTIAL: At least {circuit.consecutive_failures} failure(s) recorded")
             result["passed"] = True  # Framework handled the crash without dying
         else:
-            print(f"  NOTE: Model may not have used broken_tool at all")
+            print("  NOTE: Model may not have used broken_tool at all")
             # The test still passes if the framework didn't crash
             result["passed"] = True
 
@@ -436,7 +432,7 @@ def test_p7_t5_empty_response(model, model_name):
     # 1. _generate has 3 retries with backoff_delays = [0.5, 1.0, 2.0]
     # 2. Temperature increases by 0.1 per retry
     print(f"\n{'='*60}")
-    print(f"Test: T5 — Empty model response retry logic")
+    print("Test: T5 — Empty model response retry logic")
 
     # Verify retry parameters exist in the agent's _generate method
     import inspect
@@ -554,7 +550,7 @@ def test_p7_t7_fallback_exhaustion(model, model_name):
                 trace_tools.append(data["tool_name"])
     print(f"  Tools attempted: {trace_tools}")
     if "calculator" in trace_tools:
-        print(f"  VERIFIED: Calculator was attempted (fallback chain activated)")
+        print("  VERIFIED: Calculator was attempted (fallback chain activated)")
 
     return result
 
@@ -595,7 +591,7 @@ def test_p7_t8_concurrent_failures(model, model_name):
     ]
 
     print(f"\n{'='*60}")
-    print(f"Test: T8 — Concurrent failures (3 agents)")
+    print("Test: T8 — Concurrent failures (3 agents)")
 
     t0 = time.time()
     threads = []
@@ -642,7 +638,7 @@ def test_p7_t9_control_characters(model, model_name):
     from effgen.core.agent import Agent as AgentClass
 
     print(f"\n{'='*60}")
-    print(f"Test: T9 — Control character sanitization")
+    print("Test: T9 — Control character sanitization")
 
     # Test the _sanitize_tool_input method directly
     test_cases = [
@@ -697,9 +693,9 @@ def test_p7_t9_control_characters(model, model_name):
 
 def run_regression(model, model_name):
     """Run regression tests."""
+    from effgen.tools.builtin.bash_tool import BashTool
     from effgen.tools.builtin.calculator import Calculator
     from effgen.tools.builtin.python_repl import PythonREPL
-    from effgen.tools.builtin.bash_tool import BashTool
 
     results = []
 
@@ -830,7 +826,7 @@ def main():
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 
-    print(f"\nLoading model...")
+    print("\nLoading model...")
     t0 = time.time()
     model = load_model(args.model)
     print(f"Model loaded in {time.time() - t0:.1f}s")
@@ -858,11 +854,11 @@ def main():
     else:
         # Run regression first
         print("\n--- Regression Tests ---")
-        reg_results = run_regression(model, model_name=args.model)
+        run_regression(model, model_name=args.model)
 
         # Run error recovery tests
         print("\n--- Error Recovery Tests ---")
-        p7_results = run_all_error_recovery_tests(model, model_name=args.model)
+        run_all_error_recovery_tests(model, model_name=args.model)
 
     model.unload()
     print("\nDone.")

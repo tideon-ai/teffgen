@@ -29,8 +29,9 @@ import logging
 import sys
 import time
 import traceback
+from collections.abc import Iterator
 from html import escape as _html_escape
-from typing import Any, Iterator
+from typing import Any
 
 from effgen.tools.base_tool import ToolResult
 
@@ -72,7 +73,7 @@ _agent = None
 def _get_all_model_choices() -> list[str]:
     """Flatten model catalog into dropdown choices."""
     choices = []
-    for group, models in MODEL_CATALOG.items():
+    for _group, models in MODEL_CATALOG.items():
         for model_id in models:
             choices.append(model_id)
     return choices
@@ -80,7 +81,7 @@ def _get_all_model_choices() -> list[str]:
 
 def _get_engine_for_model(model_id: str) -> str | None:
     """Look up the engine type for a model ID."""
-    for group, models in MODEL_CATALOG.items():
+    for _group, models in MODEL_CATALOG.items():
         if model_id in models:
             eng = models[model_id]["engine"]
             return None if eng in ("auto", "api") else eng
@@ -332,9 +333,20 @@ def _get_tool_instance(tool_key: str):
 
     try:
         from effgen.tools.builtin import (
-            Calculator, PythonREPL, WebSearch, CodeExecutor, FileOperations,
-            Retrieval, AgenticSearch, BashTool, WeatherTool, JSONTool,
-            DateTimeTool, TextProcessingTool, URLFetchTool, WikipediaTool,
+            AgenticSearch,
+            BashTool,
+            Calculator,
+            CodeExecutor,
+            DateTimeTool,
+            FileOperations,
+            JSONTool,
+            PythonREPL,
+            Retrieval,
+            TextProcessingTool,
+            URLFetchTool,
+            WeatherTool,
+            WebSearch,
+            WikipediaTool,
         )
         mapping = {
             "calculator": Calculator,

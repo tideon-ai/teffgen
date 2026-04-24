@@ -22,7 +22,6 @@ from effgen import Agent, AgentConfig
 from effgen.models import load_model
 from effgen.tools.builtin import Calculator, DateTimeTool
 
-
 # ---------------------------------------------------------------------------
 # 1. Agent.run() inside async code  (sync-in-async)
 # ---------------------------------------------------------------------------
@@ -66,7 +65,7 @@ async def concurrent_agents():
         "What is 100 factorial divided by 99 factorial?",
     ]
 
-    for i, task in enumerate(tasks):
+    for i, _task in enumerate(tasks):
         config = AgentConfig(
             name=f"concurrent-{i}",
             model=model,

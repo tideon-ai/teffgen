@@ -1,13 +1,14 @@
 """
-OpenAI API adapter for GPT models.
+OpenAI API adapter for GPT and o-series reasoning models.
 
-This module provides integration with OpenAI's API, supporting:
-- GPT-3.5, GPT-4, GPT-4-turbo models
-- Function/tool calling
+Supports:
+- GPT-4o, GPT-4.1, GPT-5, GPT-5.4-nano/mini chat models
+- o1, o1-mini, o3, o3-mini, o4-mini reasoning models
+- reasoning_effort / max_reasoning_tokens wired through GenerationConfig
+- Function / tool calling
 - Streaming responses
 - Automatic retries with exponential backoff
-- Cost tracking
-- Rate limiting
+- Cost tracking via CostTracker
 """
 
 from __future__ import annotations
@@ -24,77 +25,57 @@ from effgen.models.base import (
     ModelType,
     TokenCount,
 )
+from effgen.models.openai_models import (
+    OPENAI_MODELS,
+    VALID_REASONING_EFFORTS,
+    get_context_length,
+    get_max_output,
+    get_pricing,
+    supports_reasoning,
+)
+
+# Always show token/cost breakdown at INFO level
+_USAGE_LOG = logging.getLogger(__name__ + ".usage")
 
 logger = logging.getLogger(__name__)
+
+_REASONING_UNSUPPORTED_PARAMS = {"temperature", "top_p", "presence_penalty", "frequency_penalty"}
+
+
+def _pick_default_max_output(model_id: str) -> int:
+    """Return a sensible default max_output for *model_id*.
+
+    Reasoning models need more room for their internal chain-of-thought.
+    """
+    return get_max_output(model_id)
 
 
 class OpenAIAdapter(FunctionCallingModel):
     """
-    Adapter for OpenAI API models.
-
-    Provides a unified interface for OpenAI's GPT models with support for
-    function calling, streaming, and comprehensive error handling.
-
-    Features:
-    - Support for GPT-3.5, GPT-4, GPT-4-turbo
-    - Function/tool calling
-    - Streaming responses
-    - Automatic retries with exponential backoff
-    - Cost tracking and usage monitoring
-    - Rate limit handling
+    Adapter for OpenAI API models (chat + reasoning families).
 
     Attributes:
-        model_name: OpenAI model identifier (e.g., 'gpt-4', 'gpt-3.5-turbo')
-        api_key: OpenAI API key (reads from env if not provided)
+        model_name: OpenAI model identifier
+        api_key: OpenAI API key (reads from OPENAI_API_KEY env if not supplied)
         organization_id: OpenAI organization ID (optional)
-        max_retries: Maximum number of retry attempts
+        max_retries: Maximum retry attempts for failed requests
         timeout: Request timeout in seconds
     """
 
-    # Cost per 1K tokens (input/output) as of 2024
-    COST_PER_1K_TOKENS = {
-        "gpt-4-turbo-preview": (0.01, 0.03),
-        "gpt-4-turbo": (0.01, 0.03),
-        "gpt-4": (0.03, 0.06),
-        "gpt-4-32k": (0.06, 0.12),
-        "gpt-3.5-turbo": (0.0005, 0.0015),
-        "gpt-3.5-turbo-16k": (0.003, 0.004),
-    }
-
-    # Context lengths for models
-    CONTEXT_LENGTHS = {
-        "gpt-4-turbo-preview": 128000,
-        "gpt-4-turbo": 128000,
-        "gpt-4": 8192,
-        "gpt-4-32k": 32768,
-        "gpt-3.5-turbo": 16385,
-        "gpt-3.5-turbo-16k": 16385,
-    }
-
     def __init__(
         self,
-        model_name: str = "gpt-4-turbo-preview",
+        model_name: str = "gpt-4o-mini",
         api_key: str | None = None,
         organization_id: str | None = None,
         max_retries: int = 3,
         timeout: int = 60,
-        **kwargs
+        **kwargs,
     ):
-        """
-        Initialize OpenAI adapter.
-
-        Args:
-            model_name: OpenAI model identifier
-            api_key: OpenAI API key (defaults to OPENAI_API_KEY env var)
-            organization_id: OpenAI organization ID
-            max_retries: Maximum retry attempts for failed requests
-            timeout: Request timeout in seconds
-            **kwargs: Additional OpenAI client parameters
-        """
+        context = get_context_length(model_name)
         super().__init__(
             model_name=model_name,
             model_type=ModelType.OPENAI,
-            context_length=self.CONTEXT_LENGTHS.get(model_name, 4096)
+            context_length=context,
         )
 
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
@@ -113,278 +94,288 @@ class OpenAIAdapter(FunctionCallingModel):
         self.total_cost = 0.0
         self.total_tokens = 0
 
-    def load(self) -> None:
-        """
-        Initialize the OpenAI client.
+        self._is_reasoning_model = supports_reasoning(model_name)
 
-        Raises:
-            RuntimeError: If OpenAI package is not installed
-            ValueError: If API key is invalid
-        """
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
+    def load(self) -> None:
+        """Initialize the OpenAI client."""
         try:
             from openai import OpenAI
         except ImportError as e:
             raise RuntimeError(
-                "OpenAI package is not installed. Install it with: "
-                "pip install openai"
+                "OpenAI package is not installed. Install it with: pip install openai"
             ) from e
 
         try:
             logger.info(f"Initializing OpenAI client for model '{self.model_name}'...")
-
-            client_kwargs = {
+            client_kwargs: dict[str, Any] = {
                 "api_key": self.api_key,
                 "timeout": self.timeout,
                 "max_retries": self.max_retries,
             }
-
             if self.organization_id:
                 client_kwargs["organization"] = self.organization_id
-
             client_kwargs.update(self.additional_kwargs)
 
             self.client = OpenAI(**client_kwargs)
 
-            # Test the connection
+            # Light connectivity check — swallow failures, model may not be
+            # listed via models.retrieve for all accounts/tiers.
             try:
                 self.client.models.retrieve(self.model_name)
             except Exception as e:
-                logger.warning(f"Could not verify model '{self.model_name}': {e}")
+                logger.debug(f"Model verify skipped: {e}")
 
             self._is_loaded = True
-
             self._metadata = {
                 "model_name": self.model_name,
                 "context_length": self.get_context_length(),
+                "family": OPENAI_MODELS.get(self.model_name, {}).get("family", "chat"),
+                "supports_reasoning": self._is_reasoning_model,
                 "supports_functions": True,
                 "supports_streaming": True,
             }
-
             logger.info(f"OpenAI client initialized for '{self.model_name}'")
 
         except Exception as e:
             logger.error(f"Failed to initialize OpenAI client: {e}")
             raise RuntimeError(f"OpenAI initialization failed: {e}") from e
 
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
     def _create_messages(self, prompt: str | list) -> list[dict[str, Any]]:
-        """
-        Convert prompt to OpenAI messages format.
-
-        Supports plain text prompts and multimodal content (vision).
-
-        Args:
-            prompt: Text string or list of content parts.
-                    Each part can be a string or a dict with ``type``
-                    (``"text"`` or ``"image_url"``).
-
-        Returns:
-            List of message dicts
-        """
+        """Convert *prompt* to OpenAI messages list."""
         if isinstance(prompt, str):
             return [{"role": "user", "content": prompt}]
 
-        # Multimodal: build content array for vision
         content_parts: list[dict[str, Any]] = []
         for item in prompt:
             if isinstance(item, str):
                 content_parts.append({"type": "text", "text": item})
             elif isinstance(item, dict):
-                # Pass through OpenAI-native content parts (image_url, etc.)
                 if "type" in item:
                     content_parts.append(item)
                 elif "image_url" in item:
-                    content_parts.append({
-                        "type": "image_url",
-                        "image_url": {"url": item["image_url"]},
-                    })
+                    content_parts.append({"type": "image_url", "image_url": {"url": item["image_url"]}})
                 else:
                     content_parts.append({"type": "text", "text": str(item)})
             else:
                 content_parts.append({"type": "text", "text": str(item)})
-
         return [{"role": "user", "content": content_parts}]
 
-    def _calculate_cost(self, prompt_tokens: int, completion_tokens: int) -> float:
-        """
-        Calculate cost for the API call.
+    def _validate_reasoning_effort(self, effort: str | None) -> None:
+        """Raise ValueError for invalid *effort* values."""
+        if effort is not None and effort not in VALID_REASONING_EFFORTS:
+            raise ValueError(
+                f"Invalid reasoning_effort={effort!r}. "
+                f"Valid values: {VALID_REASONING_EFFORTS}. "
+                f"Pass None to omit."
+            )
 
-        Args:
-            prompt_tokens: Number of input tokens
-            completion_tokens: Number of output tokens
+    def _build_request_params(
+        self,
+        messages: list[dict[str, Any]],
+        config: GenerationConfig,
+        stream: bool = False,
+    ) -> dict[str, Any]:
+        """Build the kwargs dict for ``client.chat.completions.create``."""
+        self._validate_reasoning_effort(config.reasoning_effort)
 
-        Returns:
-            float: Estimated cost in USD
-        """
-        # Find matching cost entry (handle model variants)
-        cost_entry = None
-        for model_prefix, costs in self.COST_PER_1K_TOKENS.items():
-            if self.model_name.startswith(model_prefix):
-                cost_entry = costs
-                break
+        params: dict[str, Any] = {
+            "model": self.model_name,
+            "messages": messages,
+        }
 
-        if cost_entry is None:
-            logger.warning(f"Unknown cost for model '{self.model_name}', using default")
-            cost_entry = (0.01, 0.03)  # Default to GPT-4-turbo pricing
+        # All current OpenAI models accept max_completion_tokens.
+        # max_tokens is deprecated as of the 2024-11 API version.
+        max_tokens = config.max_tokens or _pick_default_max_output(self.model_name)
+        params["max_completion_tokens"] = max_tokens
 
-        input_cost = (prompt_tokens / 1000) * cost_entry[0]
-        output_cost = (completion_tokens / 1000) * cost_entry[1]
+        if self._is_reasoning_model:
+            # Reasoning models ignore temperature / top_p / penalties — drop them.
+            # reasoning_effort is passed as a top-level API parameter.
+            if config.reasoning_effort is not None:
+                params["reasoning_effort"] = config.reasoning_effort
+            if config.max_reasoning_tokens is not None:
+                # max_reasoning_tokens narrows how many tokens the model can use
+                # for its internal chain-of-thought.
+                params["max_completion_tokens"] = config.max_reasoning_tokens
+        else:
+            # Chat model — include standard sampling parameters.
+            params["temperature"] = config.temperature
+            params["top_p"] = config.top_p
+            params["presence_penalty"] = config.presence_penalty
+            params["frequency_penalty"] = config.frequency_penalty
 
+            if config.reasoning_effort is not None:
+                logger.debug(
+                    f"reasoning_effort={config.reasoning_effort!r} is set but "
+                    f"'{self.model_name}' is not a reasoning model — dropping silently."
+                )
+
+        # GPT-5 family and reasoning models don't accept the 'stop' parameter.
+        # Drop it silently so the Agent's default stop_sequences don't break calls.
+        if config.stop_sequences and not self._is_reasoning_model and not self.model_name.startswith("gpt-5"):
+            params["stop"] = config.stop_sequences
+        if config.seed is not None:
+            params["seed"] = config.seed
+        if stream:
+            params["stream"] = True
+
+        return params
+
+    def _calculate_cost(
+        self,
+        prompt_tokens: int,
+        completion_tokens: int,
+        cached_tokens: int = 0,
+    ) -> float:
+        """Estimate cost in USD from token counts, crediting cached tokens."""
+        input_price, cached_price, output_price = get_pricing(self.model_name)
+        if input_price is None:
+            logger.debug(f"No pricing for '{self.model_name}', defaulting to $2/$8 per 1M.")
+            input_price, cached_price, output_price = 2.00, 0.50, 8.00
+
+        non_cached = max(0, prompt_tokens - cached_tokens)
+        input_cost = (non_cached / 1_000_000) * input_price
+        if cached_tokens > 0 and cached_price is not None:
+            input_cost += (cached_tokens / 1_000_000) * cached_price
+        output_cost = (completion_tokens / 1_000_000) * (output_price or 8.00)
         return input_cost + output_cost
+
+    def _record_cost(
+        self,
+        prompt_tokens: int,
+        completion_tokens: int,
+        total_tokens: int,
+        cached_tokens: int = 0,
+    ) -> float:
+        cost = self._calculate_cost(prompt_tokens, completion_tokens, cached_tokens)
+        self.total_cost += cost
+        self.total_tokens += total_tokens
+
+        # Always print token/cost breakdown so users can see what they're spending
+        _USAGE_LOG.info(
+            f"[{self.model_name}] "
+            f"input={prompt_tokens}tok "
+            f"(cached={cached_tokens}) "
+            f"output={completion_tokens}tok "
+            f"| call=${cost:.6f} session=${self.total_cost:.6f}"
+        )
+
+        try:
+            from effgen.models._cost import CostTracker
+            CostTracker.get_instance().record(
+                provider="openai",
+                model=self.model_name,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+            )
+        except Exception:
+            pass
+        return cost
+
+    # ------------------------------------------------------------------
+    # Public generation API
+    # ------------------------------------------------------------------
 
     def generate(
         self,
         prompt: str,
         config: GenerationConfig | None = None,
-        **kwargs
+        **kwargs,
     ) -> GenerationResult:
-        """
-        Generate text from a prompt.
+        """Generate a completion for *prompt*.
 
-        Args:
-            prompt: Input text prompt
-            config: Generation configuration
-            **kwargs: Additional OpenAI parameters
-
-        Returns:
-            GenerationResult with generated text and metadata
-
-        Raises:
-            RuntimeError: If client is not initialized or request fails
-            ValueError: If prompt exceeds context length
+        If ``tools`` is in *kwargs*, routes automatically to ``generate_with_tools``
+        so the Agent loop can use native OpenAI function-calling without calling a
+        separate method.
         """
         if not self._is_loaded:
             raise RuntimeError("Client not initialized. Call load() first.")
-
         self.validate_prompt(prompt)
-
         if config is None:
             config = GenerationConfig()
 
+        # Transparent routing: if tools are passed (e.g. from the Agent), use
+        # generate_with_tools so native function-calling works end-to-end.
+        if "tools" in kwargs:
+            return self.generate_with_tools(
+                prompt=prompt,
+                tools=kwargs.pop("tools"),
+                config=config,
+                **kwargs,
+            )
+
         messages = self._create_messages(prompt)
+        request_params = self._build_request_params(messages, config)
+        request_params.update(kwargs)
 
         try:
-            # Build request parameters
-            request_params = {
-                "model": self.model_name,
-                "messages": messages,
-                "temperature": config.temperature,
-                "top_p": config.top_p,
-                "max_tokens": config.max_tokens,
-                "presence_penalty": config.presence_penalty,
-                "frequency_penalty": config.frequency_penalty,
-            }
-
-            if config.stop_sequences:
-                request_params["stop"] = config.stop_sequences
-
-            if config.seed is not None:
-                request_params["seed"] = config.seed
-
-            # Add any additional kwargs
-            request_params.update(kwargs)
-
-            # Make API call
             response = self.client.chat.completions.create(**request_params)
-
-            # Extract response
-            choice = response.choices[0]
-            generated_text = choice.message.content or ""
-            finish_reason = choice.finish_reason
-
-            # Get token usage
-            usage = response.usage
-            prompt_tokens = usage.prompt_tokens
-            completion_tokens = usage.completion_tokens
-            total_tokens = usage.total_tokens
-
-            # Calculate cost
-            cost = self._calculate_cost(prompt_tokens, completion_tokens)
-            self.total_cost += cost
-            self.total_tokens += total_tokens
-
-            logger.info(
-                f"Generated {completion_tokens} tokens. "
-                f"Cost: ${cost:.4f}. Total cost: ${self.total_cost:.4f}"
-            )
-
-            return GenerationResult(
-                text=generated_text,
-                tokens_used=completion_tokens,
-                finish_reason=finish_reason,
-                model_name=self.model_name,
-                metadata={
-                    "prompt_tokens": prompt_tokens,
-                    "completion_tokens": completion_tokens,
-                    "total_tokens": total_tokens,
-                    "cost": cost,
-                    "total_cost": self.total_cost,
-                }
-            )
-
         except Exception as e:
             logger.error(f"OpenAI API call failed: {e}")
             raise RuntimeError(f"Generation failed: {e}") from e
+
+        choice = response.choices[0]
+        generated_text = choice.message.content or ""
+        finish_reason = choice.finish_reason
+
+        usage = response.usage
+        prompt_tokens = usage.prompt_tokens
+        completion_tokens = usage.completion_tokens
+        total_tokens = usage.total_tokens
+
+        cached_tokens = 0
+        if hasattr(usage, "prompt_tokens_details") and usage.prompt_tokens_details:
+            cached_tokens = getattr(usage.prompt_tokens_details, "cached_tokens", 0) or 0
+
+        cost = self._record_cost(prompt_tokens, completion_tokens, total_tokens, cached_tokens)
+
+        metadata: dict[str, Any] = {
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": total_tokens,
+            "cached_input_tokens": cached_tokens,
+            "cost": cost,
+            "total_cost": self.total_cost,
+        }
+
+        return GenerationResult(
+            text=generated_text,
+            tokens_used=completion_tokens,
+            finish_reason=finish_reason,
+            model_name=self.model_name,
+            metadata=metadata,
+        )
 
     def generate_stream(
         self,
         prompt: str,
         config: GenerationConfig | None = None,
-        **kwargs
+        **kwargs,
     ) -> Iterator[str]:
-        """
-        Generate text with streaming output.
-
-        Args:
-            prompt: Input text prompt
-            config: Generation configuration
-            **kwargs: Additional OpenAI parameters
-
-        Yields:
-            str: Generated text chunks
-
-        Raises:
-            RuntimeError: If client is not initialized or request fails
-            ValueError: If prompt exceeds context length
-        """
+        """Stream completions for *prompt*, yielding text chunks."""
         if not self._is_loaded:
             raise RuntimeError("Client not initialized. Call load() first.")
-
         self.validate_prompt(prompt)
-
         if config is None:
             config = GenerationConfig()
 
         messages = self._create_messages(prompt)
+        request_params = self._build_request_params(messages, config, stream=True)
+        request_params.update(kwargs)
 
         try:
-            # Build request parameters
-            request_params = {
-                "model": self.model_name,
-                "messages": messages,
-                "temperature": config.temperature,
-                "top_p": config.top_p,
-                "max_tokens": config.max_tokens,
-                "presence_penalty": config.presence_penalty,
-                "frequency_penalty": config.frequency_penalty,
-                "stream": True,
-            }
-
-            if config.stop_sequences:
-                request_params["stop"] = config.stop_sequences
-
-            if config.seed is not None:
-                request_params["seed"] = config.seed
-
-            # Add any additional kwargs
-            request_params.update(kwargs)
-
-            # Make streaming API call
             stream = self.client.chat.completions.create(**request_params)
-
             for chunk in stream:
-                if chunk.choices[0].delta.content is not None:
+                if chunk.choices and chunk.choices[0].delta.content is not None:
                     yield chunk.choices[0].delta.content
-
         except Exception as e:
             logger.error(f"OpenAI streaming failed: {e}")
             raise RuntimeError(f"Streaming generation failed: {e}") from e
@@ -394,197 +385,242 @@ class OpenAIAdapter(FunctionCallingModel):
         prompt: str,
         tools: list[dict[str, Any]],
         config: GenerationConfig | None = None,
-        **kwargs
+        messages: list[dict[str, Any]] | None = None,
+        **kwargs,
     ) -> GenerationResult:
-        """
-        Generate text with tool/function calling support.
+        """Generate with OpenAI-native function / tool calling.
 
         Args:
-            prompt: Input text prompt
-            tools: List of tool definitions in OpenAI function format
-            config: Generation configuration
-            **kwargs: Additional OpenAI parameters
-
-        Returns:
-            GenerationResult with potential tool calls in metadata
-
-        Raises:
-            RuntimeError: If client is not initialized or request fails
-            ValueError: If prompt or tools are invalid
+            prompt: User prompt (appended as user message if *messages* is given).
+            tools: List of tool definitions in OpenAI format.
+            config: Generation configuration.
+            messages: Full conversation history. If provided, *prompt* is appended.
+            **kwargs: Extra params forwarded to the API.
         """
         if not self._is_loaded:
             raise RuntimeError("Client not initialized. Call load() first.")
-
         self.validate_prompt(prompt)
-
         if config is None:
             config = GenerationConfig()
 
-        messages = self._create_messages(prompt)
+        if messages is None:
+            messages = self._create_messages(prompt)
+        else:
+            messages = list(messages) + [{"role": "user", "content": prompt}]
+
+        request_params = self._build_request_params(messages, config)
+        request_params["tools"] = tools
+        request_params.update(kwargs)
 
         try:
-            # Build request parameters
-            request_params = {
-                "model": self.model_name,
-                "messages": messages,
-                "tools": tools,
-                "temperature": config.temperature,
-                "top_p": config.top_p,
-                "max_tokens": config.max_tokens,
-            }
-
-            # Add any additional kwargs
-            request_params.update(kwargs)
-
-            # Make API call
             response = self.client.chat.completions.create(**request_params)
-
-            # Extract response
-            choice = response.choices[0]
-            message = choice.message
-            finish_reason = choice.finish_reason
-
-            # Get token usage
-            usage = response.usage
-            prompt_tokens = usage.prompt_tokens
-            completion_tokens = usage.completion_tokens
-            total_tokens = usage.total_tokens
-
-            # Calculate cost
-            cost = self._calculate_cost(prompt_tokens, completion_tokens)
-            self.total_cost += cost
-            self.total_tokens += total_tokens
-
-            # Extract tool calls if present
-            tool_calls = []
-            if message.tool_calls:
-                for tool_call in message.tool_calls:
-                    tool_calls.append({
-                        "id": tool_call.id,
-                        "type": tool_call.type,
-                        "function": {
-                            "name": tool_call.function.name,
-                            "arguments": tool_call.function.arguments,
-                        }
-                    })
-
-            generated_text = message.content or ""
-
-            return GenerationResult(
-                text=generated_text,
-                tokens_used=completion_tokens,
-                finish_reason=finish_reason,
-                model_name=self.model_name,
-                metadata={
-                    "prompt_tokens": prompt_tokens,
-                    "completion_tokens": completion_tokens,
-                    "total_tokens": total_tokens,
-                    "cost": cost,
-                    "total_cost": self.total_cost,
-                    "tool_calls": tool_calls,
-                }
-            )
-
         except Exception as e:
             logger.error(f"OpenAI API call with tools failed: {e}")
             raise RuntimeError(f"Generation with tools failed: {e}") from e
 
-    def supports_function_calling(self) -> bool:
-        """
-        Check if the model supports function calling.
+        choice = response.choices[0]
+        message = choice.message
+        finish_reason = choice.finish_reason
 
-        Returns:
-            bool: True (all supported OpenAI models support function calling)
+        usage = response.usage
+        prompt_tokens = usage.prompt_tokens
+        completion_tokens = usage.completion_tokens
+        total_tokens = usage.total_tokens
+        cached_tokens = 0
+        if hasattr(usage, "prompt_tokens_details") and usage.prompt_tokens_details:
+            cached_tokens = getattr(usage.prompt_tokens_details, "cached_tokens", 0) or 0
+        cost = self._record_cost(prompt_tokens, completion_tokens, total_tokens, cached_tokens)
+
+        tool_calls = []
+        if message.tool_calls:
+            for tc in message.tool_calls:
+                tool_calls.append({
+                    "id": tc.id,
+                    "type": tc.type,
+                    "function": {
+                        "name": tc.function.name,
+                        "arguments": tc.function.arguments,
+                    },
+                })
+
+        generated_text = message.content or ""
+        return GenerationResult(
+            text=generated_text,
+            tokens_used=completion_tokens,
+            finish_reason=finish_reason,
+            model_name=self.model_name,
+            metadata={
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": total_tokens,
+                "cached_input_tokens": cached_tokens,
+                "cost": cost,
+                "total_cost": self.total_cost,
+                "tool_calls": tool_calls,
+                "message": message,
+            },
+        )
+
+    def chat(
+        self,
+        messages: list[dict[str, Any]],
+        config: GenerationConfig | None = None,
+        tools: list[dict[str, Any]] | None = None,
+        **kwargs,
+    ) -> GenerationResult:
+        """Multi-turn chat with optional tool calling.
+
+        Args:
+            messages: Full conversation history in OpenAI format.
+            config: Generation configuration.
+            tools: Optional tool definitions.
+            **kwargs: Extra params forwarded to the API.
         """
+        if not self._is_loaded:
+            raise RuntimeError("Client not initialized. Call load() first.")
+        if config is None:
+            config = GenerationConfig()
+
+        # Validate the last user message length (approximate).
+        # Messages may be dicts or SDK Pydantic objects from a prior turn.
+        last_user = ""
+        for m in reversed(messages):
+            role = m.get("role") if isinstance(m, dict) else getattr(m, "role", None)
+            if role == "user":
+                content = m.get("content") if isinstance(m, dict) else getattr(m, "content", "")
+                if isinstance(content, str):
+                    last_user = content
+                break
+        if last_user:
+            self.validate_prompt(last_user)
+
+        request_params = self._build_request_params(messages, config)
+        if tools:
+            request_params["tools"] = tools
+        request_params.update(kwargs)
+
+        try:
+            response = self.client.chat.completions.create(**request_params)
+        except Exception as e:
+            logger.error(f"OpenAI chat failed: {e}")
+            raise RuntimeError(f"Chat failed: {e}") from e
+
+        choice = response.choices[0]
+        message = choice.message
+        usage = response.usage
+        cached_tokens = 0
+        if hasattr(usage, "prompt_tokens_details") and usage.prompt_tokens_details:
+            cached_tokens = getattr(usage.prompt_tokens_details, "cached_tokens", 0) or 0
+        cost = self._record_cost(usage.prompt_tokens, usage.completion_tokens, usage.total_tokens, cached_tokens)
+
+        tool_calls = []
+        if message.tool_calls:
+            for tc in message.tool_calls:
+                tool_calls.append({
+                    "id": tc.id,
+                    "type": tc.type,
+                    "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                })
+
+        return GenerationResult(
+            text=message.content or "",
+            tokens_used=usage.completion_tokens,
+            finish_reason=choice.finish_reason,
+            model_name=self.model_name,
+            metadata={
+                "prompt_tokens": usage.prompt_tokens,
+                "completion_tokens": usage.completion_tokens,
+                "total_tokens": usage.total_tokens,
+                "cached_input_tokens": cached_tokens,
+                "cost": cost,
+                "total_cost": self.total_cost,
+                "tool_calls": tool_calls,
+                "message": message,
+            },
+        )
+
+    # ------------------------------------------------------------------
+    # Capability queries
+    # ------------------------------------------------------------------
+
+    def supports_function_calling(self) -> bool:
         return True
 
     def supports_tool_calling(self) -> bool:
-        """Check if the model supports native tool calling.
+        return OPENAI_MODELS.get(self.model_name, {}).get("supports_native_tools", True)
 
-        Returns:
-            bool: True (OpenAI models support native tool calling).
-        """
-        return True
+    def is_reasoning_model(self) -> bool:
+        """Return True if this is an o-series reasoning model."""
+        return self._is_reasoning_model
+
+    # ------------------------------------------------------------------
+    # Tokenization
+    # ------------------------------------------------------------------
 
     def count_tokens(self, text: str) -> TokenCount:
-        """
-        Count tokens in text using tiktoken.
-
-        Args:
-            text: Text to count tokens for
-
-        Returns:
-            TokenCount object
-
-        Raises:
-            RuntimeError: If tiktoken is not available
-        """
+        """Count tokens using tiktoken (falls back to cl100k_base for new models)."""
         try:
             import tiktoken
         except ImportError as e:
-            raise RuntimeError(
-                "tiktoken is not installed. Install it with: pip install tiktoken"
-            ) from e
+            raise RuntimeError("tiktoken is not installed: pip install tiktoken") from e
 
         try:
-            # Get encoding for model
             encoding = tiktoken.encoding_for_model(self.model_name)
-            tokens = encoding.encode(text)
-            return TokenCount(count=len(tokens), model_name=self.model_name)
         except KeyError:
-            # Fallback to cl100k_base for unknown models
             encoding = tiktoken.get_encoding("cl100k_base")
-            tokens = encoding.encode(text)
-            return TokenCount(count=len(tokens), model_name=self.model_name)
-        except Exception as e:
-            logger.error(f"Token counting failed: {e}")
-            raise RuntimeError(f"Token counting failed: {e}") from e
+
+        return TokenCount(count=len(encoding.encode(text)), model_name=self.model_name)
+
+    # ------------------------------------------------------------------
+    # Context / cost helpers
+    # ------------------------------------------------------------------
 
     def get_context_length(self) -> int:
-        """
-        Get maximum context length.
-
-        Returns:
-            int: Maximum context length in tokens
-        """
         return self._context_length
 
     def get_total_cost(self) -> float:
-        """
-        Get total cost of all API calls.
-
-        Returns:
-            float: Total cost in USD
-        """
         return self.total_cost
 
     def get_total_tokens(self) -> int:
-        """
-        Get total tokens used across all API calls.
-
-        Returns:
-            int: Total token count
-        """
         return self.total_tokens
 
     def reset_usage_stats(self) -> None:
-        """
-        Reset usage statistics (cost and token count).
-        """
         self.total_cost = 0.0
         self.total_tokens = 0
         logger.info("Usage statistics reset")
 
+    # ------------------------------------------------------------------
+    # Lifecycle
+    # ------------------------------------------------------------------
+
     def unload(self) -> None:
-        """
-        Close the OpenAI client connection.
-        """
         if self.client is not None:
             logger.info(
-                f"Closing OpenAI client. Total cost: ${self.total_cost:.4f}, "
+                f"Closing OpenAI client. Total cost: ${self.total_cost:.6f}, "
                 f"Total tokens: {self.total_tokens}"
             )
             self.client.close()
             self.client = None
-
         self._is_loaded = False
+
+    # ------------------------------------------------------------------
+    # Class-level helpers
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def list_models(cls) -> list[str]:
+        """Return all registered OpenAI model IDs."""
+        from effgen.models.openai_models import available_models
+        return available_models()
+
+    @classmethod
+    def list_reasoning_models(cls) -> list[str]:
+        """Return o-series reasoning model IDs."""
+        from effgen.models.openai_models import reasoning_models
+        return reasoning_models()
+
+    @classmethod
+    def get_model_info(cls, model_id: str) -> dict:
+        """Return registry info for *model_id*."""
+        from effgen.models.openai_models import model_info
+        return model_info(model_id)

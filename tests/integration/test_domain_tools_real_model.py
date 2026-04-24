@@ -32,7 +32,6 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 from effgen.core.agent import Agent, AgentConfig
 from effgen.models import load_model
-
 from effgen.tools.builtin import (
     ArxivTool,
     CryptoTool,
@@ -83,7 +82,7 @@ def run_check(label: str, fn):
         fn()
         print(f"PASS: {label}", flush=True)
         return True
-    except Exception as e:
+    except Exception:
         print(f"FAIL: {label}\n{traceback.format_exc()}", flush=True)
         return False
 
@@ -99,7 +98,7 @@ def group_a():
         agent = make_agent("finance-agent", [CurrencyConverterTool()])
         r = agent.run("Convert 100 USD to EUR using the currency_converter tool.")
         assert r.success, f"agent failed: {r}"
-        text = (r.output or "").lower() + " " + str(r.metadata)
+        (r.output or "").lower() + " " + str(r.metadata)
         # The model should produce a number; we don't pin the value
         assert any(c.isdigit() for c in (r.output or "")), f"no number in output: {r.output}"
 

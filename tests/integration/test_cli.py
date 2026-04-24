@@ -2,7 +2,6 @@
 
 import subprocess
 import sys
-import pytest
 
 
 def _run_cli(*args, timeout=30):

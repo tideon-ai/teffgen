@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import pytest
 from dotenv import load_dotenv
-from pathlib import Path
 
 load_dotenv(Path.home() / ".effgen" / ".env", override=False)
 

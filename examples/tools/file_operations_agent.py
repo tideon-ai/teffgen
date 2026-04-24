@@ -22,21 +22,17 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import os
-import shutil
 import sys
-import tempfile
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from effgen import load_model
 from effgen.core.agent import Agent, AgentConfig
-from effgen.tools.builtin.file_ops import FileOperations
 from effgen.tools.builtin.bash_tool import BashTool
+from effgen.tools.builtin.file_ops import FileOperations
 from effgen.tools.builtin.text_processing import TextProcessingTool
-
 
 FILE_AGENT_SYSTEM_PROMPT = """You are a file management assistant with access to tools for file operations.
 
@@ -118,7 +114,7 @@ def run_test(agent, test_id, description, question, expected_keywords=None,
     if check_fn:
         custom_pass = check_fn(output, resp, test_dir)
         if not custom_pass:
-            print(f"  Custom check FAILED")
+            print("  Custom check FAILED")
 
     # Check tool was used
     tool_pass = True
@@ -305,7 +301,7 @@ def main():
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
     print(f"Test directory: {args.test_dir}")
 
-    print(f"\nLoading model...")
+    print("\nLoading model...")
     t0 = time.time()
     model = load_model(args.model)
     print(f"Model loaded in {time.time() - t0:.1f}s")

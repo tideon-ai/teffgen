@@ -178,10 +178,10 @@ def _test_calculator(model, model_name):
 def _test_multi_tool(model, model_name):
     """Test multi-tool agent — 5 tool-selection tasks (skip T6/T7 circuit breaker programmatic tests)."""
     from effgen.core.agent import Agent, AgentConfig
-    from effgen.tools.builtin.calculator import Calculator
-    from effgen.tools.builtin.python_repl import PythonREPL
-    from effgen.tools.builtin.datetime_tool import DateTimeTool
     from effgen.tools.builtin.bash_tool import BashTool
+    from effgen.tools.builtin.calculator import Calculator
+    from effgen.tools.builtin.datetime_tool import DateTimeTool
+    from effgen.tools.builtin.python_repl import PythonREPL
     from effgen.tools.builtin.text_processing import TextProcessingTool
 
     tools = [Calculator(), PythonREPL(), DateTimeTool(), BashTool(), TextProcessingTool()]
@@ -214,7 +214,8 @@ def _test_multi_tool(model, model_name):
     for q, kws in tests:
         check = None
         if kws is None:
-            check = lambda out, resp: len(out) > 10
+            def check(out, resp):
+                return len(out) > 10
             kws_arg = None
         else:
             kws_arg = kws
@@ -230,8 +231,8 @@ def _test_multi_tool(model, model_name):
 def _test_file_ops(model, model_name):
     """Test file operations agent — 4 tests (write, read, list, search)."""
     from effgen.core.agent import Agent, AgentConfig
-    from effgen.tools.builtin.file_ops import FileOperations
     from effgen.tools.builtin.bash_tool import BashTool
+    from effgen.tools.builtin.file_ops import FileOperations
     from effgen.tools.builtin.text_processing import TextProcessingTool
 
     test_dir = tempfile.mkdtemp(prefix="effgen_sweep_fileops_")
@@ -337,7 +338,6 @@ def _test_conversational(model, model_name):
     from effgen.core.agent import Agent, AgentConfig
     from effgen.tools.builtin.calculator import Calculator
     from effgen.tools.builtin.datetime_tool import DateTimeTool
-    from effgen.memory.short_term import ShortTermMemory
 
     def make_agent():
         config = AgentConfig(
@@ -392,12 +392,16 @@ def _test_conversational(model, model_name):
 
 def _test_error_recovery(model, model_name):
     """Test error recovery — 5 key tests (T1-T5 from phase 7)."""
-    import asyncio
     from effgen.core.agent import Agent, AgentConfig
+    from effgen.tools.base_tool import (
+        BaseTool,
+        ParameterSpec,
+        ParameterType,
+        ToolCategory,
+        ToolMetadata,
+    )
     from effgen.tools.builtin.calculator import Calculator
     from effgen.tools.builtin.python_repl import PythonREPL
-    from effgen.tools.base_tool import BaseTool, ParameterSpec, ParameterType, ToolCategory, ToolMetadata, ToolResult
-    from effgen.utils.circuit_breaker import CircuitBreaker, CircuitState
 
     class BrokenTool(BaseTool):
         def __init__(self):
@@ -467,8 +471,8 @@ def _test_data_processing(model, model_name):
     """Test data processing — 4 JSON/text tests."""
     from effgen.core.agent import Agent, AgentConfig
     from effgen.tools.builtin.json_tool import JSONTool
-    from effgen.tools.builtin.text_processing import TextProcessingTool
     from effgen.tools.builtin.python_repl import PythonREPL
+    from effgen.tools.builtin.text_processing import TextProcessingTool
 
     tools = [JSONTool(), TextProcessingTool(), PythonREPL()]
 
@@ -573,7 +577,7 @@ def _test_streaming(model, model_name):
         ):
             tokens2.append(tok)
         ok2 = len(tokens2) > 0 and len(answers2) > 0
-    except Exception as e:
+    except Exception:
         ok2 = False
     tests_passed += ok2
     details.append({"test": "stream_no_tool", "passed": ok2})
@@ -590,7 +594,7 @@ def _test_streaming(model, model_name):
             tokens3.append(tok)
         full = "".join(tokens3)
         ok3 = len(tokens3) > 0 and ("72" in full or any("72" in a for a in answers3))
-    except Exception as e:
+    except Exception:
         ok3 = False
     tests_passed += ok3
     details.append({"test": "token_accumulation", "passed": ok3})
@@ -603,7 +607,6 @@ def _test_multi_agent(model, model_name):
     """Test multi-agent pipeline — 3 tests (manual pipeline, routing, synthesis)."""
     from effgen.core.agent import Agent, AgentConfig
     from effgen.core.router import SubAgentRouter
-    from effgen.presets import create_agent
     from effgen.tools.builtin.calculator import Calculator
     from effgen.tools.builtin.python_repl import PythonREPL
 
@@ -656,7 +659,7 @@ def _test_multi_agent(model, model_name):
             "and compare with simple interest."
         )
         ok2 = (not simple.use_sub_agents and explicit_task.use_sub_agents)
-    except Exception as e:
+    except Exception:
         ok2 = False
     tests_passed += ok2
     details.append({"test": "routing", "passed": ok2})
@@ -675,7 +678,7 @@ def _test_multi_agent(model, model_name):
         )
         out = (resp.output or "").lower()
         ok3 = resp.success and ("compound" in out or "16,288" in out or "16288" in out) and len(resp.output) > 30
-    except Exception as e:
+    except Exception:
         ok3 = False
     tests_passed += ok3
     details.append({"test": "synthesis", "passed": ok3})
@@ -711,7 +714,7 @@ def main():
     model_name = args.model
 
     print(f"\n{'='*70}")
-    print(f"Phase 11 Compatibility Sweep")
+    print("Phase 11 Compatibility Sweep")
     print(f"Model: {model_name}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
     print(f"{'='*70}")

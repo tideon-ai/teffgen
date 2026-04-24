@@ -22,21 +22,15 @@ import argparse
 import os
 import shutil
 import sys
-import time
-import glob as glob_mod
 import tempfile
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from effgen import load_model
-from effgen.core.agent import Agent, AgentConfig, AgentResponse
+from effgen.core.agent import Agent, AgentConfig
 from effgen.tools.builtin.calculator import Calculator
 from effgen.tools.builtin.datetime_tool import DateTimeTool
-from effgen.memory.short_term import ShortTermMemory
-from effgen.memory.long_term import (
-    LongTermMemory, SQLiteStorageBackend, MemoryType, ImportanceLevel,
-)
-
 
 CONVERSATIONAL_SYSTEM_PROMPT = """You are a conversational assistant with memory. Remember what the user tells you and use that context in future responses.
 
@@ -111,7 +105,7 @@ def run_multi_turn_test(agent, test_id, description, turns, check_fn=None):
         custom_pass = check_fn(final_output, all_outputs)
         if not custom_pass:
             passed = False
-            print(f"  Custom check FAILED")
+            print("  Custom check FAILED")
 
     status = "PASS" if passed else "FAIL"
     print(f"\nResult: {status} — {test_id}: {description}")
@@ -262,12 +256,12 @@ def run_all_tests(model, model_name="unknown"):
     # Check that long-term memory was initialized
     ltm_ok = agent1.long_term_memory is not None
     print(f"\n{'='*60}")
-    print(f"Test: T6 — Long-term memory persistence (SQLite)")
+    print("Test: T6 — Long-term memory persistence (SQLite)")
     print(f"  LongTermMemory initialized: {ltm_ok}")
 
     if ltm_ok:
         # Store a conversation that uses tools (to trigger LTM storage)
-        print(f"\n  [Session 1] Storing facts...")
+        print("\n  [Session 1] Storing facts...")
         resp1 = agent1.run("What is 100 + 200? Use the calculator.")
         output1 = resp1.output if resp1.output else ""
         print(f"  [Session 1] Agent: {output1[:200]}")
@@ -297,7 +291,7 @@ def run_all_tests(model, model_name="unknown"):
         p6_t6_passed = db_exists and mem_count > 0
     else:
         p6_t6_passed = False
-        print(f"  FAIL: LongTermMemory not initialized")
+        print("  FAIL: LongTermMemory not initialized")
 
     status = "PASS" if p6_t6_passed else "FAIL"
     print(f"\nResult: {status} — T6: Long-term memory persistence (SQLite)")
@@ -421,7 +415,7 @@ def run_regression(model, model_name="unknown"):
     output2 = resp2.output if resp2.output else ""
     reg_p5_pass = "sunshine123" in output2.lower()
     print(f"\n{'='*60}")
-    print(f"Test: REG-P5 — Multi-turn memory recall")
+    print("Test: REG-P5 — Multi-turn memory recall")
     print(f"  Turn 1: Remember password -> {resp1.output[:100] if resp1.output else 'None'}")
     print(f"  Turn 2: Recall password -> {output2[:200]}")
     print(f"Result: {'PASS' if reg_p5_pass else 'FAIL'}")
@@ -483,7 +477,7 @@ def main():
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 
-    print(f"\nLoading model...")
+    print("\nLoading model...")
     t0 = time.time()
     model = load_model(args.model)
     print(f"Model loaded in {time.time() - t0:.1f}s")
@@ -496,10 +490,10 @@ def main():
     else:
         if not args.tests_only:
             print("\n--- Regression Tests ---")
-            reg_results = run_regression(model, model_name=args.model)
+            run_regression(model, model_name=args.model)
 
         print("\n--- Conversational Agent Tests ---")
-        p6_results = run_all_tests(model, model_name=args.model)
+        run_all_tests(model, model_name=args.model)
 
     model.unload()
     print("\nDone.")

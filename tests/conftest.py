@@ -2,13 +2,13 @@
 Shared test fixtures for the effGen test suite.
 """
 
-import os
-import sys
-import warnings
-import pytest
-import tempfile
 import shutil
+import sys
+import tempfile
+import warnings
 from pathlib import Path
+
+import pytest
 
 # Suppress ImportWarning from optional dependencies before importing effgen
 warnings.filterwarnings("ignore", category=ImportWarning)
@@ -17,11 +17,9 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 # Ensure effgen package is importable
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from tests.fixtures.mock_models import MockModel, MockToolCallingModel, MockStreamingModel
-from effgen.core.agent import Agent, AgentConfig, AgentResponse
-from effgen.models.base import BaseModel, GenerationConfig, GenerationResult
+from effgen.core.agent import Agent, AgentConfig
 from effgen.tools.builtin import Calculator, DateTimeTool, JSONTool, TextProcessingTool
-
+from tests.fixtures.mock_models import MockModel, MockStreamingModel, MockToolCallingModel
 
 # ---------------------------------------------------------------------------
 # Mock Model Fixtures

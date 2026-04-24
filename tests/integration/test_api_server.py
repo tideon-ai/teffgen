@@ -4,10 +4,9 @@ The FastAPI app is constructed inline inside cli.serve_api(), so we
 replicate the minimal app setup here for isolated testing.
 """
 
-import os
 import time
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 # Try to import FastAPI and create the test app
 pytestmark = pytest.mark.skipif(
@@ -18,11 +17,10 @@ pytestmark = pytest.mark.skipif(
 
 def _create_test_app(api_key=None, rate_limit=60):
     """Create a minimal FastAPI app matching the CLI server endpoints."""
-    from contextlib import asynccontextmanager
-    from fastapi import FastAPI, HTTPException, Request, Depends
+
+    from fastapi import Depends, FastAPI, HTTPException, Request
     from fastapi.responses import JSONResponse
     from fastapi.security import APIKeyHeader
-    from typing import Optional
 
     _metrics = {"requests": 0, "errors": 0, "total_time": 0.0}
     _rate_buckets = {}
@@ -39,7 +37,7 @@ def _create_test_app(api_key=None, rate_limit=60):
 
     api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
-    async def verify_api_key(key: Optional[str] = Depends(api_key_header)):
+    async def verify_api_key(key: str | None = Depends(api_key_header)):
         if api_key and key != api_key:
             raise HTTPException(status_code=401, detail="Invalid or missing API key")
 

@@ -24,7 +24,7 @@ import re
 import sys
 import textwrap
 import traceback
-from typing import Iterator
+from collections.abc import Iterator
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -154,7 +154,9 @@ def load_model(model_id: str) -> str:
     if _model is not None:
         del _model, _tokenizer
         _model = _tokenizer = None
-        import gc; gc.collect()
+        import gc
+
+        gc.collect()
     try:
         from mlx_lm import load
         _model, _tokenizer = load(model_id)
@@ -391,8 +393,8 @@ def run_user_code(code: str) -> str:
     if _model is None:
         return "Error: Model not loaded. Click 'Load Model' first."
 
-    import io
     import contextlib
+    import io
 
     # Build execution namespace with useful references
     exec_globals = {
@@ -654,7 +656,8 @@ def main():
     try:
         import gradio as gr
     except ImportError:
-        print("pip install gradio"); sys.exit(1)
+        print("pip install gradio")
+        sys.exit(1)
 
     if args.autoload:
         print(f"Loading: {args.model}")

@@ -1,7 +1,8 @@
 import logging
+
 from effgen import Agent, load_model
 from effgen.core.agent import AgentConfig
-from effgen.tools.builtin import Calculator, PythonREPL, CodeExecutor
+from effgen.tools.builtin import Calculator, CodeExecutor, PythonREPL
 
 # ============================================================================
 # CONFIGURATION: Set to True for detailed logging, False for minimal logging

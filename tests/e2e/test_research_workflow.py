@@ -1,6 +1,7 @@
 """End-to-end tests for research workflow (no API key required)."""
 
 import pytest
+
 from effgen import Agent
 from effgen.core.agent import AgentConfig
 from effgen.tools.builtin import DateTimeTool, TextProcessingTool

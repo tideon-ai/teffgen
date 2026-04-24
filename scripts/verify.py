@@ -9,15 +9,14 @@ Usage:
     python verify_framework.py [--verbose] [--skip-optional]
 """
 
-import sys
-import os
 import importlib
+import os
+import sys
+import time
 import traceback
-from pathlib import Path
-from typing import List, Dict, Tuple, Optional
 from dataclasses import dataclass
 from enum import Enum
-import time
+
 
 # Color codes for terminal output
 class Colors:
@@ -46,7 +45,7 @@ class TestResult:
     name: str
     status: TestStatus
     message: str
-    details: Optional[str] = None
+    details: str | None = None
     duration: float = 0.0
 
 
@@ -56,7 +55,7 @@ class FrameworkVerifier:
     def __init__(self, verbose: bool = False, skip_optional: bool = False):
         self.verbose = verbose
         self.skip_optional = skip_optional
-        self.results: List[TestResult] = []
+        self.results: list[TestResult] = []
         self.start_time = time.time()
 
     def log(self, message: str, color: str = ""):
@@ -177,9 +176,9 @@ class FrameworkVerifier:
         ]
 
         for module_name, description in modules:
-            def test_import():
-                importlib.import_module(module_name)
-                self.log_verbose(f"  Imported: {module_name}")
+            def test_import(name=module_name, desc=description):
+                importlib.import_module(name)
+                self.log_verbose(f"  Imported: {name}")
 
             result = self.run_test(f"Import {description}", test_import)
             self.add_result(result)
@@ -218,7 +217,7 @@ class FrameworkVerifier:
             self.log_verbose("  GenerationConfig instantiated successfully")
 
         def test_tool_metadata():
-            from effgen.tools.base_tool import ToolMetadata, ToolCategory
+            from effgen.tools.base_tool import ToolCategory, ToolMetadata
             metadata = ToolMetadata(
                 name="test_tool",
                 description="Test tool",
@@ -257,13 +256,13 @@ class FrameworkVerifier:
             from effgen.tools import get_registry
             registry = get_registry()
             assert registry is not None
-            self.log_verbose(f"  Tool registry initialized")
+            self.log_verbose("  Tool registry initialized")
 
         def test_builtin_tools():
             from effgen.tools.builtin.calculator import Calculator
-            from effgen.tools.builtin.web_search import WebSearch
             from effgen.tools.builtin.file_ops import FileOperations
             from effgen.tools.builtin.python_repl import PythonREPL
+            from effgen.tools.builtin.web_search import WebSearch
 
             # Test calculator
             calc = Calculator()
@@ -286,7 +285,7 @@ class FrameworkVerifier:
             self.log_verbose("  Python REPL tool initialized")
 
         def test_tool_registration():
-            from effgen.tools import get_registry, BaseTool, ToolMetadata, ToolCategory
+            from effgen.tools import BaseTool, ToolCategory, ToolMetadata, get_registry
             from effgen.tools.base_tool import ParameterSpec, ParameterType
 
             class TestTool(BaseTool):
@@ -351,15 +350,6 @@ class FrameworkVerifier:
         def test_config_validation():
             from effgen.config import ConfigValidator
 
-            valid_config = {
-                "agent": {
-                    "name": "ValidAgent",
-                    "model": {
-                        "name": "test-model",
-                        "engine": "transformers"
-                    }
-                }
-            }
 
             validator = ConfigValidator()
             # ConfigValidator exists and can be instantiated
@@ -456,7 +446,7 @@ class FrameworkVerifier:
         self.log(f"\n{Colors.HEADER}{Colors.BOLD}=== Testing Memory System ==={Colors.ENDC}\n")
 
         def test_short_term_memory():
-            from effgen.memory import ShortTermMemory, MessageRole
+            from effgen.memory import MessageRole, ShortTermMemory
 
             memory = ShortTermMemory(max_messages=10)
 
@@ -470,7 +460,7 @@ class FrameworkVerifier:
             self.log_verbose("  Short-term memory working correctly")
 
         def test_memory_entry():
-            from effgen.memory import MemoryEntry, MemoryType, ImportanceLevel
+            from effgen.memory import ImportanceLevel, MemoryEntry, MemoryType
 
             entry = MemoryEntry(
                 content="Test memory",
@@ -550,18 +540,18 @@ class FrameworkVerifier:
         ]
 
         for module_name, description in required_deps:
-            def test_import(name=module_name):
+            def test_import(name=module_name, desc=description):
                 importlib.import_module(name)
-                self.log_verbose(f"  {description} installed")
+                self.log_verbose(f"  {desc} installed")
 
             result = self.run_test(f"Dependency: {description}", test_import)
             self.add_result(result)
 
         if not self.skip_optional:
             for module_name, description in optional_deps:
-                def test_import(name=module_name):
+                def test_import(name=module_name, desc=description):
                     importlib.import_module(name)
-                    self.log_verbose(f"  {description} installed")
+                    self.log_verbose(f"  {desc} installed")
 
                 result = self.run_test(f"Optional: {description}", test_import)
                 # Don't fail on optional dependencies
@@ -635,7 +625,6 @@ class FrameworkVerifier:
 
         def test_agent_creation():
             from effgen.core.agent import AgentConfig
-            from effgen.models.base import BaseModel
 
             # AgentConfig requires a model - just test it exists
             assert AgentConfig is not None
@@ -691,7 +680,7 @@ class FrameworkVerifier:
             self.log_verbose("  MCP protocol handler created")
 
         def test_mcp_client():
-            from effgen.tools.protocols.mcp import MCPClient, MCPServerConfig, TransportType
+            from effgen.tools.protocols.mcp import MCPServerConfig, TransportType
 
             # Create a client configuration
             config = MCPServerConfig(
@@ -704,7 +693,7 @@ class FrameworkVerifier:
             self.log_verbose("  MCP client configuration created")
 
         def test_mcp_transports():
-            from effgen.tools.protocols.mcp import StdioTransport, HTTPTransport, SSETransport
+            from effgen.tools.protocols.mcp import HTTPTransport, SSETransport, StdioTransport
 
             # Verify all transport types are available
             assert StdioTransport is not None
@@ -722,8 +711,12 @@ class FrameworkVerifier:
 
         def test_mcp_data_structures():
             from effgen.tools.protocols.mcp import (
-                MCPTool, MCPResource, MCPCapabilities,
-                MCPRequest, MCPResponse, MCPError
+                MCPCapabilities,
+                MCPError,
+                MCPRequest,
+                MCPResource,
+                MCPResponse,
+                MCPTool,
             )
 
             # Verify all MCP data structures are available
@@ -754,8 +747,8 @@ class FrameworkVerifier:
                 EffGenMCPServer,
                 EffGenMCPServerConfig,
                 create_server,
+                main_http,
                 main_stdio,
-                main_http
             )
 
             # Verify all server components exist
@@ -771,8 +764,8 @@ class FrameworkVerifier:
                 EffGenMCPClient,
                 MCPServerConfig,
                 create_client,
+                create_http_client,
                 create_stdio_client,
-                create_http_client
             )
 
             # Verify all client components exist
@@ -837,6 +830,7 @@ class FrameworkVerifier:
 
         def test_calculator_execution():
             import asyncio
+
             from effgen.tools.builtin.calculator import Calculator
 
             calc = Calculator()
@@ -869,7 +863,7 @@ class FrameworkVerifier:
             self.log_verbose("  Parameter validation working")
 
         def test_tool_metadata_serialization():
-            from effgen.tools.base_tool import ToolMetadata, ToolCategory
+            from effgen.tools.base_tool import ToolCategory, ToolMetadata
 
             metadata = ToolMetadata(
                 name="test_tool",
@@ -914,6 +908,7 @@ class FrameworkVerifier:
 
         def test_async_tool_registry():
             import asyncio
+
             from effgen.tools import get_registry
             from effgen.tools.builtin.calculator import Calculator
 
@@ -930,6 +925,7 @@ class FrameworkVerifier:
 
         def test_async_tool_execution():
             import asyncio
+
             from effgen.tools.builtin.calculator import Calculator
 
             async def async_test():
@@ -974,7 +970,7 @@ class FrameworkVerifier:
             self.log_verbose("  Message serialization working")
 
         def test_memory_token_counting():
-            from effgen.memory import ShortTermMemory, MessageRole
+            from effgen.memory import MessageRole, ShortTermMemory
 
             memory = ShortTermMemory(max_tokens=1000)
             memory.add_message(MessageRole.USER, "Hello")
@@ -985,9 +981,14 @@ class FrameworkVerifier:
             self.log_verbose("  Memory token counting working")
 
         def test_long_term_memory_storage():
-            from effgen.memory import LongTermMemory, MemoryEntry, MemoryType, ImportanceLevel, JSONStorageBackend
             import tempfile
-            import os
+
+            from effgen.memory import (
+                ImportanceLevel,
+                JSONStorageBackend,
+                LongTermMemory,
+                MemoryType,
+            )
 
             # Create temp directory for storage
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -1075,7 +1076,7 @@ class FrameworkVerifier:
             self.log_verbose("  Code validator safety checks working")
 
         def test_memory_overflow_handling():
-            from effgen.memory import ShortTermMemory, MessageRole
+            from effgen.memory import MessageRole, ShortTermMemory
 
             # Create memory with very small limit
             memory = ShortTermMemory(max_messages=2)
@@ -1122,7 +1123,7 @@ class FrameworkVerifier:
             except Exception as e:
                 # Vector store may require optional dependencies
                 if "FAISS" in str(e) or "chroma" in str(e):
-                    self.log_verbose(f"  Vector store requires optional dependencies (skipping)")
+                    self.log_verbose("  Vector store requires optional dependencies (skipping)")
                     # Don't fail on optional dependency
                     return
                 else:

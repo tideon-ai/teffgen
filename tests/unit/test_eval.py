@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import json
-import tempfile
-from pathlib import Path
 
 import pytest
 
+from effgen.core.agent import Agent, AgentConfig
+from effgen.eval.comparison import ComparisonMatrix, ModelComparison, ModelScore
 from effgen.eval.evaluator import (
     AgentEvaluator,
     Difficulty,
@@ -20,21 +20,17 @@ from effgen.eval.evaluator import (
     _score_exact_match,
     _score_regex,
 )
+from effgen.eval.regression import RegressionAlert, RegressionTracker
 from effgen.eval.suites import (
     ConversationSuite,
     MathSuite,
     ReasoningSuite,
     SafetySuite,
-    TestSuite,
     ToolUseSuite,
     get_suite,
     list_suites,
 )
-from effgen.eval.regression import RegressionAlert, RegressionTracker
-from effgen.eval.comparison import ComparisonMatrix, ModelComparison, ModelScore
-from effgen.core.agent import Agent, AgentConfig
 from tests.fixtures.mock_models import MockModel
-
 
 # ---------------------------------------------------------------------------
 # TestCase
@@ -443,22 +439,10 @@ class TestImports:
     def test_top_level_import(self):
         from effgen.eval import (
             AgentEvaluator,
-            EvalResult,
-            SuiteResults,
-            TestCase,
-            MathSuite,
-            ToolUseSuite,
-            ReasoningSuite,
-            SafetySuite,
-            ConversationSuite,
-            RegressionTracker,
-            ModelComparison,
-            get_suite,
-            list_suites,
         )
         # Just verify they are importable
         assert AgentEvaluator is not None
 
     def test_effgen_level_import(self):
-        from effgen import AgentEvaluator, TestCase, SuiteResults
+        from effgen import AgentEvaluator
         assert AgentEvaluator is not None

@@ -21,7 +21,6 @@ from effgen.hardware.platform import (
 )
 from effgen.models.base import ModelType
 
-
 # ---------------------------------------------------------------------------
 # Hardware platform detection
 # ---------------------------------------------------------------------------

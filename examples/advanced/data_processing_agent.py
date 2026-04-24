@@ -40,11 +40,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from effgen import load_model
 from effgen.core.agent import Agent, AgentConfig
-from effgen.tools.builtin.json_tool import JSONTool
-from effgen.tools.builtin.text_processing import TextProcessingTool
-from effgen.tools.builtin.python_repl import PythonREPL
 from effgen.tools.builtin.file_ops import FileOperations
-
+from effgen.tools.builtin.json_tool import JSONTool
+from effgen.tools.builtin.python_repl import PythonREPL
+from effgen.tools.builtin.text_processing import TextProcessingTool
 
 # ── System Prompt ────────────────────────────────────────────────────────────
 
@@ -116,7 +115,7 @@ def run_test(agent, test_id, description, question,
             custom_pass = False
             print(f"  Custom check EXCEPTION: {e}")
         if not custom_pass:
-            print(f"  Custom check FAILED")
+            print("  Custom check FAILED")
 
     # Check tool was used
     tool_pass = True
@@ -329,9 +328,9 @@ def test_t6_data_pipeline(model, model_name, sandbox_dir):
 
 def run_regression(model, model_name):
     """Run regression tests to verify previous examples still work."""
+    from effgen.tools.builtin.bash_tool import BashTool
     from effgen.tools.builtin.calculator import Calculator
     from effgen.tools.builtin.python_repl import PythonREPL as PythonREPLTool
-    from effgen.tools.builtin.bash_tool import BashTool
 
     results = []
 
@@ -458,11 +457,11 @@ def main():
         logging.basicConfig(level=logging.INFO, format="%(name)s: %(message)s")
 
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-    print(f"effGen — Data Processing Agent")
+    print("effGen — Data Processing Agent")
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 
-    print(f"\nLoading model...")
+    print("\nLoading model...")
     t0 = time.time()
     model = load_model(args.model)
     print(f"Model loaded in {time.time() - t0:.1f}s")
@@ -491,11 +490,11 @@ def main():
         else:
             # Run regression first
             print("\n--- Regression Tests ---")
-            reg_results = run_regression(model, model_name=args.model)
+            run_regression(model, model_name=args.model)
 
             # Run data processing tests
             print("\n--- Data Processing Tests ---")
-            p8_results = run_all_tests(model, model_name=args.model, sandbox_dir=sandbox_dir)
+            run_all_tests(model, model_name=args.model, sandbox_dir=sandbox_dir)
     finally:
         # Cleanup sandbox
         if os.path.exists(sandbox_dir):

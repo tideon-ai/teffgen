@@ -1,4 +1,5 @@
 import logging
+
 from effgen import Agent, load_model
 from effgen.core.agent import AgentConfig
 from effgen.tools.builtin import WebSearch

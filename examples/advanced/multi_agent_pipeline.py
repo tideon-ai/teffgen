@@ -30,7 +30,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 import time
@@ -39,10 +38,10 @@ import traceback
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from effgen import load_model
-from effgen.core.agent import Agent, AgentConfig, AgentMode, AgentResponse
-from effgen.core.router import SubAgentRouter, RoutingStrategy
-from effgen.core.sub_agent_manager import SubAgentManager
+from effgen.core.agent import Agent, AgentConfig
 from effgen.core.execution_tracker import ExecutionTracker
+from effgen.core.router import RoutingStrategy, SubAgentRouter
+from effgen.core.sub_agent_manager import SubAgentManager
 from effgen.core.task import SubTask, TaskStatus
 from effgen.presets import create_agent
 from effgen.tools.builtin.calculator import Calculator
@@ -206,7 +205,7 @@ def test_sub_agent_routing(model):
     print(f"  Num subtasks: {complex_decision.num_sub_agents}")
     print(f"  Specializations: {complex_decision.specializations}")
     if complex_decision.decomposition:
-        print(f"  Decomposition:")
+        print("  Decomposition:")
         for st in complex_decision.decomposition:
             print(f"    - [{st.id}] {st.description[:60]}... (depends: {st.depends_on})")
     print(f"  Reasoning: {complex_decision.reasoning}")
@@ -272,7 +271,6 @@ def test_sub_agent_execution(model, strategy="sequential"):
 
     # Instead of using the placeholder _simulate_execution, we use real agents
     # by overriding the execution method
-    original_execute = manager._execute_sub_agent
 
     def real_execute(agent_info, subtask, progress_callback=None):
         """Execute subtask using a real Agent with the shared model."""
@@ -601,8 +599,8 @@ def test_hard_pipeline(model, topic="physics"):
     ))
     t0 = time.time()
     resp_gen = agent_gen.run(
-        f"Create a multi-step math problem about a store selling items with tax and discount. "
-        f"Include at least 3 items with different prices, a percentage discount, and sales tax."
+        "Create a multi-step math problem about a store selling items with tax and discount. "
+        "Include at least 3 items with different prices, a percentage discount, and sales tax."
     )
     dt_gen = time.time() - t0
     problem = resp_gen.output.strip()
@@ -893,7 +891,7 @@ def main():
     print(f"GPU: {os.environ.get('CUDA_VISIBLE_DEVICES', 'auto')}")
 
     # Load model
-    print(f"\nLoading model...")
+    print("\nLoading model...")
     t0 = time.time()
     model = load_model(args.model)
     print(f"Model loaded in {time.time()-t0:.1f}s")

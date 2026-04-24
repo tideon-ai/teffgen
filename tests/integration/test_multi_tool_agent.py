@@ -1,6 +1,7 @@
 """Integration tests for multi-tool agent with real model."""
 
 import pytest
+
 from effgen import Agent
 from effgen.core.agent import AgentConfig
 from effgen.tools.builtin import Calculator, DateTimeTool, TextProcessingTool

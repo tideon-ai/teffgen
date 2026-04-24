@@ -1,9 +1,10 @@
 """End-to-end tests for coding workflow."""
 
 import pytest
+
 from effgen import Agent
 from effgen.core.agent import AgentConfig
-from effgen.tools.builtin import Calculator, JSONTool
+from effgen.tools.builtin import JSONTool
 
 
 @pytest.mark.gpu

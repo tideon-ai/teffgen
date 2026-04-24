@@ -13,10 +13,11 @@ Usage:
 """
 
 import logging
+
 from effgen import Agent, load_model
 from effgen.core.agent import AgentConfig
 from effgen.models.base import GenerationConfig
-from effgen.tools.builtin import Calculator, PythonREPL, CodeExecutor
+from effgen.tools.builtin import Calculator, CodeExecutor, PythonREPL
 
 # ============================================================================
 # CONFIGURATION

@@ -37,7 +37,6 @@ from effgen.rag import (
 )
 from effgen.rag.attribution import CitationTracker
 
-
 # -----------------------------------------------------------------------------
 # Fixture: a knowledge base with distinctive content we can ground-truth on
 # -----------------------------------------------------------------------------

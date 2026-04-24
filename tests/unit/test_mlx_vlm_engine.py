@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from effgen.models.base import GenerationConfig, GenerationResult, ModelType
+from effgen.models.base import GenerationResult, ModelType
 from effgen.models.mlx_vlm_engine import MLXVLMEngine
 
 

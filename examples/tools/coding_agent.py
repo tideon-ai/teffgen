@@ -23,16 +23,15 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import glob as glob_mod
 import os
 import sys
 import time
-import glob as glob_mod
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from effgen import load_model
 from effgen.presets import create_agent
-
 
 CODING_SYSTEM_PROMPT = """You are an expert Python coding agent. You write, execute, and debug code.
 
@@ -83,7 +82,7 @@ def run_test(agent, test_id, description, question, expected_keywords=None,
     if check_fn:
         custom_pass = check_fn(output, resp)
         if not custom_pass:
-            print(f"  Custom check FAILED")
+            print("  Custom check FAILED")
 
     # Check tool was used
     tool_pass = True
@@ -294,7 +293,7 @@ def main():
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 
-    print(f"\nLoading model...")
+    print("\nLoading model...")
     t0 = time.time()
     model = load_model(args.model)
     print(f"Model loaded in {time.time() - t0:.1f}s")
@@ -314,11 +313,11 @@ def main():
     else:
         # Run regression first
         print("\n--- Regression Tests ---")
-        reg_results = run_regression(agent, model_name=args.model)
+        run_regression(agent, model_name=args.model)
 
         # Run code execution tests
         print("\n--- Code Execution Tests ---")
-        p5_results = run_all_tests(agent, model_name=args.model)
+        run_all_tests(agent, model_name=args.model)
 
         # Cleanup
         if not args.no_cleanup:

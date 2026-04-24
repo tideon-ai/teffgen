@@ -117,7 +117,7 @@ def main():
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 
     # Load model
-    print(f"\nLoading model...")
+    print("\nLoading model...")
     t0 = time.time()
     model = load_model(args.model)
     print(f"Model loaded in {time.time() - t0:.1f}s")
