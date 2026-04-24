@@ -24,6 +24,7 @@ Example:
 """
 
 from effgen.models.anthropic_adapter import AnthropicAdapter
+from effgen.models.cerebras_adapter import CerebrasAdapter
 from effgen.models.base import (
     BaseModel,
     BatchModel,
@@ -91,6 +92,7 @@ __all__ = [
     "OpenAIAdapter",
     "AnthropicAdapter",
     "GeminiAdapter",
+    "CerebrasAdapter",
 
     # Loader
     "ModelLoader",

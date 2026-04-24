@@ -73,6 +73,7 @@ from effgen.memory import (
 from effgen.models import (
     AnthropicAdapter,
     BaseModel,
+    CerebrasAdapter,
     GeminiAdapter,
     GenerationConfig,
     GenerationResult,
@@ -164,6 +165,7 @@ __all__ = [
     "OpenAIAdapter",
     "AnthropicAdapter",
     "GeminiAdapter",
+    "CerebrasAdapter",
     "ModelLoader",
     "GenerationConfig",
     "GenerationResult",

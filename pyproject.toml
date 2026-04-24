@@ -150,6 +150,9 @@ eval = [
 gguf = [
     "llama-cpp-python>=0.2.0",
 ]
+cerebras = [
+    "cerebras-cloud-sdk>=1.0",
+]
 flash-attn = ["flash-attn>=2.3.0"]
 vector-db = [
     "faiss-cpu>=1.7.4",
@@ -196,6 +199,7 @@ all = [
     "rouge-score>=0.1.2",
     "nltk>=3.8.0",
     "llama-cpp-python>=0.2.0",
+    "cerebras-cloud-sdk>=1.0",
 ]
 
 [tool.setuptools.dynamic]

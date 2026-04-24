@@ -1,0 +1,56 @@
+"""Integration test for CerebrasAdapter — skipped if key absent, real call otherwise."""
+
+from __future__ import annotations
+
+import os
+
+import pytest
+from dotenv import load_dotenv
+from pathlib import Path
+
+load_dotenv(Path.home() / ".effgen" / ".env", override=False)
+
+
+def _has_key() -> bool:
+    return bool(os.getenv("CEREBRAS_API_KEY"))
+
+
+@pytest.mark.integration
+@pytest.mark.api
+@pytest.mark.skipif(not _has_key(), reason="SKIPPED: CEREBRAS_API_KEY not in ~/.effgen/.env")
+class TestCerebrasLive:
+    def test_generate_returns_text(self):
+        from effgen.models.cerebras_adapter import CerebrasAdapter
+        from effgen.models.cerebras_models import CEREBRAS_DEFAULT_MODEL
+
+        adapter = CerebrasAdapter(model_name=CEREBRAS_DEFAULT_MODEL)
+        adapter.load()
+        try:
+            result = adapter.generate("Respond with exactly: CEREBRAS_OK")
+            assert result.text, "Expected non-empty response from Cerebras"
+            assert result.tokens_used > 0
+            assert result.model_name == CEREBRAS_DEFAULT_MODEL
+        finally:
+            adapter.unload()
+
+    def test_load_model_via_provider(self):
+        from effgen.models import load_model
+        from effgen.models.cerebras_models import CEREBRAS_DEFAULT_MODEL
+
+        model = load_model(CEREBRAS_DEFAULT_MODEL, provider="cerebras")
+        try:
+            result = model.generate("Say hello")
+            assert result.text
+        finally:
+            model.unload()
+
+    def test_generate_stream_raises(self):
+        from effgen.models.cerebras_adapter import CerebrasAdapter
+
+        adapter = CerebrasAdapter()
+        adapter.load()
+        try:
+            with pytest.raises(NotImplementedError):
+                adapter.generate_stream("test")
+        finally:
+            adapter.unload()

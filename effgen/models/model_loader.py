@@ -24,6 +24,17 @@ from effgen.models.openai_adapter import OpenAIAdapter
 from effgen.models.transformers_engine import TransformersEngine
 from effgen.models.vllm_engine import VLLMEngine
 
+# Cerebras import is deferred to avoid hard dependency when cerebras extra is absent.
+_CerebrasAdapter = None
+
+
+def _get_cerebras_adapter():
+    global _CerebrasAdapter
+    if _CerebrasAdapter is None:
+        from effgen.models.cerebras_adapter import CerebrasAdapter
+        _CerebrasAdapter = CerebrasAdapter
+    return _CerebrasAdapter
+
 logger = logging.getLogger(__name__)
 
 
@@ -111,6 +122,17 @@ class ModelLoader:
         if model_name in self.loaded_models:
             logger.info(f"Model '{model_name}' already loaded, returning cached instance")
             return self.loaded_models[model_name]
+
+        # Explicit provider routing (e.g. provider="cerebras")
+        provider = kwargs.pop("provider", None)
+        if provider == "cerebras":
+            CerebrasAdapter = _get_cerebras_adapter()
+            api_key = kwargs.pop("api_key", None)
+            model = CerebrasAdapter(model_name=model_name, api_key=api_key, **kwargs)
+            model.load()
+            self._validate_model(model)
+            self.loaded_models[model_name] = model
+            return model
 
         # GGUF files take a dedicated path (llama-cpp-python).
         if isinstance(model_name, str) and model_name.lower().endswith(".gguf"):
@@ -726,6 +748,7 @@ def load_model(
     tensor_parallel_size: int | None = None,
     gpu_memory_utilization: float | None = None,
     apply_chat_template: bool = True,
+    provider: str | None = None,
     **kwargs
 ) -> BaseModel:
     """
@@ -775,6 +798,9 @@ def load_model(
 
     # Pass apply_chat_template for vLLM
     kwargs["apply_chat_template"] = apply_chat_template
+
+    if provider is not None:
+        kwargs["provider"] = provider
 
     loader = ModelLoader(force_engine=engine)
     return loader.load_model(model_name, engine_config, **kwargs)

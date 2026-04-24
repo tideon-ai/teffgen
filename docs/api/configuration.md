@@ -69,3 +69,4 @@ config = ConfigLoader().load_config("config.yaml")
 | `OPENAI_API_KEY` | OpenAI API key (for OpenAI backend) |
 | `ANTHROPIC_API_KEY` | Anthropic API key (for Claude backend) |
 | `GOOGLE_API_KEY` | Google API key (for Gemini backend) |
+| `CEREBRAS_API_KEY` | Cerebras Cloud API key (for Cerebras backend) |
