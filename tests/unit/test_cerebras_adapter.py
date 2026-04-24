@@ -1,8 +1,8 @@
-"""Unit tests for CerebrasAdapter — mocks allowed here per build plan."""
+"""Unit tests for CerebrasAdapter — mocks allowed here (unit test boundary)."""
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -10,12 +10,15 @@ import pytest
 from effgen.models.base import GenerationConfig, GenerationResult, TokenCount
 from effgen.models.cerebras_adapter import CerebrasAdapter
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _make_mock_response(text: str = "hello", prompt_tokens: int = 5, completion_tokens: int = 3):
+def _make_mock_response(
+    text: str = "hello",
+    prompt_tokens: int = 5,
+    completion_tokens: int = 3,
+) -> MagicMock:
     usage = MagicMock()
     usage.prompt_tokens = prompt_tokens
     usage.completion_tokens = completion_tokens
@@ -31,6 +34,33 @@ def _make_mock_response(text: str = "hello", prompt_tokens: int = 5, completion_
     return resp
 
 
+def _mock_cerebras_sdk() -> MagicMock:
+    """Return a mock Cerebras SDK module that can be injected via sys.modules."""
+    mock_sdk = MagicMock()
+    mock_class = MagicMock()
+    mock_sdk.Cerebras = mock_class
+    # Build the module tree
+    cerebras_mod = MagicMock()
+    cerebras_cloud_mod = MagicMock()
+    cerebras_cloud_mod.sdk = mock_sdk
+    cerebras_mod.cloud = cerebras_cloud_mod
+    return cerebras_mod, cerebras_cloud_mod, mock_sdk, mock_class
+
+
+def _inject_sdk_into_adapter(mock_client: MagicMock, api_key: str = "test-key") -> CerebrasAdapter:
+    """Create and load a CerebrasAdapter with a fake client injected directly."""
+    adapter = CerebrasAdapter(enable_rate_limiting=False)
+    adapter._client = mock_client
+    adapter._is_loaded = True
+    adapter._metadata = {
+        "model_name": adapter.model_name,
+        "context_length": adapter.get_context_length(),
+        "provider": "cerebras",
+        "free_tier": True,
+    }
+    return adapter
+
+
 # ---------------------------------------------------------------------------
 # 1. Constructor defaults
 # ---------------------------------------------------------------------------
@@ -38,8 +68,6 @@ def _make_mock_response(text: str = "hello", prompt_tokens: int = 5, completion_
 class TestCerebrasAdapterInit:
     def test_default_model(self):
         adapter = CerebrasAdapter()
-        # Default is llama3.1-8b (free-tier callable); gpt-oss-120b listed but
-        # requires higher tier — see TODO_p1_gpt_oss_120b_access.md
         assert adapter.model_name == "llama3.1-8b"
 
     def test_custom_model(self):
@@ -51,39 +79,59 @@ class TestCerebrasAdapterInit:
         assert not adapter.is_loaded()
         assert adapter._client is None
 
+    def test_unknown_model_raises_value_error(self):
+        with pytest.raises(ValueError, match="Unknown Cerebras model"):
+            CerebrasAdapter(model_name="does-not-exist")
+
 
 # ---------------------------------------------------------------------------
 # 2. load() reads env key
 # ---------------------------------------------------------------------------
 
 class TestCerebrasAdapterLoad:
+    def _sdk_patch(self, api_key_to_expect: str) -> tuple:
+        """Return a mock_class that tracks instantiation."""
+        mock_client = MagicMock()
+        mock_class = MagicMock(return_value=mock_client)
+
+        # Build minimal module tree
+        mock_sdk_module = MagicMock()
+        mock_sdk_module.Cerebras = mock_class
+
+        modules = {
+            "cerebras": MagicMock(cloud=MagicMock(sdk=mock_sdk_module)),
+            "cerebras.cloud": MagicMock(sdk=mock_sdk_module),
+            "cerebras.cloud.sdk": mock_sdk_module,
+        }
+        return modules, mock_class, mock_client
+
     def test_load_reads_env_key(self, monkeypatch):
         monkeypatch.setenv("CEREBRAS_API_KEY", "test-key-abc")
-        with patch("cerebras.cloud.sdk.Cerebras") as MockCerebras:
-            MockCerebras.return_value = MagicMock()
-            adapter = CerebrasAdapter()
+        modules, mock_class, mock_client = self._sdk_patch("test-key-abc")
+        with patch.dict(sys.modules, modules):
+            adapter = CerebrasAdapter(enable_rate_limiting=False)
             adapter.load()
-            MockCerebras.assert_called_once_with(api_key="test-key-abc")
+            mock_class.assert_called_once_with(api_key="test-key-abc")
             assert adapter.is_loaded()
 
     def test_load_uses_explicit_key(self, monkeypatch):
         monkeypatch.delenv("CEREBRAS_API_KEY", raising=False)
-        with patch("cerebras.cloud.sdk.Cerebras") as MockCerebras:
-            MockCerebras.return_value = MagicMock()
-            adapter = CerebrasAdapter(api_key="explicit-key")
+        modules, mock_class, mock_client = self._sdk_patch("explicit-key")
+        with patch.dict(sys.modules, modules):
+            adapter = CerebrasAdapter(api_key="explicit-key", enable_rate_limiting=False)
             adapter.load()
-            MockCerebras.assert_called_once_with(api_key="explicit-key")
+            mock_class.assert_called_once_with(api_key="explicit-key")
 
     def test_load_raises_without_key(self, monkeypatch):
         monkeypatch.delenv("CEREBRAS_API_KEY", raising=False)
-        adapter = CerebrasAdapter()
+        adapter = CerebrasAdapter(enable_rate_limiting=False)
         with pytest.raises(ValueError, match="CEREBRAS_API_KEY"):
             adapter.load()
 
     def test_load_raises_if_sdk_missing(self, monkeypatch):
         monkeypatch.setenv("CEREBRAS_API_KEY", "k")
-        with patch.dict("sys.modules", {"cerebras": None, "cerebras.cloud": None, "cerebras.cloud.sdk": None}):
-            adapter = CerebrasAdapter()
+        with patch.dict(sys.modules, {"cerebras": None, "cerebras.cloud": None, "cerebras.cloud.sdk": None}):
+            adapter = CerebrasAdapter(enable_rate_limiting=False)
             with pytest.raises((RuntimeError, ImportError)):
                 adapter.load()
 
@@ -93,64 +141,53 @@ class TestCerebrasAdapterLoad:
 # ---------------------------------------------------------------------------
 
 class TestCerebrasAdapterGenerate:
-    def _loaded_adapter(self, monkeypatch):
-        monkeypatch.setenv("CEREBRAS_API_KEY", "test-key")
-        with patch("cerebras.cloud.sdk.Cerebras") as MockCerebras:
-            mock_client = MagicMock()
-            MockCerebras.return_value = mock_client
-            adapter = CerebrasAdapter()
-            adapter.load()
-        return adapter
+    def test_generate_formats_messages(self):
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = _make_mock_response("hi")
+        adapter = _inject_sdk_into_adapter(mock_client)
 
-    def test_generate_formats_messages(self, monkeypatch):
-        monkeypatch.setenv("CEREBRAS_API_KEY", "test-key")
-        with patch("cerebras.cloud.sdk.Cerebras") as MockCerebras:
-            mock_client = MagicMock()
-            mock_client.chat.completions.create.return_value = _make_mock_response("hi")
-            MockCerebras.return_value = mock_client
+        adapter.generate("Say hello")
+        call_kwargs = mock_client.chat.completions.create.call_args[1]
+        assert call_kwargs["messages"] == [{"role": "user", "content": "Say hello"}]
+        assert call_kwargs["model"] == adapter.model_name
 
-            adapter = CerebrasAdapter()
-            adapter.load()
-            result = adapter.generate("Say hello")
+    def test_generate_returns_generation_result(self):
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = _make_mock_response("world", 10, 4)
+        adapter = _inject_sdk_into_adapter(mock_client)
 
-            call_kwargs = mock_client.chat.completions.create.call_args[1]
-            assert call_kwargs["messages"] == [{"role": "user", "content": "Say hello"}]
-            assert call_kwargs["model"] == adapter.model_name
+        result = adapter.generate("prompt")
+        assert isinstance(result, GenerationResult)
+        assert result.text == "world"
+        assert result.tokens_used == 4
+        assert result.finish_reason == "stop"
+        assert result.model_name == adapter.model_name
+        assert result.metadata is not None
+        assert result.metadata["prompt_tokens"] == 10
 
-    def test_generate_returns_generation_result(self, monkeypatch):
-        monkeypatch.setenv("CEREBRAS_API_KEY", "test-key")
-        with patch("cerebras.cloud.sdk.Cerebras") as MockCerebras:
-            mock_client = MagicMock()
-            mock_client.chat.completions.create.return_value = _make_mock_response("world", 10, 4)
-            MockCerebras.return_value = mock_client
+    def test_generate_propagates_api_error(self):
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.side_effect = RuntimeError("API down")
+        adapter = _inject_sdk_into_adapter(mock_client)
 
-            adapter = CerebrasAdapter()
-            adapter.load()
-            result = adapter.generate("prompt")
-
-            assert isinstance(result, GenerationResult)
-            assert result.text == "world"
-            assert result.tokens_used == 4
-            assert result.finish_reason == "stop"
-            assert result.model_name == adapter.model_name
-            assert result.metadata["prompt_tokens"] == 10
-
-    def test_generate_propagates_api_error(self, monkeypatch):
-        monkeypatch.setenv("CEREBRAS_API_KEY", "test-key")
-        with patch("cerebras.cloud.sdk.Cerebras") as MockCerebras:
-            mock_client = MagicMock()
-            mock_client.chat.completions.create.side_effect = RuntimeError("API down")
-            MockCerebras.return_value = mock_client
-
-            adapter = CerebrasAdapter()
-            adapter.load()
-            with pytest.raises(RuntimeError, match="Cerebras generation failed"):
-                adapter.generate("prompt")
+        with pytest.raises(RuntimeError, match="Cerebras generation failed"):
+            adapter.generate("prompt")
 
     def test_generate_raises_if_not_loaded(self):
         adapter = CerebrasAdapter()
         with pytest.raises(RuntimeError, match="not loaded"):
             adapter.generate("hello")
+
+    def test_generate_passes_config_temperature(self):
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = _make_mock_response()
+        adapter = _inject_sdk_into_adapter(mock_client)
+
+        config = GenerationConfig(temperature=0.1, max_tokens=50)
+        adapter.generate("test", config=config)
+        kwargs = mock_client.chat.completions.create.call_args[1]
+        assert kwargs["temperature"] == 0.1
+        assert kwargs["max_completion_tokens"] == 50
 
 
 # ---------------------------------------------------------------------------
@@ -160,8 +197,7 @@ class TestCerebrasAdapterGenerate:
 class TestCerebrasAdapterStream:
     def test_generate_stream_raises_not_implemented(self):
         adapter = CerebrasAdapter()
-        with pytest.raises(NotImplementedError, match="phase 3"):
-            # consume the iterator if it returned one
+        with pytest.raises(NotImplementedError):
             result = adapter.generate_stream("test")
             if hasattr(result, "__next__"):
                 next(result)
@@ -179,18 +215,19 @@ class TestCerebrasAdapterTokens:
         assert tc.count > 0
         assert tc.model_name == adapter.model_name
 
-    def test_get_context_length(self):
+    def test_get_context_length_gpt_oss(self):
         adapter = CerebrasAdapter(model_name="gpt-oss-120b")
-        assert adapter.get_context_length() == 128_000
+        # Free-tier context for gpt-oss-120b is 65k (paid: 131k)
+        assert adapter.get_context_length() == 65_536
 
     def test_get_context_length_llama(self):
         adapter = CerebrasAdapter(model_name="llama3.1-8b")
         assert adapter.get_context_length() == 8_192
 
-    def test_get_context_length_unknown_model(self):
-        adapter = CerebrasAdapter(model_name="unknown-model")
-        # Falls back to 128_000
-        assert adapter.get_context_length() == 128_000
+    def test_get_max_output_qwen(self):
+        adapter = CerebrasAdapter(model_name="qwen-3-235b-a22b-instruct-2507")
+        # Free-tier max_output for qwen-3-235b is 32k (paid: 40k)
+        assert adapter.get_max_output() == 32_768
 
 
 # ---------------------------------------------------------------------------
@@ -200,11 +237,94 @@ class TestCerebrasAdapterTokens:
 class TestCerebrasAdapterUnload:
     def test_unload_clears_client(self, monkeypatch):
         monkeypatch.setenv("CEREBRAS_API_KEY", "k")
-        with patch("cerebras.cloud.sdk.Cerebras") as MockCerebras:
-            MockCerebras.return_value = MagicMock()
-            adapter = CerebrasAdapter()
-            adapter.load()
-            assert adapter.is_loaded()
-            adapter.unload()
-            assert not adapter.is_loaded()
-            assert adapter._client is None
+        mock_client = MagicMock()
+        adapter = _inject_sdk_into_adapter(mock_client)
+        assert adapter.is_loaded()
+        adapter.unload()
+        assert not adapter.is_loaded()
+        assert adapter._client is None
+
+
+# ---------------------------------------------------------------------------
+# 7. Model registry helpers
+# ---------------------------------------------------------------------------
+
+class TestCerebrasModelRegistry:
+    def test_available_models_returns_all_four(self):
+        from effgen.models.cerebras_models import available_models
+        models = available_models()
+        assert "gpt-oss-120b" in models
+        assert "llama3.1-8b" in models
+        assert "qwen-3-235b-a22b-instruct-2507" in models
+        assert "zai-glm-4.7" in models
+        assert len(models) == 4
+
+    def test_free_tier_models_excludes_gpt_oss(self):
+        from effgen.models.cerebras_models import free_tier_models
+        free = free_tier_models()
+        assert "gpt-oss-120b" not in free
+        assert "llama3.1-8b" in free
+
+    def test_model_info_returns_limits(self):
+        from effgen.models.cerebras_models import model_info
+        info = model_info("llama3.1-8b")
+        assert info["rpm"] == 30
+        assert info["tpm"] == 60_000
+        assert info["context"] == 8_192
+
+    def test_model_info_unknown_raises(self):
+        from effgen.models.cerebras_models import model_info
+        with pytest.raises(KeyError):
+            model_info("nonexistent-model")
+
+    def test_all_models_have_rate_limits(self):
+        from effgen.models.cerebras_models import CEREBRAS_MODELS
+        for mid, info in CEREBRAS_MODELS.items():
+            for field in ("rpm", "rph", "rpd", "tpm", "tph", "tpd"):
+                assert field in info, f"Model {mid!r} missing {field!r}"
+                assert info[field] > 0, f"Model {mid!r}: {field} must be positive"
+
+    def test_adapter_list_models(self):
+        assert len(CerebrasAdapter.list_models()) == 4
+
+    def test_adapter_get_model_info(self):
+        info = CerebrasAdapter.get_model_info("qwen-3-235b-a22b-instruct-2507")
+        # Free-tier context is 65k, paid-tier is 131k
+        assert info["context"] == 65_536
+        assert info["context_paid"] == 131_072
+
+    def test_adapter_list_free_tier(self):
+        free = CerebrasAdapter.list_free_tier_models()
+        assert "llama3.1-8b" in free
+        assert "gpt-oss-120b" not in free
+
+
+# ---------------------------------------------------------------------------
+# 8. Rate-limit coordinator wired into adapter
+# ---------------------------------------------------------------------------
+
+class TestCerebrasRateLimiter:
+    def test_rate_limiter_created_by_default(self):
+        adapter = CerebrasAdapter()
+        assert adapter._rate_limiter is not None
+
+    def test_rate_limiter_disabled(self):
+        adapter = CerebrasAdapter(enable_rate_limiting=False)
+        assert adapter._rate_limiter is None
+
+    def test_rate_limiter_uses_model_limits(self):
+        adapter = CerebrasAdapter(model_name="zai-glm-4.7")
+        rl = adapter._rate_limiter
+        assert rl is not None
+        assert rl._req_minute.limit == 10   # zai-glm-4.7 has rpm=10
+        assert rl._req_day.limit == 100      # rpd=100
+
+    def test_rate_limit_status_returns_dict(self):
+        adapter = CerebrasAdapter()
+        status = adapter.rate_limit_status()
+        assert "req_minute_limit" in status
+        assert status["req_minute_limit"] == 30
+
+    def test_rate_limit_status_empty_when_disabled(self):
+        adapter = CerebrasAdapter(enable_rate_limiting=False)
+        assert adapter.rate_limit_status() == {}

@@ -83,6 +83,10 @@ from effgen.models import (
     VLLMEngine,
     load_model,
 )
+from effgen.models._rate_limit import RateLimitCoordinator, RateLimitExceeded  # noqa: I001
+from effgen.models.cerebras_models import available_models as cerebras_available_models
+from effgen.models.cerebras_models import free_tier_models as cerebras_free_tier_models
+from effgen.models.cerebras_models import model_info as cerebras_model_info
 
 # Preset imports
 from effgen.presets import create_agent, list_presets
@@ -169,6 +173,12 @@ __all__ = [
     "ModelLoader",
     "GenerationConfig",
     "GenerationResult",
+    "RateLimitCoordinator",
+    "RateLimitExceeded",
+    # Cerebras helpers
+    "cerebras_available_models",
+    "cerebras_free_tier_models",
+    "cerebras_model_info",
 
     # Tools
     "BaseTool",

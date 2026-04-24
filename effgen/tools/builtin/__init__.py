@@ -6,7 +6,7 @@ This module contains the standard set of tools that ship with effGen.
 
 # Import built-in tools (lazy loading handled by registry)
 __all__ = [
-    # Phase 0-9 tools
+    # Core tools
     "CodeExecutor",
     "PythonREPL",
     "WebSearch",
@@ -21,25 +21,25 @@ __all__ = [
     "TextProcessingTool",
     "URLFetchTool",
     "WikipediaTool",
-    # Phase 10.1 Finance
+    # Finance
     "StockPriceTool",
     "CurrencyConverterTool",
     "CryptoTool",
-    # Phase 10.2 Data Science
+    # Data Science
     "DataFrameTool",
     "PlotTool",
     "StatsTool",
-    # Phase 10.3 DevOps
+    # DevOps
     "GitTool",
     "DockerTool",
     "SystemInfoTool",
     "HTTPTool",
-    # Phase 10.4 Knowledge
+    # Knowledge
     "ArxivTool",
     "StackOverflowTool",
     "GitHubTool",
     "WolframAlphaTool",
-    # Phase 10.5 Communication
+    # Communication
     "EmailDraftTool",
     "SlackDraftTool",
     "NotificationTool",
@@ -90,7 +90,7 @@ def __getattr__(name):
     elif name == "WikipediaTool":
         from .wikipedia_tool import WikipediaTool
         return WikipediaTool
-    # Phase 10.1 Finance
+    # Finance
     elif name == "StockPriceTool":
         from .finance import StockPriceTool
         return StockPriceTool
@@ -100,7 +100,7 @@ def __getattr__(name):
     elif name == "CryptoTool":
         from .finance import CryptoTool
         return CryptoTool
-    # Phase 10.2 Data Science
+    # Data Science
     elif name == "DataFrameTool":
         from .data_analysis import DataFrameTool
         return DataFrameTool
@@ -110,7 +110,7 @@ def __getattr__(name):
     elif name == "StatsTool":
         from .data_analysis import StatsTool
         return StatsTool
-    # Phase 10.3 DevOps
+    # DevOps
     elif name == "GitTool":
         from .devops import GitTool
         return GitTool
@@ -123,7 +123,7 @@ def __getattr__(name):
     elif name == "HTTPTool":
         from .devops import HTTPTool
         return HTTPTool
-    # Phase 10.4 Knowledge
+    # Knowledge
     elif name == "ArxivTool":
         from .knowledge import ArxivTool
         return ArxivTool
@@ -136,7 +136,7 @@ def __getattr__(name):
     elif name == "WolframAlphaTool":
         from .knowledge import WolframAlphaTool
         return WolframAlphaTool
-    # Phase 10.5 Communication
+    # Communication
     elif name == "EmailDraftTool":
         from .communication import EmailDraftTool
         return EmailDraftTool

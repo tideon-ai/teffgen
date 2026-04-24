@@ -24,7 +24,6 @@ Example:
 """
 
 from effgen.models.anthropic_adapter import AnthropicAdapter
-from effgen.models.cerebras_adapter import CerebrasAdapter
 from effgen.models.base import (
     BaseModel,
     BatchModel,
@@ -43,6 +42,7 @@ from effgen.models.capabilities import (
     list_registered_models,
     register_model_capability,
 )
+from effgen.models.cerebras_adapter import CerebrasAdapter
 from effgen.models.gemini_adapter import GeminiAdapter
 from effgen.models.lazy import LazyModel
 from effgen.models.model_loader import ModelLoader, load_model
@@ -98,7 +98,7 @@ __all__ = [
     "ModelLoader",
     "load_model",
 
-    # Router (Phase 6)
+    # Router
     "ModelRouter",
     "RoutingConfig",
     "RoutingDecision",
@@ -106,7 +106,7 @@ __all__ = [
     "ComplexityLevel",
     "estimate_complexity",
 
-    # Capabilities (Phase 6)
+    # Capabilities
     "ModelCapability",
     "MODEL_CAPABILITIES",
     "register_model_capability",
@@ -114,11 +114,10 @@ __all__ = [
     "estimate_capability",
     "list_registered_models",
 
-    # Pool (Phase 6)
+    # Pool
     "ModelPool",
     "PoolConfig",
 
-    # Phase 14
     "LazyModel",
     "ContinuousBatcher",
 ]

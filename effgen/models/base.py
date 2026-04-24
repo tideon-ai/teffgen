@@ -37,7 +37,7 @@ class GenerationConfig:
     frequency_penalty: float = 0.0
     repetition_penalty: float = 1.0
     seed: int | None = None
-    # Phase 14.4: optional draft model for speculative decoding. Backends that
+    # Optional draft model for speculative decoding. Backends that
     # do not support speculative decoding should ignore this field.
     draft_model: Any = None
 

@@ -12,16 +12,18 @@ What this demonstrates:
 """
 
 import os
-from dotenv import load_dotenv
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 load_dotenv(Path.home() / ".effgen" / ".env", override=False)
 
 if not os.getenv("CEREBRAS_API_KEY"):
     raise SystemExit("Set CEREBRAS_API_KEY in ~/.effgen/.env or the environment.")
 
-from cerebras.cloud.sdk import Cerebras
-from effgen.models.cerebras_adapter import CerebrasAdapter
+from cerebras.cloud.sdk import Cerebras  # noqa: E402
+
+from effgen.models.cerebras_adapter import CerebrasAdapter  # noqa: E402
 
 adapter = CerebrasAdapter(model_name="llama3.1-8b")
 adapter.load()

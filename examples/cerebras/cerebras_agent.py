@@ -12,17 +12,18 @@ What this demonstrates:
 """
 
 import os
-from dotenv import load_dotenv
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 load_dotenv(Path.home() / ".effgen" / ".env", override=False)
 
 if not os.getenv("CEREBRAS_API_KEY"):
     raise SystemExit("Set CEREBRAS_API_KEY in ~/.effgen/.env or the environment.")
 
-from effgen.core.agent import Agent, AgentConfig
-from effgen.models.cerebras_adapter import CerebrasAdapter
-from effgen.tools.builtin import Calculator, DateTimeTool
+from effgen.core.agent import Agent, AgentConfig  # noqa: E402
+from effgen.models.cerebras_adapter import CerebrasAdapter  # noqa: E402
+from effgen.tools.builtin import Calculator, DateTimeTool  # noqa: E402
 
 # -----------------------------------------------------------
 # Build the model and agent

@@ -507,7 +507,7 @@ Question: {task}
         self._current_depth = 0  # Reset depth at the start of each top-level run()
         debug = kwargs.pop("debug", False)
         run_id = generate_run_id()
-        # Phase 7: capture checkpoint args here so the outer run() can use
+        # Capture checkpoint args here so the outer run() can use
         # them for the final-checkpoint write even after _run_single_agent
         # consumes them from kwargs.
         _outer_ckpt_dir = kwargs.get("checkpoint_dir") or context.get("checkpoint_dir")
@@ -849,7 +849,7 @@ Question: {task}
         # Extract debug flags (set by run())
         debug = kwargs.pop("_debug", False)
         run_id = kwargs.pop("_run_id", "")
-        # Phase 7: pop custom kwargs so they don't leak to the model layer.
+        # Pop custom kwargs so they don't leak to the model layer.
         # We re-read them locally below before they would propagate further.
         _ckpt_interval_arg = kwargs.pop("checkpoint_interval", 0) or 0
         _ckpt_dir_arg = kwargs.pop("checkpoint_dir", None)
@@ -878,7 +878,7 @@ Question: {task}
 
         # ReAct loop
         previous_actions: list[tuple[str, str]] = []  # Track (action, input) pairs for loop detection
-        # Phase 7.1: optional periodic checkpointing
+        # Optional periodic checkpointing
         _ckpt_interval = _ckpt_interval_arg
         _ckpt_dir = _ckpt_dir_arg
         _ckpt_mgr = None

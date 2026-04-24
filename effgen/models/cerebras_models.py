@@ -1,33 +1,173 @@
 """
-Cerebras model registry for Phase 1 (gpt-oss-120b only).
-Phase 2 will extend this to all 4 free-tier models.
+Cerebras model registry for effGen.
+
+Rate limits and context/max-output values fetched from:
+  https://inference-docs.cerebras.ai/support/rate-limits.md
+  https://inference-docs.cerebras.ai/models/<model>.md
+Fetch date: 2026-04-24
+
+Free-tier limits apply per API key.  All limits are sliding-window (token
+bucketing).  Whichever metric (RPM/RPH/RPD or TPM/TPH/TPD) is hit first
+triggers throttling.
+
+Context/max-output values differ between free and paid tiers.  The default
+``context`` and ``max_output`` exposed by ``model_info()`` / ``get_context_length()``
+reflect the **free-tier** values, since users on the paid tier can override
+via the ``context`` / ``max_output`` kwargs of :class:`CerebrasAdapter` if
+needed.  ``context_paid`` and ``max_output_paid`` are included for reference.
+
+Deprecation notice (from Cerebras docs 2026-04-24):
+  - ``llama3.1-8b`` and ``qwen-3-235b-a22b-instruct-2507`` will be
+    deprecated on **2026-05-27**.
+
+Access notes:
+  - ``gpt-oss-120b`` and ``zai-glm-4.7`` are currently rate-limited /
+    access-restricted on the free tier due to high demand.  The adapter
+    still tracks them so paid-tier users can call them; free-tier users
+    typically receive a 404 ``model_not_found`` response.
 """
 
-# Source: Cerebras inference docs + live models.list() call (verified 2026-04-23)
-# NOTE: gpt-oss-120b is listed by the API but inference returns 404 on the free
-# tier — see build_plan/v0.2.1/followups/TODO_p1_gpt_oss_120b_access.md.
-# llama3.1-8b is the callable free-tier model used for Phase 1 live validation.
+from __future__ import annotations
+
+# ---------------------------------------------------------------------------
+# Model registry
+# ---------------------------------------------------------------------------
+# Each entry has:
+#   context         — context window (free tier) in tokens
+#   context_paid    — context window (paid tier) in tokens
+#   max_output      — max completion tokens (free tier)
+#   max_output_paid — max completion tokens (paid tier)
+#   rpm/rph/rpd     — requests per minute / hour / day  (free tier)
+#   tpm/tph/tpd     — tokens   per minute / hour / day  (free tier)
+#   free_tier       — True if reliably callable on the free tier today
+#   deprecated      — ISO date if scheduled for deprecation, else None
+#   family          — model family label
+# ---------------------------------------------------------------------------
 CEREBRAS_MODELS: dict[str, dict] = {
     "gpt-oss-120b": {
-        "context": 128_000,
-        "max_output": 8_192,
+        "family": "gpt-oss",
+        "context": 65_536,          # free tier: 65k
+        "context_paid": 131_072,    # paid tier: 131k
+        "max_output": 32_768,       # free tier: 32k
+        "max_output_paid": 40_960,  # paid tier: 40k
+        "rpm": 30,
+        "rph": 900,
+        "rpd": 14_400,
+        "tpm": 64_000,
+        "tph": 1_000_000,
+        "tpd": 1_000_000,
+        # Free-tier inference typically returns 404 due to high demand
+        # ("temporarily reduced free-tier rate limits" per Cerebras docs).
+        "free_tier": False,
+        "deprecated": None,
     },
     "llama3.1-8b": {
-        "context": 8_192,
+        "family": "llama",
+        "context": 8_192,           # free tier: 8k
+        "context_paid": 32_768,     # paid tier: 32k
         "max_output": 8_192,
+        "max_output_paid": 8_192,
+        "rpm": 30,
+        "rph": 900,
+        "rpd": 14_400,
+        "tpm": 60_000,
+        "tph": 1_000_000,
+        "tpd": 1_000_000,
+        "free_tier": True,
+        "deprecated": "2026-05-27",
     },
-    # Free-tier callable (tested 2026-04-23); may hit 429 under high traffic
     "qwen-3-235b-a22b-instruct-2507": {
-        "context": 128_000,
-        "max_output": 16_000,
+        "family": "qwen",
+        "context": 65_536,          # free tier: 65k
+        "context_paid": 131_072,    # paid tier: 131k
+        "max_output": 32_768,       # free tier: 32k
+        "max_output_paid": 40_960,  # paid tier: 40k
+        "rpm": 30,
+        "rph": 900,
+        "rpd": 14_400,
+        "tpm": 60_000,
+        "tph": 1_000_000,
+        "tpd": 1_000_000,
+        "free_tier": True,
+        "deprecated": "2026-05-27",
     },
-    # Listed in models.list() but inference returns 404 on current tier
-    # See TODO_p1_gpt_oss_120b_access.md
     "zai-glm-4.7": {
-        "context": 128_000,
-        "max_output": 8_192,
+        "family": "zai-glm",
+        "context": 65_536,          # free tier: 64k (rounded to 65536)
+        "context_paid": 131_072,    # paid tier: 131k
+        "max_output": 40_960,       # free tier: 40k
+        "max_output_paid": 40_960,
+        # Stricter per-minute/hour/day request limits on free tier
+        "rpm": 10,
+        "rph": 100,
+        "rpd": 100,
+        "tpm": 60_000,
+        "tph": 1_000_000,
+        "tpd": 1_000_000,
+        # Free-tier inference typically returns 404 due to high demand
+        "free_tier": False,
+        "deprecated": None,
     },
 }
 
 # Default model for live testing (free-tier callable)
 CEREBRAS_DEFAULT_MODEL = "llama3.1-8b"
+
+
+# ---------------------------------------------------------------------------
+# Helper functions
+# ---------------------------------------------------------------------------
+
+def available_models() -> list[str]:
+    """Return list of all registered Cerebras model IDs.
+
+    Example::
+
+        >>> from effgen.models.cerebras_models import available_models
+        >>> available_models()
+        ['gpt-oss-120b', 'llama3.1-8b', 'qwen-3-235b-a22b-instruct-2507', 'zai-glm-4.7']
+    """
+    return list(CEREBRAS_MODELS.keys())
+
+
+def free_tier_models() -> list[str]:
+    """Return models reliably callable on the Cerebras free tier today."""
+    return [mid for mid, info in CEREBRAS_MODELS.items() if info.get("free_tier", False)]
+
+
+def deprecated_models() -> dict[str, str]:
+    """Return a mapping of deprecated model_id -> deprecation date (ISO)."""
+    return {
+        mid: info["deprecated"]
+        for mid, info in CEREBRAS_MODELS.items()
+        if info.get("deprecated")
+    }
+
+
+def model_info(model_id: str) -> dict:
+    """Return rate-limit and context metadata for *model_id*.
+
+    Args:
+        model_id: A key from :data:`CEREBRAS_MODELS`.
+
+    Returns:
+        A dict with keys: ``family``, ``context``, ``context_paid``,
+        ``max_output``, ``max_output_paid``, ``rpm``, ``rph``, ``rpd``,
+        ``tpm``, ``tph``, ``tpd``, ``free_tier``, ``deprecated``.
+
+    Raises:
+        KeyError: If *model_id* is not registered.
+
+    Example::
+
+        >>> from effgen.models.cerebras_models import model_info
+        >>> info = model_info("llama3.1-8b")
+        >>> info["rpm"]
+        30
+    """
+    if model_id not in CEREBRAS_MODELS:
+        raise KeyError(
+            f"Unknown Cerebras model '{model_id}'. "
+            f"Available: {available_models()}"
+        )
+    return dict(CEREBRAS_MODELS[model_id])
