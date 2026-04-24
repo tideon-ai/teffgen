@@ -241,9 +241,17 @@ class AgentEvaluator:
     # Public API
     # ------------------------------------------------------------------
 
-    def run_suite(self, suite: Any) -> SuiteResults:
-        """Run all test cases in *suite* and return aggregated results."""
+    def run_suite(self, suite: Any, max_cases: int | None = None) -> SuiteResults:
+        """Run all test cases in *suite* and return aggregated results.
+
+        Args:
+            suite: A TestSuite instance or iterable of TestCase objects.
+            max_cases: If set, run only the first *max_cases* cases (useful for
+                quick smoke runs in CI).
+        """
         test_cases: list[TestCase] = suite.test_cases if hasattr(suite, "test_cases") else list(suite)
+        if max_cases is not None:
+            test_cases = test_cases[:max_cases]
         results: list[EvalResult] = []
         for tc in test_cases:
             results.append(self.run_case(tc))

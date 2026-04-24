@@ -79,32 +79,47 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
 
-      - name: Run eval suite against stored baseline (math)
+      - name: Run eval suite with real Cerebras llama3.1-8b
         id: eval
+        env:
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
         run: |
-          # Uses a mock agent via the in-process evaluator; the CLI run
-          # would require a real model. Nightly compares current results
-          # against tests/benchmarks/eval_baseline_math.json and surfaces
-          # any >5% accuracy drop or >20% latency increase.
           python - <<'PY'
+          import os, sys
           from pathlib import Path
           from effgen.eval import AgentEvaluator, MathSuite, RegressionTracker
           from effgen.eval.evaluator import ScoringMode
 
-          class Resp:
-              def __init__(self, o): self.output = o; self.tokens_used = 0; self.execution_trace = []
-          class DummyAgent:
-              def run(self, q):
-                  import re
-                  m = re.findall(r"\d+", q)
-                  return Resp(m[-1] if m else "")
+          api_key = os.getenv("CEREBRAS_API_KEY", "")
+          if not api_key:
+              print("SKIPPED: CEREBRAS_API_KEY secret not set — add it in GitHub Settings > Secrets.")
+              sys.exit(0)
 
-          ev = AgentEvaluator(DummyAgent(), scoring=ScoringMode.CONTAINS)
-          results = ev.run_suite(MathSuite())
+          from effgen.models.cerebras_adapter import CerebrasAdapter
+          from effgen.core.agent import Agent, AgentConfig
+          from effgen.tools.builtin.calculator import Calculator
+
+          adapter = CerebrasAdapter("llama3.1-8b", enable_rate_limiting=False)
+          adapter.load()
+          config = AgentConfig(
+              name="nightly-eval",
+              model=adapter,
+              tools=[Calculator()],
+              system_prompt="You are a math assistant. Use the calculator tool for each computation. Give a concise final numerical answer.",
+              max_iterations=5,
+              temperature=0.1,
+          )
+          agent = Agent(config)
+          version_tag = "ci-nightly"
+
+          ev = AgentEvaluator(agent, scoring=ScoringMode.CONTAINS)
+          # 20 problems: enough for a reliable accuracy signal, fast enough for nightly
+          results = ev.run_suite(MathSuite(), max_cases=20)
           tracker = RegressionTracker()
-          report = tracker.compare("math", results, version="ci-nightly")
-          print(report.to_markdown())
-          Path("regression-report.md").write_text(report.to_markdown())
+          report = tracker.compare("math-20", results, version=version_tag)
+          md = report.to_markdown()
+          print(md)
+          Path("regression-report.md").write_text(md)
           if report.has_regressions:
               raise SystemExit("Regression detected — see report above")
           PY
@@ -138,24 +153,212 @@ jobs:
               core.warning(`Could not open issue (likely permissions): ${e.message}`);
             }
 
+  # ------------------------------------------------------------------ #
+  # Real-model streaming smoke test (Cerebras llama3.1-8b)            #
+  # ------------------------------------------------------------------ #
+  cerebras-streaming-smoke:
+    name: Cerebras Streaming Smoke
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[all]"
+      - name: Streaming smoke test
+        id: stream
+        env:
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+        run: |
+          python - <<'PY'
+          import os, sys, time
+          api_key = os.getenv("CEREBRAS_API_KEY", "")
+          if not api_key:
+              print("SKIPPED: CEREBRAS_API_KEY not set")
+              sys.exit(0)
+
+          from effgen.models.cerebras_adapter import CerebrasAdapter
+          from effgen.models._cost import CostTracker
+
+          for model_id in ["llama3.1-8b", "qwen-3-235b-a22b-instruct-2507"]:
+              adapter = CerebrasAdapter(model_id, enable_rate_limiting=False)
+              adapter.load()
+              chunks = list(adapter.generate_stream("Say hello in one sentence."))
+              adapter.unload()
+              text = "".join(chunks)
+              if not text:
+                  print(f"FAIL: {model_id} streaming returned empty text")
+                  sys.exit(1)
+              print(f"OK: {model_id} -> {len(chunks)} chunks, {len(text)} chars")
+
+          print("All streaming checks passed")
+          for row in CostTracker.get().summary():
+              print(f"  {row['provider']}/{row['model']}: prompt={row['prompt_tokens']} cost=${row['cost_usd']:.6f}")
+          PY
+      - name: Open issue on streaming failure
+        if: failure()
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              title: `Cerebras streaming smoke failure (${new Date().toISOString().slice(0,10)})`,
+              body: "Nightly streaming smoke test failed for Cerebras llama3.1-8b or qwen-3-235b. Check workflow logs.",
+              labels: ["bug", "cerebras", "automated"],
+            });
+
+  # ------------------------------------------------------------------ #
+  # Real-model tool-calling smoke test (Cerebras llama3.1-8b)          #
+  # ------------------------------------------------------------------ #
+  cerebras-tools-smoke:
+    name: Cerebras Tools Smoke
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[all]"
+      - name: Tool-calling smoke test
+        id: tools
+        env:
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+        run: |
+          python - <<'PY'
+          import os, sys
+          api_key = os.getenv("CEREBRAS_API_KEY", "")
+          if not api_key:
+              print("SKIPPED: CEREBRAS_API_KEY not set")
+              sys.exit(0)
+
+          from effgen.models.cerebras_adapter import CerebrasAdapter
+          from effgen.core.agent import Agent, AgentConfig
+          from effgen.tools.builtin.calculator import Calculator
+
+          adapter = CerebrasAdapter("llama3.1-8b", enable_rate_limiting=False)
+          adapter.load()
+          config = AgentConfig(
+              name="tools-smoke",
+              model=adapter,
+              tools=[Calculator()],
+              system_prompt="You are a math assistant. Use the calculator tool.",
+              max_iterations=5,
+              temperature=0.1,
+          )
+          agent = Agent(config)
+          response = agent.run("What is 12 * 12?")
+          adapter.unload()
+
+          print(f"Output: {response.output}")
+          print(f"Tool calls: {response.tool_calls}")
+          if "144" not in str(response.output):
+              print("FAIL: answer 144 not in output")
+              sys.exit(1)
+          print("OK: tool-calling smoke passed (12*12=144)")
+          PY
+      - name: Open issue on tool-calling failure
+        if: failure()
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              title: `Cerebras tool-calling smoke failure (${new Date().toISOString().slice(0,10)})`,
+              body: "Nightly tool-calling smoke test failed. Calculator+Agent did not return 144 for 12*12. Check workflow logs.",
+              labels: ["bug", "cerebras", "automated"],
+            });
+
+  # ------------------------------------------------------------------ #
+  # Real-model reasoning test (multi-step, two models)                 #
+  # ------------------------------------------------------------------ #
+  cerebras-reasoning-smoke:
+    name: Cerebras Reasoning Smoke
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[all]"
+      - name: Reasoning smoke test
+        id: reason
+        env:
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+        run: |
+          python - <<'PY'
+          import os, sys
+          api_key = os.getenv("CEREBRAS_API_KEY", "")
+          if not api_key:
+              print("SKIPPED: CEREBRAS_API_KEY not set")
+              sys.exit(0)
+
+          from effgen.models.cerebras_adapter import CerebrasAdapter
+
+          passed = 0
+          total = 0
+          for model_id in ["llama3.1-8b", "qwen-3-235b-a22b-instruct-2507"]:
+              adapter = CerebrasAdapter(model_id, enable_rate_limiting=False)
+              adapter.load()
+              result = adapter.generate(
+                  "Answer in one word only. If all roses are flowers and all flowers need water, "
+                  "do roses need water? Answer: yes or no.",
+              )
+              adapter.unload()
+              total += 1
+              text = result.text.lower().strip()
+              correct = "yes" in text
+              print(f"{'OK' if correct else 'FAIL'}: {model_id} -> {text!r}")
+              if correct:
+                  passed += 1
+
+          if passed < 1:
+              print(f"FAIL: {passed}/{total} reasoning checks passed (need at least 1)")
+              sys.exit(1)
+          print(f"OK: {passed}/{total} reasoning checks passed")
+          PY
+      - name: Open issue on reasoning failure
+        if: failure()
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner, repo: context.repo.repo,
+              title: `Cerebras reasoning smoke failure (${new Date().toISOString().slice(0,10)})`,
+              body: "Nightly reasoning smoke: both llama3.1-8b and qwen-3-235b failed a basic yes/no logic question. This may indicate a model API issue or effGen regression.",
+              labels: ["bug", "cerebras", "automated"],
+            });
+
+  # ------------------------------------------------------------------ #
+  # gpu-tests (self-hosted GPU runner, optional)                        #
+  # ------------------------------------------------------------------ #
   # gpu-tests:
   #   name: GPU Tests
   #   runs-on: [self-hosted, gpu]
   #   if: github.repository == 'ctrl-gaurav/effGen'
   #   steps:
   #     - uses: actions/checkout@v4
-  #
   #     - name: Install dependencies
-  #       run: |
-  #         pip install -e ".[dev]"
-  #
+  #       run: pip install -e ".[dev]"
   #     - name: Run GPU integration tests
-  #       run: |
-  #         pytest tests/integration/ -v -m "gpu" --tb=short || true
-  #
-  #     - name: Run GPU e2e tests
-  #       run: |
-  #         pytest tests/e2e/ -v -m "gpu" --tb=short || true
+  #       run: pytest tests/integration/ -v -m "gpu" --tb=short || true
 
   dependency-check:
     name: Dependency Audit

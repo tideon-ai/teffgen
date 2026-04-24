@@ -369,6 +369,34 @@ class BaseTool(ABC):
         """
         pass
 
+    def _coerce_parameters(self, kwargs: dict) -> dict:
+        """Coerce LLM-supplied parameter values to their declared types.
+
+        LLMs occasionally send integers as strings (e.g. ``"precision": "0"``).
+        This method silently converts them so downstream validation succeeds.
+        Only applies to INTEGER and FLOAT spec types; leaves everything else
+        untouched.
+        """
+        coerced = dict(kwargs)
+        param_map = {p.name: p for p in self._metadata.parameters}
+        for name, value in list(coerced.items()):
+            spec = param_map.get(name)
+            if spec is None or value is None:
+                continue
+            if spec.type == ParameterType.INTEGER and isinstance(value, str):
+                try:
+                    coerced[name] = int(value)
+                except (ValueError, TypeError):
+                    pass
+            elif spec.type == ParameterType.FLOAT and isinstance(value, str):
+                try:
+                    coerced[name] = float(value)
+                except (ValueError, TypeError):
+                    pass
+            elif spec.type == ParameterType.BOOLEAN and isinstance(value, str):
+                coerced[name] = value.lower() in ("true", "1", "yes")
+        return coerced
+
     async def execute(self, **kwargs) -> ToolResult:
         """
         Execute the tool with parameter validation and error handling.
@@ -389,6 +417,9 @@ class BaseTool(ABC):
         start_time = time.time()
 
         try:
+            # Coerce string-typed numerics from LLM responses before validation
+            kwargs = self._coerce_parameters(kwargs)
+
             # Validate parameters
             is_valid, error = self.validate_parameters(**kwargs)
             if not is_valid:

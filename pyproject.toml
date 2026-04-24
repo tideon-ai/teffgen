@@ -200,6 +200,8 @@ all = [
     "nltk>=3.8.0",
     "llama-cpp-python>=0.2.0",
     "cerebras-cloud-sdk>=1.0",
+    "bitsandbytes>=0.46.1",
+    "datasets>=2.14.0",
 ]
 
 [tool.setuptools.dynamic]

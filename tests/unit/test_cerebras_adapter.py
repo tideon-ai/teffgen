@@ -191,16 +191,65 @@ class TestCerebrasAdapterGenerate:
 
 
 # ---------------------------------------------------------------------------
-# 4. generate_stream() raises NotImplementedError
+# 4. generate_stream() yields chunks via mock SDK
 # ---------------------------------------------------------------------------
 
+def _make_stream_chunks(texts: list[str]) -> list[MagicMock]:
+    """Build a list of fake SSE chunks for streaming."""
+    chunks = []
+    for t in texts:
+        delta = MagicMock()
+        delta.content = t
+        choice = MagicMock()
+        choice.delta = delta
+        chunk = MagicMock()
+        chunk.choices = [choice]
+        chunk.usage = None
+        chunks.append(chunk)
+    # Terminal chunk with usage
+    delta_end = MagicMock()
+    delta_end.content = None
+    choice_end = MagicMock()
+    choice_end.delta = delta_end
+    usage = MagicMock()
+    usage.prompt_tokens = 10
+    usage.completion_tokens = 5
+    end_chunk = MagicMock()
+    end_chunk.choices = [choice_end]
+    end_chunk.usage = usage
+    chunks.append(end_chunk)
+    return chunks
+
+
 class TestCerebrasAdapterStream:
-    def test_generate_stream_raises_not_implemented(self):
+    def test_generate_stream_yields_chunks(self):
+        mock_client = MagicMock()
+        chunks = _make_stream_chunks(["Hello", " world", "!"])
+        mock_client.chat.completions.create.return_value = iter(chunks)
+        adapter = _inject_sdk_into_adapter(mock_client)
+
+        result = list(adapter.generate_stream("test"))
+        assert result == ["Hello", " world", "!"]
+
+    def test_generate_stream_raises_if_not_loaded(self):
         adapter = CerebrasAdapter()
-        with pytest.raises(NotImplementedError):
-            result = adapter.generate_stream("test")
-            if hasattr(result, "__next__"):
-                next(result)
+        with pytest.raises(RuntimeError, match="not loaded"):
+            list(adapter.generate_stream("test"))
+
+    def test_generate_stream_passes_stream_true(self):
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = iter([])
+        adapter = _inject_sdk_into_adapter(mock_client)
+        list(adapter.generate_stream("test"))
+        kwargs = mock_client.chat.completions.create.call_args[1]
+        assert kwargs["stream"] is True
+
+    def test_generate_stream_wraps_api_errors(self):
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.side_effect = RuntimeError("network error")
+        adapter = _inject_sdk_into_adapter(mock_client)
+        with pytest.raises(RuntimeError, match="streaming failed"):
+            list(adapter.generate_stream("test"))
 
 
 # ---------------------------------------------------------------------------
@@ -328,3 +377,147 @@ class TestCerebrasRateLimiter:
     def test_rate_limit_status_empty_when_disabled(self):
         adapter = CerebrasAdapter(enable_rate_limiting=False)
         assert adapter.rate_limit_status() == {}
+
+
+# ---------------------------------------------------------------------------
+# 9. Native tool-calling unit tests
+# ---------------------------------------------------------------------------
+
+def _make_mock_response_with_tools(
+    text: str = "",
+    tool_name: str = "calculator",
+    tool_args: dict | None = None,
+    prompt_tokens: int = 20,
+    completion_tokens: int = 10,
+) -> MagicMock:
+    """Build a mock response that contains a tool call."""
+    import json
+
+    usage = MagicMock()
+    usage.prompt_tokens = prompt_tokens
+    usage.completion_tokens = completion_tokens
+    usage.total_tokens = prompt_tokens + completion_tokens
+
+    tc = MagicMock()
+    tc.id = "call_abc123"
+    tc.type = "function"
+    tc.function.name = tool_name
+    tc.function.arguments = json.dumps(tool_args or {"expression": "2+2"})
+
+    choice = MagicMock()
+    choice.message.content = text
+    choice.message.tool_calls = [tc]
+    choice.finish_reason = "tool_calls"
+
+    resp = MagicMock()
+    resp.choices = [choice]
+    resp.usage = usage
+    return resp
+
+
+class TestCerebrasNativeTools:
+    def test_supports_tool_calling_llama(self):
+        adapter = CerebrasAdapter(model_name="llama3.1-8b")
+        assert adapter.supports_tool_calling() is True
+
+    def test_supports_tool_calling_qwen(self):
+        adapter = CerebrasAdapter(model_name="qwen-3-235b-a22b-instruct-2507")
+        assert adapter.supports_tool_calling() is True
+
+    def test_supports_tool_calling_zai_glm_false(self):
+        adapter = CerebrasAdapter(model_name="zai-glm-4.7")
+        assert adapter.supports_tool_calling() is False
+
+    def test_generate_with_tools_parses_tool_calls(self):
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = _make_mock_response_with_tools(
+            tool_name="calculator", tool_args={"expression": "17*23"}
+        )
+        # Use llama which has supports_native_tools=True
+        adapter = CerebrasAdapter(model_name="llama3.1-8b", enable_rate_limiting=False,
+                                  enable_cost_tracking=False)
+        adapter._client = mock_client
+        adapter._is_loaded = True
+
+        tools = [{"type": "function", "function": {"name": "calculator",
+                  "description": "Eval math", "parameters": {}}}]
+        result = adapter.generate_with_tools("17*23", tools=tools)
+        assert result.metadata is not None
+        tc_list = result.metadata.get("tool_calls", [])
+        assert len(tc_list) == 1
+        assert tc_list[0]["function"]["name"] == "calculator"
+        assert tc_list[0]["function"]["arguments"]["expression"] == "17*23"
+
+    def test_generate_with_tools_raises_on_unsupported_model(self):
+        adapter = CerebrasAdapter(model_name="zai-glm-4.7", enable_rate_limiting=False)
+        adapter._client = MagicMock()
+        adapter._is_loaded = True
+        with pytest.raises(NotImplementedError, match="does not support native tool-calling"):
+            adapter.generate_with_tools("hello", tools=[])
+
+
+# ---------------------------------------------------------------------------
+# 10. CostTracker unit tests
+# ---------------------------------------------------------------------------
+
+class TestCostTracker:
+    def setup_method(self):
+        from effgen.models._cost import CostTracker
+        CostTracker.reset()
+
+    def test_cerebras_cost_is_zero(self):
+        from effgen.models._cost import CostTracker
+        tracker = CostTracker.get()
+        cost = tracker.record("cerebras", "llama3.1-8b", 100, 50)
+        assert cost == 0.0
+
+    def test_accumulates_tokens(self):
+        from effgen.models._cost import CostTracker
+        tracker = CostTracker.get()
+        tracker.record("cerebras", "llama3.1-8b", 50, 20)
+        tracker.record("cerebras", "llama3.1-8b", 30, 10)
+        totals = tracker.total_tokens("cerebras", "llama3.1-8b")
+        assert totals["prompt"] == 80
+        assert totals["completion"] == 30
+        assert totals["total"] == 110
+
+    def test_total_cost_across_providers(self):
+        from effgen.models._cost import CostTracker
+        tracker = CostTracker.get()
+        tracker.record("cerebras", "llama3.1-8b", 100, 50)
+        tracker.record("openai", "gpt-4o-mini", 1000, 500)
+        cerebras_cost = tracker.total_cost("cerebras")
+        openai_cost = tracker.total_cost("openai")
+        assert cerebras_cost == 0.0
+        assert openai_cost > 0.0
+
+    def test_summary_returns_rows(self):
+        from effgen.models._cost import CostTracker
+        tracker = CostTracker.get()
+        tracker.record("cerebras", "qwen-3-235b-a22b-instruct-2507", 100, 40)
+        summary = tracker.summary()
+        assert len(summary) == 1
+        row = summary[0]
+        assert row["provider"] == "cerebras"
+        assert row["model"] == "qwen-3-235b-a22b-instruct-2507"
+        assert row["prompt_tokens"] == 100
+        assert row["completion_tokens"] == 40
+        assert row["cost_usd"] == 0.0
+
+    def test_cost_tracker_wired_into_adapter(self):
+        from effgen.models._cost import CostTracker
+        CostTracker.reset()
+        tracker = CostTracker.get()
+
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = _make_mock_response(
+            "hi", prompt_tokens=15, completion_tokens=8
+        )
+        adapter = CerebrasAdapter(enable_rate_limiting=False, enable_cost_tracking=True)
+        adapter._client = mock_client
+        adapter._is_loaded = True
+
+        adapter.generate("test")
+        totals = tracker.total_tokens("cerebras", "llama3.1-8b")
+        assert totals["prompt"] == 15
+        assert totals["completion"] == 8

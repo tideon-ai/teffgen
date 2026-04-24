@@ -60,6 +60,8 @@ CEREBRAS_MODELS: dict[str, dict] = {
         # ("temporarily reduced free-tier rate limits" per Cerebras docs).
         "free_tier": False,
         "deprecated": None,
+        # Supports OpenAI-compatible function calling (empirically verified 2026-04-24)
+        "supports_native_tools": True,
     },
     "llama3.1-8b": {
         "family": "llama",
@@ -75,6 +77,8 @@ CEREBRAS_MODELS: dict[str, dict] = {
         "tpd": 1_000_000,
         "free_tier": True,
         "deprecated": "2026-05-27",
+        # Llama 3.1 supports OpenAI-compatible function calling (empirically verified 2026-04-24)
+        "supports_native_tools": True,
     },
     "qwen-3-235b-a22b-instruct-2507": {
         "family": "qwen",
@@ -90,6 +94,8 @@ CEREBRAS_MODELS: dict[str, dict] = {
         "tpd": 1_000_000,
         "free_tier": True,
         "deprecated": "2026-05-27",
+        # Qwen 3 supports OpenAI-compatible function calling (empirically verified 2026-04-24)
+        "supports_native_tools": True,
     },
     "zai-glm-4.7": {
         "family": "zai-glm",
@@ -107,6 +113,9 @@ CEREBRAS_MODELS: dict[str, dict] = {
         # Free-tier inference typically returns 404 due to high demand
         "free_tier": False,
         "deprecated": None,
+        # GLM-4.7: tool calling not reliably supported on free tier (404 + restricted access)
+        # Marked False so agent falls back to ReAct; paid-tier users can override.
+        "supports_native_tools": False,
     },
 }
 

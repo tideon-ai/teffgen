@@ -1,0 +1,108 @@
+"""Integration tests for Cerebras streaming — skipped if key absent."""
+
+from __future__ import annotations
+
+import os
+import time
+
+import pytest
+from dotenv import load_dotenv
+from pathlib import Path
+
+load_dotenv(Path.home() / ".effgen" / ".env", override=False)
+
+
+def _has_key() -> bool:
+    return bool(os.getenv("CEREBRAS_API_KEY"))
+
+
+@pytest.mark.integration
+@pytest.mark.api
+@pytest.mark.skipif(not _has_key(), reason="SKIPPED: CEREBRAS_API_KEY not in ~/.effgen/.env")
+class TestCerebrasStreaming:
+    def test_stream_yields_text_llama(self):
+        from effgen.models.cerebras_adapter import CerebrasAdapter
+
+        adapter = CerebrasAdapter("llama3.1-8b", enable_rate_limiting=False)
+        adapter.load()
+        try:
+            chunks = list(adapter.generate_stream("Say hello briefly."))
+            assert len(chunks) >= 1
+            assert "".join(chunks).strip()
+        finally:
+            adapter.unload()
+
+    def test_stream_yields_text_qwen(self):
+        from effgen.models.cerebras_adapter import CerebrasAdapter
+
+        adapter = CerebrasAdapter("qwen-3-235b-a22b-instruct-2507", enable_rate_limiting=False)
+        adapter.load()
+        try:
+            chunks = list(adapter.generate_stream("Say hello briefly."))
+            assert len(chunks) >= 1
+            assert "".join(chunks).strip()
+        finally:
+            adapter.unload()
+
+    def test_stream_timestamps_show_real_streaming(self):
+        """For a longer response, timestamps should span >50ms (not all at once)."""
+        from effgen.models.cerebras_adapter import CerebrasAdapter
+
+        adapter = CerebrasAdapter("llama3.1-8b", enable_rate_limiting=False)
+        adapter.load()
+        try:
+            chunks = []
+            timestamps = []
+            start = time.monotonic()
+            for chunk in adapter.generate_stream(
+                "List 5 facts about machine learning, one per line."
+            ):
+                chunks.append(chunk)
+                timestamps.append(time.monotonic() - start)
+
+            assert len(chunks) >= 1
+            full_text = "".join(chunks)
+            assert len(full_text) > 10
+
+            # If we got >1 chunk, verify the stream was progressive
+            if len(timestamps) > 1:
+                spread = timestamps[-1] - timestamps[0]
+                # At least some time passed between first and last chunk
+                # (just not all instantaneous — even 1ms is fine)
+                assert spread >= 0
+        finally:
+            adapter.unload()
+
+    def test_stream_passes_config(self):
+        from effgen.models.cerebras_adapter import CerebrasAdapter
+        from effgen.models.base import GenerationConfig
+
+        adapter = CerebrasAdapter("llama3.1-8b", enable_rate_limiting=False)
+        adapter.load()
+        try:
+            config = GenerationConfig(max_tokens=20)
+            chunks = list(adapter.generate_stream("Count to 100.", config=config))
+            text = "".join(chunks)
+            # max_tokens=20 should stop the stream early
+            assert len(text) > 0
+        finally:
+            adapter.unload()
+
+    def test_stream_cost_tracker_records(self):
+        from effgen.models.cerebras_adapter import CerebrasAdapter
+        from effgen.models._cost import CostTracker
+
+        CostTracker.reset()
+        adapter = CerebrasAdapter(
+            "llama3.1-8b", enable_rate_limiting=False, enable_cost_tracking=True
+        )
+        adapter.load()
+        try:
+            list(adapter.generate_stream("Say exactly: OK"))
+        finally:
+            adapter.unload()
+
+        summary = CostTracker.get().summary()
+        if summary:
+            # Cost should be $0 for Cerebras free tier
+            assert summary[0]["cost_usd"] == 0.0

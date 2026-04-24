@@ -1,17 +1,20 @@
 """
 Cerebras Cloud SDK adapter for effGen.
 
-Supports all free-tier Cerebras models with built-in rate-limit coordination.
-Streaming and native tool-calling are not yet available.
+Supports all free-tier Cerebras models with built-in rate-limit coordination,
+real streaming via SSE, native function-calling on supported models, and
+per-request cost tracking via CostTracker.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from collections.abc import Iterator
 from typing import Any
 
+from effgen.models._cost import CostTracker
 from effgen.models._rate_limit import RateLimitCoordinator
 from effgen.models.base import (
     BaseModel,
@@ -42,21 +45,43 @@ class CerebrasAdapter(BaseModel):
     Adapter for Cerebras Cloud inference API.
 
     Wraps the ``cerebras-cloud-sdk`` with the standard effGen BaseModel
-    interface.  A :class:`~effgen.models._rate_limit.RateLimitCoordinator`
-    is created per adapter instance to enforce per-model free-tier limits.
-    Streaming is not yet available.
+    interface. Supports:
+
+    - Synchronous and async generation
+    - Real token-by-token streaming (``generate_stream``)
+    - Native function-calling on supported models (``generate_with_tools``)
+    - Per-request cost tracking via :class:`~effgen.models._cost.CostTracker`
+    - Per-model rate-limit coordination
 
     Args:
-        model_name: Cerebras model ID.  Must be a key in
+        model_name: Cerebras model ID. Must be a key in
             :data:`~effgen.models.cerebras_models.CEREBRAS_MODELS`.
-            Defaults to ``"llama3.1-8b"`` (the most accessible free-tier model).
-        api_key: Cerebras API key.  If omitted, reads ``CEREBRAS_API_KEY``
+            Defaults to ``"llama3.1-8b"``.
+        api_key: Cerebras API key. If omitted, reads ``CEREBRAS_API_KEY``
             from the environment.
         max_retries: Maximum number of SDK retry attempts.
         timeout: Per-request timeout in seconds.
         enable_rate_limiting: If ``True`` (default), acquire / record calls
             via the built-in :class:`~effgen.models._rate_limit.RateLimitCoordinator`.
-            Disable only for testing.
+        enable_cost_tracking: If ``True`` (default), record token usage in
+            the global :class:`~effgen.models._cost.CostTracker`.
+
+    Example::
+
+        from effgen.models.cerebras_adapter import CerebrasAdapter
+
+        adapter = CerebrasAdapter("llama3.1-8b")
+        adapter.load()
+
+        # Synchronous generation
+        result = adapter.generate("What is the capital of France?")
+        print(result.text)
+
+        # Streaming
+        for chunk in adapter.generate_stream("Count from 1 to 5."):
+            print(chunk, end="", flush=True)
+
+        adapter.unload()
     """
 
     def __init__(
@@ -66,6 +91,7 @@ class CerebrasAdapter(BaseModel):
         max_retries: int = 3,
         timeout: int = 60,
         enable_rate_limiting: bool = True,
+        enable_cost_tracking: bool = True,
         **kwargs: Any,
     ) -> None:
         if model_name not in CEREBRAS_MODELS:
@@ -85,6 +111,7 @@ class CerebrasAdapter(BaseModel):
         self.timeout = timeout
         self._extra_kwargs = kwargs
         self._client: Any = None
+        self._enable_cost_tracking = enable_cost_tracking
 
         # Rate-limit coordinator wired per-instance (in-memory)
         self._rate_limiter: RateLimitCoordinator | None = None
@@ -132,7 +159,6 @@ class CerebrasAdapter(BaseModel):
         self._client = Cerebras(api_key=api_key)
         self._is_loaded = True
 
-        # Warn if a non-free-tier model is loaded — a free-tier key will 404.
         info = CEREBRAS_MODELS.get(self.model_name, {})
         if not info.get("free_tier", False):
             logger.warning(
@@ -151,6 +177,7 @@ class CerebrasAdapter(BaseModel):
             "context_length": self.get_context_length(),
             "provider": "cerebras",
             "free_tier": CEREBRAS_MODELS[self.model_name].get("free_tier", False),
+            "supports_native_tools": CEREBRAS_MODELS[self.model_name].get("supports_native_tools", False),
         }
         logger.info("CerebrasAdapter loaded for model '%s'", self.model_name)
 
@@ -172,12 +199,6 @@ class CerebrasAdapter(BaseModel):
     ) -> GenerationResult:
         """Generate a response synchronously via the Cerebras API.
 
-        Rate-limiting is applied automatically if *enable_rate_limiting* was
-        ``True`` in the constructor (the default).  The coordinator uses
-        ``asyncio.get_event_loop().run_until_complete`` to acquire a slot
-        when called from synchronous context; prefer the async path when
-        running inside an async event loop.
-
         Args:
             prompt: User prompt text.
             config: Optional generation config (temperature, max_tokens, …).
@@ -185,9 +206,6 @@ class CerebrasAdapter(BaseModel):
 
         Returns:
             GenerationResult with the generated text and token usage.
-
-        Raises:
-            RuntimeError: If ``load()`` has not been called or the API call fails.
         """
         import asyncio
 
@@ -197,28 +215,23 @@ class CerebrasAdapter(BaseModel):
         if config is None:
             config = GenerationConfig()
 
-        # Estimate token cost for rate-limit pre-check
         try:
             est_tokens = self.count_tokens(prompt).count + (config.max_tokens or 500)
         except Exception:
             est_tokens = 500
 
-        # Acquire rate-limit slot (run sync-compatible coroutine)
         if self._rate_limiter is not None:
             try:
                 loop = asyncio.get_event_loop()
                 if loop.is_running():
-                    # We're inside an async context — caller should use async_generate
                     logger.debug("Skipping blocking rate-limit acquire (nested event loop)")
                 else:
                     loop.run_until_complete(self._rate_limiter.acquire(est_tokens))
             except RuntimeError:
-                # No event loop — create one
                 asyncio.run(self._rate_limiter.acquire(est_tokens))
 
         result = self._do_generate(prompt, config, **kwargs)
 
-        # Record actual tokens after a successful call
         if self._rate_limiter is not None:
             actual = result.metadata.get("total_tokens", 0) if result.metadata else 0
             self._rate_limiter.record(actual)
@@ -231,11 +244,7 @@ class CerebrasAdapter(BaseModel):
         config: GenerationConfig | None = None,
         **kwargs: Any,
     ) -> GenerationResult:
-        """Async version of :meth:`generate` — preferred inside async contexts.
-
-        Properly awaits the rate-limit coordinator without needing nested-loop
-        workarounds.
-        """
+        """Async version of :meth:`generate` — preferred inside async contexts."""
         if not self._is_loaded or self._client is None:
             raise RuntimeError("CerebrasAdapter not loaded. Call load() first.")
 
@@ -262,17 +271,19 @@ class CerebrasAdapter(BaseModel):
         self,
         prompt: str,
         config: GenerationConfig,
+        tools: list[dict[str, Any]] | None = None,
+        messages: list[dict[str, Any]] | None = None,
         **kwargs: Any,
     ) -> GenerationResult:
         """Internal: make the SDK call and return a GenerationResult."""
-        messages = [{"role": "user", "content": prompt}]
+        if messages is None:
+            messages = [{"role": "user", "content": prompt}]
 
         request_params: dict[str, Any] = {
             "model": self.model_name,
             "messages": messages,
         }
 
-        # Map GenerationConfig fields that Cerebras supports
         if config.temperature != 0.7:
             request_params["temperature"] = config.temperature
         if config.top_p != 0.9:
@@ -284,13 +295,26 @@ class CerebrasAdapter(BaseModel):
         if config.seed is not None:
             request_params["seed"] = config.seed
 
+        # Attach tools if provided and model supports them
+        model_info_dict = CEREBRAS_MODELS.get(self.model_name, {})
+        if tools and model_info_dict.get("supports_native_tools", False):
+            openai_tools = []
+            for t in tools:
+                if isinstance(t, dict):
+                    # Already serialized (e.g. from agent's format_tools_for_prompt)
+                    openai_tools.append(t if "type" in t else {"type": "function", "function": t})
+                else:
+                    # BaseTool object — convert to OpenAI format
+                    openai_tools.append({"type": "function", "function": t.metadata.to_json_schema()})
+            request_params["tools"] = openai_tools
+            request_params["tool_choice"] = "auto"
+
         request_params.update(kwargs)
 
         try:
             response = self._client.chat.completions.create(**request_params)
         except Exception as exc:
             msg = str(exc)
-            # Translate common Cerebras API errors into actionable messages
             if "404" in msg and "model_not_found" in msg:
                 info = CEREBRAS_MODELS.get(self.model_name, {})
                 hint = (
@@ -311,7 +335,8 @@ class CerebrasAdapter(BaseModel):
             raise RuntimeError(f"Cerebras generation failed: {exc}") from exc
 
         choice = response.choices[0]
-        text = choice.message.content or ""
+        message = choice.message
+        text = message.content or ""
         finish_reason = choice.finish_reason or "stop"
 
         usage = response.usage
@@ -319,11 +344,38 @@ class CerebrasAdapter(BaseModel):
         completion_tokens = getattr(usage, "completion_tokens", 0) or 0
         total_tokens = getattr(usage, "total_tokens", prompt_tokens + completion_tokens) or 0
 
+        # Parse native tool calls if present
+        tool_calls: list[dict[str, Any]] = []
+        if hasattr(message, "tool_calls") and message.tool_calls:
+            for tc in message.tool_calls:
+                try:
+                    arguments = tc.function.arguments
+                    if isinstance(arguments, str):
+                        arguments = json.loads(arguments)
+                except (json.JSONDecodeError, AttributeError):
+                    arguments = {}
+                tool_calls.append({
+                    "id": getattr(tc, "id", ""),
+                    "type": getattr(tc, "type", "function"),
+                    "function": {
+                        "name": tc.function.name,
+                        "arguments": arguments,
+                    },
+                })
+
+        # Cost tracking
+        cost = 0.0
+        if self._enable_cost_tracking:
+            cost = CostTracker.get().record(
+                provider="cerebras",
+                model=self.model_name,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+            )
+
         logger.info(
-            "Cerebras generated %d tokens (prompt=%d, completion=%d)",
-            total_tokens,
-            prompt_tokens,
-            completion_tokens,
+            "Cerebras generated %d tokens (prompt=%d, completion=%d, cost=$%.6f)",
+            total_tokens, prompt_tokens, completion_tokens, cost,
         )
 
         return GenerationResult(
@@ -336,6 +388,8 @@ class CerebrasAdapter(BaseModel):
                 "completion_tokens": completion_tokens,
                 "total_tokens": total_tokens,
                 "provider": "cerebras",
+                "cost_usd": cost,
+                "tool_calls": tool_calls,
             },
         )
 
@@ -345,41 +399,241 @@ class CerebrasAdapter(BaseModel):
         config: GenerationConfig | None = None,
         **kwargs: Any,
     ) -> Iterator[str]:
-        """Streaming is not yet implemented.
+        """Stream a response token-by-token from the Cerebras API.
+
+        Uses the SDK's ``stream=True`` mode.  Yields text deltas as they
+        arrive.  Usage statistics (from the terminal chunk) are logged after
+        the stream ends.
+
+        Args:
+            prompt: User prompt text.
+            config: Optional generation config.
+            **kwargs: Forwarded to ``chat.completions.create``.
+
+        Yields:
+            str: Successive text chunks from the model.
 
         Raises:
-            NotImplementedError: Always.  Streaming is not yet implemented.
+            RuntimeError: If ``load()`` has not been called or the stream fails.
         """
-        raise NotImplementedError(
-            "CerebrasAdapter.generate_stream is not yet available."
+        if not self._is_loaded or self._client is None:
+            raise RuntimeError("CerebrasAdapter not loaded. Call load() first.")
+
+        if config is None:
+            config = GenerationConfig()
+
+        messages = [{"role": "user", "content": prompt}]
+        request_params: dict[str, Any] = {
+            "model": self.model_name,
+            "messages": messages,
+            "stream": True,
+        }
+
+        if config.temperature != 0.7:
+            request_params["temperature"] = config.temperature
+        if config.top_p != 0.9:
+            request_params["top_p"] = config.top_p
+        if config.max_tokens is not None:
+            request_params["max_completion_tokens"] = config.max_tokens
+        if config.stop_sequences:
+            request_params["stop"] = config.stop_sequences
+        if config.seed is not None:
+            request_params["seed"] = config.seed
+
+        request_params.update(kwargs)
+
+        # Optional per-call buffer for tool_calls that may appear
+        # incrementally across chunks or only on the terminal chunk.
+        self._last_stream_tool_calls: list[dict[str, Any]] = []
+        self._last_stream_finish_reason: str | None = None
+
+        try:
+            stream = self._client.chat.completions.create(**request_params)
+
+            prompt_tokens = 0
+            completion_tokens = 0
+            tool_calls_buf: dict[int, dict[str, Any]] = {}
+
+            for chunk in stream:
+                if not chunk.choices:
+                    continue
+                choice = chunk.choices[0]
+                delta = choice.delta
+                if delta and delta.content:
+                    yield delta.content
+
+                # Accumulate tool-call fragments (OpenAI-style streaming of
+                # tool_calls: name once, arguments can be chunked).
+                if delta and getattr(delta, "tool_calls", None):
+                    for tc in delta.tool_calls:
+                        idx = tc.index if getattr(tc, "index", None) is not None else 0
+                        buf = tool_calls_buf.setdefault(
+                            idx, {"id": "", "type": "function",
+                                  "function": {"name": "", "arguments": ""}}
+                        )
+                        if getattr(tc, "id", None):
+                            buf["id"] = tc.id
+                        fn = getattr(tc, "function", None)
+                        if fn is not None:
+                            if getattr(fn, "name", None):
+                                buf["function"]["name"] = fn.name
+                            if getattr(fn, "arguments", None):
+                                buf["function"]["arguments"] += fn.arguments
+
+                if choice.finish_reason:
+                    self._last_stream_finish_reason = choice.finish_reason
+
+                # Capture usage from the terminal chunk (some SDKs attach it here)
+                if hasattr(chunk, "usage") and chunk.usage is not None:
+                    usage = chunk.usage
+                    prompt_tokens = getattr(usage, "prompt_tokens", 0) or 0
+                    completion_tokens = getattr(usage, "completion_tokens", 0) or 0
+
+            # Finalize assembled tool_calls (parse arguments JSON).
+            finalized: list[dict[str, Any]] = []
+            for _idx, buf in sorted(tool_calls_buf.items()):
+                raw_args = buf["function"]["arguments"]
+                try:
+                    parsed_args = json.loads(raw_args) if raw_args else {}
+                except (json.JSONDecodeError, TypeError):
+                    parsed_args = {}
+                finalized.append({
+                    "id": buf["id"],
+                    "type": buf["type"],
+                    "function": {
+                        "name": buf["function"]["name"],
+                        "arguments": parsed_args,
+                    },
+                })
+            self._last_stream_tool_calls = finalized
+
+            # Cost tracking after stream completes
+            if self._enable_cost_tracking and (prompt_tokens or completion_tokens):
+                CostTracker.get().record(
+                    provider="cerebras",
+                    model=self.model_name,
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                )
+
+            if self._rate_limiter is not None:
+                self._rate_limiter.record(prompt_tokens + completion_tokens)
+
+            logger.info(
+                "Cerebras stream complete: prompt=%d completion=%d",
+                prompt_tokens, completion_tokens,
+            )
+
+        except Exception as exc:
+            msg = str(exc)
+            if "404" in msg and "model_not_found" in msg:
+                raise RuntimeError(
+                    f"Cerebras streaming failed (model not found): {exc}. "
+                    f"Try: {free_tier_models()}"
+                ) from exc
+            logger.error("Cerebras streaming failed: %s", exc)
+            raise RuntimeError(f"Cerebras streaming failed: {exc}") from exc
+
+    def generate_with_tools(
+        self,
+        prompt: str,
+        tools: list[dict[str, Any]],
+        config: GenerationConfig | None = None,
+        messages: list[dict[str, Any]] | None = None,
+        **kwargs: Any,
+    ) -> GenerationResult:
+        """Generate with native function-calling support.
+
+        On models that support native tools (``supports_native_tools=True``),
+        the tool definitions are passed directly to the API.  Tool calls are
+        parsed from ``choice.message.tool_calls`` and placed in
+        ``result.metadata["tool_calls"]``.
+
+        On models that do **not** support native tools, raises
+        ``NotImplementedError`` so the agent can fall back to ReAct.
+
+        Args:
+            prompt: User prompt.
+            tools: List of tool definitions in OpenAI function-call format.
+            config: Generation config.
+            messages: Optional full message list (overrides prompt).
+            **kwargs: Forwarded to the SDK.
+
+        Returns:
+            GenerationResult with ``metadata["tool_calls"]`` populated if the
+            model requested one or more tools.
+
+        Raises:
+            NotImplementedError: If the model doesn't support native tools.
+            RuntimeError: If the adapter is not loaded or the API call fails.
+        """
+        import asyncio
+
+        if not self._is_loaded or self._client is None:
+            raise RuntimeError("CerebrasAdapter not loaded. Call load() first.")
+
+        model_info_dict = CEREBRAS_MODELS.get(self.model_name, {})
+        if not model_info_dict.get("supports_native_tools", False):
+            raise NotImplementedError(
+                f"Cerebras model '{self.model_name}' does not support native tool-calling. "
+                "Use ReAct strategy or choose a tool-capable model."
+            )
+
+        if config is None:
+            config = GenerationConfig()
+
+        try:
+            est_tokens = self.count_tokens(prompt).count + (config.max_tokens or 500)
+        except Exception:
+            est_tokens = 500
+
+        if self._rate_limiter is not None:
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    pass
+                else:
+                    loop.run_until_complete(self._rate_limiter.acquire(est_tokens))
+            except RuntimeError:
+                asyncio.run(self._rate_limiter.acquire(est_tokens))
+
+        result = self._do_generate(
+            prompt=prompt,
+            config=config,
+            tools=tools,
+            messages=messages,
+            **kwargs,
         )
+
+        if self._rate_limiter is not None:
+            actual = result.metadata.get("total_tokens", 0) if result.metadata else 0
+            self._rate_limiter.record(actual)
+
+        return result
+
+    def supports_tool_calling(self) -> bool:
+        """Return True if the loaded model supports native tool-calling."""
+        return CEREBRAS_MODELS.get(self.model_name, {}).get("supports_native_tools", False)
+
+    def supports_function_calling(self) -> bool:
+        """Alias for :meth:`supports_tool_calling`."""
+        return self.supports_tool_calling()
 
     # ------------------------------------------------------------------
     # Token counting & context length
     # ------------------------------------------------------------------
 
-    # Empirical per-family multiplier applied to tiktoken counts to account for
-    # chat-template overhead (BOS, role markers, system tokens). Measured by
-    # comparing tiktoken(prompt) vs. usage.prompt_tokens on real API calls.
-    # Empirical: multiplier + fixed overhead (BOS/system/role tokens).
+    # Empirical per-family multiplier applied to tiktoken counts.
     # final = raw * mult + fixed
     _CHAT_TEMPLATE_MULTIPLIER = {
-        "llama":   (1.5, 25),   # chat template adds ~25 fixed tokens
+        "llama":   (1.5, 25),
         "qwen":    (1.3, 5),
         "gpt-oss": (1.3, 10),
         "zai-glm": (1.3, 10),
     }
 
     def count_tokens(self, text: str) -> TokenCount:
-        """Estimate token count via tiktoken with a per-family chat-template adjustment.
-
-        The Cerebras API does not expose a standalone tokeniser; gpt-4's
-        cl100k_base encoding is used as an approximation and scaled by an
-        empirical multiplier to account for each model's chat-template
-        overhead (BOS, role markers, etc.).  This keeps the rate-limit
-        coordinator's token estimate within ~15% of the actual
-        ``usage.prompt_tokens`` reported by the API.
-        """
+        """Estimate token count via tiktoken with a per-family chat-template adjustment."""
         try:
             import tiktoken
         except ImportError as exc:
@@ -400,10 +654,7 @@ class CerebrasAdapter(BaseModel):
         return TokenCount(count=adjusted, model_name=self.model_name)
 
     def get_context_length(self) -> int:
-        """Return context window size for the loaded model.
-
-        Values sourced from Cerebras inference docs (verified 2026-04-23).
-        """
+        """Return context window size for the loaded model."""
         return CEREBRAS_MODELS.get(self.model_name, {}).get("context", 128_000)
 
     def get_max_output(self) -> int:
@@ -411,16 +662,20 @@ class CerebrasAdapter(BaseModel):
         return CEREBRAS_MODELS.get(self.model_name, {}).get("max_output", 8_192)
 
     def rate_limit_status(self) -> dict:
-        """Return a snapshot of the rate-limit coordinator state.
-
-        Returns an empty dict if rate limiting is disabled.
-        """
+        """Return a snapshot of the rate-limit coordinator state."""
         if self._rate_limiter is None:
             return {}
         return self._rate_limiter.status()
 
+    def cost_summary(self) -> list[dict]:
+        """Return the global CostTracker summary filtered to Cerebras."""
+        return [
+            row for row in CostTracker.get().summary()
+            if row["provider"].lower() == "cerebras"
+        ]
+
     # ------------------------------------------------------------------
-    # Class-level helpers (mirrors cerebras_models module functions)
+    # Class-level helpers
     # ------------------------------------------------------------------
 
     @classmethod
@@ -430,10 +685,10 @@ class CerebrasAdapter(BaseModel):
 
     @classmethod
     def list_free_tier_models(cls) -> list[str]:
-        """Return model IDs callable on the free tier."""
+        """Return model IDs callable on the Cerebras free tier."""
         return free_tier_models()
 
     @classmethod
     def get_model_info(cls, model_id: str) -> dict:
-        """Return metadata for *model_id* (context, limits, etc.)."""
+        """Return metadata for *model_id* (context, limits, native-tools flag, etc.)."""
         return model_info(model_id)

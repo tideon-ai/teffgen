@@ -44,13 +44,15 @@ class TestCerebrasLive:
         finally:
             model.unload()
 
-    def test_generate_stream_raises(self):
+    def test_generate_stream_yields_chunks(self):
         from effgen.models.cerebras_adapter import CerebrasAdapter
 
         adapter = CerebrasAdapter()
         adapter.load()
         try:
-            with pytest.raises(NotImplementedError):
-                adapter.generate_stream("test")
+            chunks = list(adapter.generate_stream("Count from 1 to 3 briefly."))
+            assert len(chunks) >= 1, "Expected at least one chunk from streaming"
+            full_text = "".join(chunks)
+            assert len(full_text) > 0, "Expected non-empty streamed text"
         finally:
             adapter.unload()

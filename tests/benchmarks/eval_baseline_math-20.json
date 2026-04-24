@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0-cerebras-llama3.1-8b",
+  "timestamp": "2026-04-24T10:26:31.498941+00:00",
+  "summary": {
+    "suite": "math",
+    "total": 10,
+    "passed": 9,
+    "accuracy": 0.9,
+    "avg_latency": 11.2776,
+    "total_tokens": 3194,
+    "avg_tool_accuracy": 0.0,
+    "by_difficulty": {
+      "easy": {
+        "total": 10,
+        "passed": 9,
+        "accuracy": 0.9
+      }
+    },
+    "metadata": {
+      "scoring": "contains",
+      "pass_threshold": 0.5,
+      "num_cases": 10
+    }
+  }
+}

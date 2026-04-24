@@ -984,10 +984,16 @@ Question: {task}
             logger.info(f"[Iteration {iterations}] Raw model output: {response['text'][:300]}...")
             logger.debug(f"[Iteration {iterations}] Full model output: {response['text']}")
 
-            # Parse response using strategy
-            strategy_result = self._tool_calling_strategy.parse_response(
-                response["text"], tools=self.tools,
-            )
+            # Parse response using strategy. If the adapter returned a native
+            # tool call (empty text + structured tool_calls in metadata), use
+            # it directly — no text parsing needed.
+            native_tool_calls = response.get("tool_calls") or []
+            if native_tool_calls:
+                strategy_result = self._parse_native_tool_calls(native_tool_calls)
+            else:
+                strategy_result = self._tool_calling_strategy.parse_response(
+                    response["text"], tools=self.tools,
+                )
             # Convert to legacy dict format for compatibility with rest of loop
             parsed = self._tool_call_result_to_dict(strategy_result)
 
@@ -1437,14 +1443,21 @@ Question: {task}
                     tokens_used = result.tokens_used if result and hasattr(result, 'tokens_used') else 0
                     finish_reason = result.finish_reason if result and hasattr(result, 'finish_reason') else "unknown"
                     total_tokens += tokens_used
+                    result_metadata = result.metadata if result and hasattr(result, 'metadata') else {}
 
-                    # If we got a non-empty response, return it
-                    if response_text.strip():
+                    # Native tool-calls can arrive with empty text (finish_reason="tool_calls").
+                    # Return the call to the agent loop instead of treating it as an empty
+                    # response that needs retrying.
+                    native_tool_calls = (result_metadata or {}).get("tool_calls") or []
+
+                    # If we got non-empty text OR a native tool call, return it
+                    if response_text.strip() or native_tool_calls:
                         return {
                             "text": response_text,
                             "tokens_used": total_tokens,
                             "finish_reason": finish_reason,
-                            "metadata": result.metadata if result and hasattr(result, 'metadata') else {}
+                            "tool_calls": native_tool_calls,
+                            "metadata": result_metadata or {},
                         }
 
                     # Empty response — retry
@@ -1727,6 +1740,34 @@ Question: {task}
             # Return partial parse results even if there was an error
 
         return parsed
+
+    @staticmethod
+    def _parse_native_tool_calls(native_tool_calls: list[dict[str, Any]]) -> ToolCallResult:
+        """Convert provider-native tool_calls (OpenAI/Cerebras format) into ToolCallResult.
+
+        Providers return:
+            [{"id": "...", "type": "function",
+              "function": {"name": "...", "arguments": {...} | "json-string"}}]
+        """
+        result = ToolCallResult(raw_text="")
+        if not native_tool_calls:
+            return result
+        tc = native_tool_calls[0]
+        fn = tc.get("function", tc)
+        tool_name = fn.get("name")
+        arguments = fn.get("arguments", {})
+        if isinstance(arguments, str):
+            try:
+                arguments = json.loads(arguments)
+            except (json.JSONDecodeError, TypeError):
+                arguments = {"__raw_input__": arguments}
+        if not isinstance(arguments, dict):
+            arguments = {}
+        if tool_name:
+            result.tool_name = tool_name
+            result.arguments = arguments
+            result.is_tool_call = True
+        return result
 
     @staticmethod
     def _tool_call_result_to_dict(result: ToolCallResult) -> dict[str, Any]:
