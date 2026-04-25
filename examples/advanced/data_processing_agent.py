@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-effGen — Data Processing Agent
+tideon.ai — Data Processing Agent
 
 Processes structured data using JSONTool, TextProcessingTool, PythonREPL,
 and FileOperations. Demonstrates JSON querying, validation, formatting,
@@ -38,12 +38,12 @@ import traceback
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from effgen import load_model
-from effgen.core.agent import Agent, AgentConfig
-from effgen.tools.builtin.file_ops import FileOperations
-from effgen.tools.builtin.json_tool import JSONTool
-from effgen.tools.builtin.python_repl import PythonREPL
-from effgen.tools.builtin.text_processing import TextProcessingTool
+from teffgen import load_model
+from teffgen.core.agent import Agent, AgentConfig
+from teffgen.tools.builtin.file_ops import FileOperations
+from teffgen.tools.builtin.json_tool import JSONTool
+from teffgen.tools.builtin.python_repl import PythonREPL
+from teffgen.tools.builtin.text_processing import TextProcessingTool
 
 # ── System Prompt ────────────────────────────────────────────────────────────
 
@@ -328,9 +328,9 @@ def test_t6_data_pipeline(model, model_name, sandbox_dir):
 
 def run_regression(model, model_name):
     """Run regression tests to verify previous examples still work."""
-    from effgen.tools.builtin.bash_tool import BashTool
-    from effgen.tools.builtin.calculator import Calculator
-    from effgen.tools.builtin.python_repl import PythonREPL as PythonREPLTool
+    from teffgen.tools.builtin.bash_tool import BashTool
+    from teffgen.tools.builtin.calculator import Calculator
+    from teffgen.tools.builtin.python_repl import PythonREPL as PythonREPLTool
 
     results = []
 
@@ -443,7 +443,7 @@ def run_all_tests(model, model_name, sandbox_dir):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen Data Processing Agent Example")
+    parser = argparse.ArgumentParser(description="tideon.ai Data Processing Agent Example")
     parser.add_argument(
         "--model", default="Qwen/Qwen2.5-3B-Instruct",
         help="Model to use (default: Qwen/Qwen2.5-3B-Instruct)",
@@ -457,7 +457,7 @@ def main():
         logging.basicConfig(level=logging.INFO, format="%(name)s: %(message)s")
 
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-    print("effGen — Data Processing Agent")
+    print("tideon.ai — Data Processing Agent")
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 
@@ -467,7 +467,7 @@ def main():
     print(f"Model loaded in {time.time() - t0:.1f}s")
 
     # Create sandbox directory for file operations
-    sandbox_dir = tempfile.mkdtemp(prefix="effgen_data_")
+    sandbox_dir = tempfile.mkdtemp(prefix="teffgen_data_")
     print(f"Sandbox: {sandbox_dir}")
 
     try:

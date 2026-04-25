@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-effGen — Error Recovery Agent (Intentional Failures)
+tideon.ai — Error Recovery Agent (Intentional Failures)
 
 Deliberately breaks things and tests how the framework handles failures.
 Demonstrates BrokenTool (always crashes), SlowTool (timeout), invalid inputs,
@@ -40,16 +40,16 @@ import traceback
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from effgen import load_model
-from effgen.core.agent import Agent, AgentConfig
-from effgen.tools.base_tool import (
+from teffgen import load_model
+from teffgen.core.agent import Agent, AgentConfig
+from teffgen.tools.base_tool import (
     BaseTool,
     ParameterSpec,
     ParameterType,
     ToolCategory,
     ToolMetadata,
 )
-from effgen.utils.circuit_breaker import CircuitState
+from teffgen.utils.circuit_breaker import CircuitState
 
 # ── Custom Tools ─────────────────────────────────────────────────────────────
 
@@ -281,8 +281,8 @@ def run_test(agent, test_id, description, question,
 
 def test_p7_t1_invalid_input(model, model_name):
     """Invalid tool input — malformed JSON to Calculator."""
-    from effgen.tools.builtin.calculator import Calculator
-    from effgen.tools.builtin.python_repl import PythonREPL
+    from teffgen.tools.builtin.calculator import Calculator
+    from teffgen.tools.builtin.python_repl import PythonREPL
 
     agent = Agent(AgentConfig(
         name="error_recovery_t1",
@@ -308,7 +308,7 @@ def test_p7_t1_invalid_input(model, model_name):
 
 def test_p7_t2_tool_crash(model, model_name):
     """Tool crash — BrokenTool always raises RuntimeError, circuit breaker triggers."""
-    from effgen.tools.builtin.calculator import Calculator
+    from teffgen.tools.builtin.calculator import Calculator
 
     broken = BrokenTool()
     agent = Agent(AgentConfig(
@@ -385,8 +385,8 @@ def test_p7_t3_all_tools_fail(model, model_name):
 
 def test_p7_t4_max_iterations(model, model_name):
     """Max iterations — max_iterations=2, returns partial answer not crash."""
-    from effgen.tools.builtin.calculator import Calculator
-    from effgen.tools.builtin.python_repl import PythonREPL
+    from teffgen.tools.builtin.calculator import Calculator
+    from teffgen.tools.builtin.python_repl import PythonREPL
 
     agent = Agent(AgentConfig(
         name="error_recovery_t4",
@@ -416,7 +416,7 @@ def test_p7_t5_empty_response(model, model_name):
     by checking the retry logic directly.
     """
     # Test the retry logic directly with a probe
-    from effgen.tools.builtin.calculator import Calculator
+    from teffgen.tools.builtin.calculator import Calculator
 
     agent = Agent(AgentConfig(
         name="error_recovery_t5",
@@ -466,7 +466,7 @@ def test_p7_t5_empty_response(model, model_name):
 
 def test_p7_t6_timeout(model, model_name):
     """Timeout — SlowTool triggers tool timeout."""
-    from effgen.tools.builtin.calculator import Calculator
+    from teffgen.tools.builtin.calculator import Calculator
 
     # Use a shorter sleep to not waste GPU time, but still test timeout behavior
     slow = SlowTool(sleep_seconds=5.0)
@@ -557,7 +557,7 @@ def test_p7_t7_fallback_exhaustion(model, model_name):
 
 def test_p7_t8_concurrent_failures(model, model_name):
     """Concurrent failures — 3 agents simultaneously, no shared state corruption."""
-    from effgen.tools.builtin.calculator import Calculator
+    from teffgen.tools.builtin.calculator import Calculator
 
     results = [None, None, None]
     errors = [None, None, None]
@@ -635,7 +635,7 @@ def test_p7_t8_concurrent_failures(model, model_name):
 
 def test_p7_t9_control_characters(model, model_name):
     """Control character input — sanitization strips them."""
-    from effgen.core.agent import Agent as AgentClass
+    from teffgen.core.agent import Agent as AgentClass
 
     print(f"\n{'='*60}")
     print("Test: T9 — Control character sanitization")
@@ -660,7 +660,7 @@ def test_p7_t9_control_characters(model, model_name):
             print(f"  OK: sanitize({repr(raw)}) = {repr(sanitized)}")
 
     # Also test with a real agent — pass control chars in a question
-    from effgen.tools.builtin.calculator import Calculator
+    from teffgen.tools.builtin.calculator import Calculator
     agent = Agent(AgentConfig(
         name="error_recovery_t9",
         model=model,
@@ -693,9 +693,9 @@ def test_p7_t9_control_characters(model, model_name):
 
 def run_regression(model, model_name):
     """Run regression tests."""
-    from effgen.tools.builtin.bash_tool import BashTool
-    from effgen.tools.builtin.calculator import Calculator
-    from effgen.tools.builtin.python_repl import PythonREPL
+    from teffgen.tools.builtin.bash_tool import BashTool
+    from teffgen.tools.builtin.calculator import Calculator
+    from teffgen.tools.builtin.python_repl import PythonREPL
 
     results = []
 
@@ -808,7 +808,7 @@ def run_all_error_recovery_tests(model, model_name):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen Error Recovery Agent Example")
+    parser = argparse.ArgumentParser(description="tideon.ai Error Recovery Agent Example")
     parser.add_argument(
         "--model", default="Qwen/Qwen2.5-3B-Instruct",
         help="Model to use (default: Qwen/Qwen2.5-3B-Instruct)",
@@ -822,7 +822,7 @@ def main():
         logging.basicConfig(level=logging.INFO, format="%(name)s: %(message)s")
 
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-    print("effGen — Error Recovery Agent")
+    print("tideon.ai — Error Recovery Agent")
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 

@@ -3,7 +3,7 @@
 import subprocess
 from unittest.mock import MagicMock, patch
 
-from effgen.hardware.platform import (
+from teffgen.hardware.platform import (
     HardwarePlatform,
     detect_platform,
     get_best_local_backend,
@@ -32,22 +32,22 @@ class TestIsAppleSilicon:
     def teardown_method(self):
         _clear_all_caches()
 
-    @patch("effgen.hardware.platform.platform")
-    @patch("effgen.hardware.platform.sys")
+    @patch("teffgen.hardware.platform.platform")
+    @patch("teffgen.hardware.platform.sys")
     def test_is_apple_silicon_on_arm64_mac(self, mock_sys, mock_platform):
         mock_sys.platform = "darwin"
         mock_platform.machine.return_value = "arm64"
         assert is_apple_silicon() is True
 
-    @patch("effgen.hardware.platform.platform")
-    @patch("effgen.hardware.platform.sys")
+    @patch("teffgen.hardware.platform.platform")
+    @patch("teffgen.hardware.platform.sys")
     def test_is_apple_silicon_on_linux(self, mock_sys, mock_platform):
         mock_sys.platform = "linux"
         mock_platform.machine.return_value = "x86_64"
         assert is_apple_silicon() is False
 
-    @patch("effgen.hardware.platform.platform")
-    @patch("effgen.hardware.platform.sys")
+    @patch("teffgen.hardware.platform.platform")
+    @patch("teffgen.hardware.platform.sys")
     def test_is_apple_silicon_on_intel_mac(self, mock_sys, mock_platform):
         mock_sys.platform = "darwin"
         mock_platform.machine.return_value = "x86_64"
@@ -85,8 +85,8 @@ class TestIsMlxAvailable:
     def teardown_method(self):
         _clear_all_caches()
 
-    @patch("effgen.hardware.platform.platform")
-    @patch("effgen.hardware.platform.sys")
+    @patch("teffgen.hardware.platform.platform")
+    @patch("teffgen.hardware.platform.sys")
     def test_is_mlx_available_on_apple_silicon(self, mock_sys, mock_platform):
         mock_sys.platform = "darwin"
         mock_platform.machine.return_value = "arm64"
@@ -94,16 +94,16 @@ class TestIsMlxAvailable:
         with patch.dict("sys.modules", {"mlx": MagicMock(), "mlx.core": mock_mlx_core}):
             assert is_mlx_available() is True
 
-    @patch("effgen.hardware.platform.platform")
-    @patch("effgen.hardware.platform.sys")
+    @patch("teffgen.hardware.platform.platform")
+    @patch("teffgen.hardware.platform.sys")
     def test_is_mlx_available_not_apple_silicon(self, mock_sys, mock_platform):
         """On non-Apple Silicon, should short-circuit to False without trying import."""
         mock_sys.platform = "linux"
         mock_platform.machine.return_value = "x86_64"
         assert is_mlx_available() is False
 
-    @patch("effgen.hardware.platform.platform")
-    @patch("effgen.hardware.platform.sys")
+    @patch("teffgen.hardware.platform.platform")
+    @patch("teffgen.hardware.platform.sys")
     def test_is_mlx_available_import_fails(self, mock_sys, mock_platform):
         mock_sys.platform = "darwin"
         mock_platform.machine.return_value = "arm64"
@@ -114,13 +114,13 @@ class TestIsMlxAvailable:
 class TestGetUnifiedMemoryGb:
     """Tests for get_unified_memory_gb()."""
 
-    @patch("effgen.hardware.platform.sys")
+    @patch("teffgen.hardware.platform.sys")
     def test_non_macos_returns_zero(self, mock_sys):
         mock_sys.platform = "linux"
         assert get_unified_memory_gb() == 0.0
 
-    @patch("effgen.hardware.platform.subprocess")
-    @patch("effgen.hardware.platform.sys")
+    @patch("teffgen.hardware.platform.subprocess")
+    @patch("teffgen.hardware.platform.sys")
     def test_get_unified_memory_gb_macos(self, mock_sys, mock_subprocess):
         mock_sys.platform = "darwin"
         # 16 GB in bytes = 17179869184
@@ -133,8 +133,8 @@ class TestGetUnifiedMemoryGb:
         result = get_unified_memory_gb()
         assert abs(result - 16.0) < 0.01
 
-    @patch("effgen.hardware.platform.subprocess")
-    @patch("effgen.hardware.platform.sys")
+    @patch("teffgen.hardware.platform.subprocess")
+    @patch("teffgen.hardware.platform.sys")
     def test_get_unified_memory_gb_failure(self, mock_sys, mock_subprocess):
         mock_sys.platform = "darwin"
         mock_subprocess.run.side_effect = OSError("command not found")
@@ -153,32 +153,32 @@ class TestGetBestLocalBackend:
     def teardown_method(self):
         _clear_all_caches()
 
-    @patch("effgen.hardware.platform.is_cuda_available", return_value=False)
-    @patch("effgen.hardware.platform.is_mlx_available", return_value=True)
-    @patch("effgen.hardware.platform.is_apple_silicon", return_value=True)
+    @patch("teffgen.hardware.platform.is_cuda_available", return_value=False)
+    @patch("teffgen.hardware.platform.is_mlx_available", return_value=True)
+    @patch("teffgen.hardware.platform.is_apple_silicon", return_value=True)
     def test_get_best_local_backend_apple_silicon_mlx(
         self, mock_as, mock_mlx, mock_cuda
     ):
         assert get_best_local_backend() == "mlx"
 
-    @patch("effgen.hardware.platform.is_mlx_available", return_value=False)
-    @patch("effgen.hardware.platform.is_apple_silicon", return_value=False)
-    @patch("effgen.hardware.platform.is_cuda_available", return_value=True)
+    @patch("teffgen.hardware.platform.is_mlx_available", return_value=False)
+    @patch("teffgen.hardware.platform.is_apple_silicon", return_value=False)
+    @patch("teffgen.hardware.platform.is_cuda_available", return_value=True)
     def test_get_best_local_backend_cuda_vllm(self, mock_cuda, mock_as, mock_mlx):
         mock_vllm = MagicMock()
         with patch.dict("sys.modules", {"vllm": mock_vllm}):
             assert get_best_local_backend() == "vllm"
 
-    @patch("effgen.hardware.platform.is_mlx_available", return_value=False)
-    @patch("effgen.hardware.platform.is_apple_silicon", return_value=False)
-    @patch("effgen.hardware.platform.is_cuda_available", return_value=True)
+    @patch("teffgen.hardware.platform.is_mlx_available", return_value=False)
+    @patch("teffgen.hardware.platform.is_apple_silicon", return_value=False)
+    @patch("teffgen.hardware.platform.is_cuda_available", return_value=True)
     def test_get_best_local_backend_cuda_no_vllm(self, mock_cuda, mock_as, mock_mlx):
         with patch.dict("sys.modules", {"vllm": None}):
             assert get_best_local_backend() == "transformers"
 
-    @patch("effgen.hardware.platform.is_mlx_available", return_value=False)
-    @patch("effgen.hardware.platform.is_apple_silicon", return_value=False)
-    @patch("effgen.hardware.platform.is_cuda_available", return_value=False)
+    @patch("teffgen.hardware.platform.is_mlx_available", return_value=False)
+    @patch("teffgen.hardware.platform.is_apple_silicon", return_value=False)
+    @patch("teffgen.hardware.platform.is_cuda_available", return_value=False)
     def test_get_best_local_backend_cpu_only(self, mock_cuda, mock_as, mock_mlx):
         assert get_best_local_backend() == "transformers"
 
@@ -192,20 +192,20 @@ class TestDetectPlatform:
     def teardown_method(self):
         _clear_all_caches()
 
-    @patch("effgen.hardware.platform.is_cuda_available", return_value=False)
-    @patch("effgen.hardware.platform.is_mlx_available", return_value=True)
-    @patch("effgen.hardware.platform.is_apple_silicon", return_value=True)
+    @patch("teffgen.hardware.platform.is_cuda_available", return_value=False)
+    @patch("teffgen.hardware.platform.is_mlx_available", return_value=True)
+    @patch("teffgen.hardware.platform.is_apple_silicon", return_value=True)
     def test_detect_apple_silicon(self, mock_as, mock_mlx, mock_cuda):
         assert detect_platform() == HardwarePlatform.APPLE_SILICON
 
-    @patch("effgen.hardware.platform.is_mlx_available", return_value=False)
-    @patch("effgen.hardware.platform.is_apple_silicon", return_value=False)
-    @patch("effgen.hardware.platform.is_cuda_available", return_value=True)
+    @patch("teffgen.hardware.platform.is_mlx_available", return_value=False)
+    @patch("teffgen.hardware.platform.is_apple_silicon", return_value=False)
+    @patch("teffgen.hardware.platform.is_cuda_available", return_value=True)
     def test_detect_cuda(self, mock_cuda, mock_as, mock_mlx):
         assert detect_platform() == HardwarePlatform.CUDA
 
-    @patch("effgen.hardware.platform.is_mlx_available", return_value=False)
-    @patch("effgen.hardware.platform.is_apple_silicon", return_value=False)
-    @patch("effgen.hardware.platform.is_cuda_available", return_value=False)
+    @patch("teffgen.hardware.platform.is_mlx_available", return_value=False)
+    @patch("teffgen.hardware.platform.is_apple_silicon", return_value=False)
+    @patch("teffgen.hardware.platform.is_cuda_available", return_value=False)
     def test_detect_cpu_only(self, mock_cuda, mock_as, mock_mlx):
         assert detect_platform() == HardwarePlatform.CPU_ONLY

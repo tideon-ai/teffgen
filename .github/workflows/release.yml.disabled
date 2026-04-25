@@ -65,8 +65,8 @@
 #
 #       - name: Verify installation
 #         run: |
-#           python -c "from effgen import Agent, load_model; print('Import OK')"
-#           python -c "import effgen; print(f'Version: {effgen.__version__}')"
+#           python -c "from teffgen import Agent, load_model; print('Import OK')"
+#           python -c "import teffgen; print(f'Version: {teffgen.__version__}')"
 #
 #   publish-pypi:
 #     name: Publish to PyPI
@@ -74,7 +74,7 @@
 #     needs: [build, test-install]
 #     environment:
 #       name: pypi
-#       url: https://pypi.org/project/effgen/
+#       url: https://pypi.org/project/teffgen/
 #     steps:
 #       - name: Download artifacts
 #         uses: actions/download-artifact@v4

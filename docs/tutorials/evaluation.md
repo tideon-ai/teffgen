@@ -1,15 +1,15 @@
 # Evaluation & Benchmarking
 
-effGen v0.2.0 includes a built-in evaluation framework for benchmarking agents, tracking regressions, and comparing models.
+tideon.ai v0.2.0 includes a built-in evaluation framework for benchmarking agents, tracking regressions, and comparing models.
 
 ## Quick Start
 
 ```bash
 # Run the math evaluation suite
-effgen eval --suite math --model "Qwen/Qwen2.5-3B-Instruct"
+teffgen eval --suite math --model "Qwen/Qwen2.5-3B-Instruct"
 
 # Compare multiple models
-effgen compare --models "Qwen/Qwen2.5-0.5B,Qwen/Qwen2.5-1.5B,Qwen/Qwen2.5-3B" --suite math
+teffgen compare --models "Qwen/Qwen2.5-0.5B,Qwen/Qwen2.5-1.5B,Qwen/Qwen2.5-3B" --suite math
 ```
 
 ## Built-in Test Suites
@@ -25,8 +25,8 @@ effgen compare --models "Qwen/Qwen2.5-0.5B,Qwen/Qwen2.5-1.5B,Qwen/Qwen2.5-3B" --
 ## Python API
 
 ```python
-from effgen.eval import AgentEvaluator, MathSuite, ToolUseSuite
-from effgen.eval.evaluator import ScoringMode
+from teffgen.eval import AgentEvaluator, MathSuite, ToolUseSuite
+from teffgen.eval.evaluator import ScoringMode
 
 evaluator = AgentEvaluator(agent, scoring=ScoringMode.CONTAINS)
 
@@ -54,7 +54,7 @@ results = evaluator.run_suite(MathSuite(), threshold=0.5)
 ## Regression Tracking
 
 ```python
-from effgen.eval import RegressionTracker
+from teffgen.eval import RegressionTracker
 
 tracker = RegressionTracker()
 
@@ -75,7 +75,7 @@ Baselines are stored in `tests/benchmarks/eval_baseline_<suite>.json`.
 ## Model Comparison
 
 ```python
-from effgen.eval import ModelComparison
+from teffgen.eval import ModelComparison
 
 comparison = ModelComparison()
 matrix = comparison.run(
@@ -93,13 +93,13 @@ matrix.to_json("comparison.json")
 
 ```bash
 # Evaluation
-effgen eval --suite math --scoring contains --threshold 0.5 -o results.json
-effgen eval --suite tool_use --difficulty hard
-effgen eval --suite math --save-baseline    # Save as regression baseline
-effgen eval --suite math --compare-baseline # Compare against saved baseline
+teffgen eval --suite math --scoring contains --threshold 0.5 -o results.json
+teffgen eval --suite tool_use --difficulty hard
+teffgen eval --suite math --save-baseline    # Save as regression baseline
+teffgen eval --suite math --compare-baseline # Compare against saved baseline
 
 # Comparison
-effgen compare --models "model_a,model_b" --suite math,reasoning -o comparison.md
+teffgen compare --models "model_a,model_b" --suite math,reasoning -o comparison.md
 ```
 
 ## CI/CD Integration

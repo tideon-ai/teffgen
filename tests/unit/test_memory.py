@@ -1,6 +1,6 @@
 """Unit tests for memory systems."""
 
-from effgen.memory.short_term import Message, MessageRole, ShortTermMemory
+from teffgen.memory.short_term import Message, MessageRole, ShortTermMemory
 
 
 class TestMessage:

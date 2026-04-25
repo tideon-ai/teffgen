@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from dotenv import load_dotenv
 
-load_dotenv(Path.home() / ".effgen" / ".env", override=False)
+load_dotenv(Path.home() / ".teffgen" / ".env", override=False)
 
 
 def _has_key() -> bool:
@@ -18,10 +18,10 @@ def _has_key() -> bool:
 
 @pytest.mark.integration
 @pytest.mark.api
-@pytest.mark.skipif(not _has_key(), reason="SKIPPED: CEREBRAS_API_KEY not in ~/.effgen/.env")
+@pytest.mark.skipif(not _has_key(), reason="SKIPPED: CEREBRAS_API_KEY not in ~/.teffgen/.env")
 class TestCerebrasStreaming:
     def test_stream_yields_text_llama(self):
-        from effgen.models.cerebras_adapter import CerebrasAdapter
+        from teffgen.models.cerebras_adapter import CerebrasAdapter
 
         adapter = CerebrasAdapter("llama3.1-8b", enable_rate_limiting=False)
         adapter.load()
@@ -33,7 +33,7 @@ class TestCerebrasStreaming:
             adapter.unload()
 
     def test_stream_yields_text_qwen(self):
-        from effgen.models.cerebras_adapter import CerebrasAdapter
+        from teffgen.models.cerebras_adapter import CerebrasAdapter
 
         adapter = CerebrasAdapter("qwen-3-235b-a22b-instruct-2507", enable_rate_limiting=False)
         adapter.load()
@@ -58,7 +58,7 @@ class TestCerebrasStreaming:
 
     def test_stream_timestamps_show_real_streaming(self):
         """For a longer response, timestamps should span >50ms (not all at once)."""
-        from effgen.models.cerebras_adapter import CerebrasAdapter
+        from teffgen.models.cerebras_adapter import CerebrasAdapter
 
         adapter = CerebrasAdapter("llama3.1-8b", enable_rate_limiting=False)
         adapter.load()
@@ -86,8 +86,8 @@ class TestCerebrasStreaming:
             adapter.unload()
 
     def test_stream_passes_config(self):
-        from effgen.models.base import GenerationConfig
-        from effgen.models.cerebras_adapter import CerebrasAdapter
+        from teffgen.models.base import GenerationConfig
+        from teffgen.models.cerebras_adapter import CerebrasAdapter
 
         adapter = CerebrasAdapter("llama3.1-8b", enable_rate_limiting=False)
         adapter.load()
@@ -101,8 +101,8 @@ class TestCerebrasStreaming:
             adapter.unload()
 
     def test_stream_cost_tracker_records(self):
-        from effgen.models._cost import CostTracker
-        from effgen.models.cerebras_adapter import CerebrasAdapter
+        from teffgen.models._cost import CostTracker
+        from teffgen.models.cerebras_adapter import CerebrasAdapter
 
         CostTracker.reset()
         adapter = CerebrasAdapter(

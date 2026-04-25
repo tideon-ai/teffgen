@@ -2,7 +2,7 @@
 
 ## Secure Agent Execution
 
-effGen provides multiple layers of security for running code-executing agents:
+tideon.ai provides multiple layers of security for running code-executing agents:
 
 ### Sandboxed Execution
 
@@ -16,7 +16,7 @@ effGen provides multiple layers of security for running code-executing agents:
 If you discover a security vulnerability, please report it by:
 
 1. **Email**: gks@vt.edu
-2. **GitHub**: Open a private security advisory at [GitHub Security](https://github.com/ctrl-gaurav/effGen/security/advisories)
+2. **GitHub**: Open a private security advisory at [GitHub Security](https://github.com/tideon-ai/teffgen/security/advisories)
 
 Please do not publicly disclose the vulnerability until we've had a chance to address it.
 

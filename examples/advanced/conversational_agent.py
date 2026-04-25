@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-effGen — Conversational Agent (Memory + Multi-Turn)
+tideon.ai — Conversational Agent (Memory + Multi-Turn)
 
 A conversational agent that maintains context across multiple turns using
 ShortTermMemory and LongTermMemory (SQLite). Demonstrates conversation history
@@ -27,10 +27,10 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from effgen import load_model
-from effgen.core.agent import Agent, AgentConfig
-from effgen.tools.builtin.calculator import Calculator
-from effgen.tools.builtin.datetime_tool import DateTimeTool
+from teffgen import load_model
+from teffgen.core.agent import Agent, AgentConfig
+from teffgen.tools.builtin.calculator import Calculator
+from teffgen.tools.builtin.datetime_tool import DateTimeTool
 
 CONVERSATIONAL_SYSTEM_PROMPT = """You are a conversational assistant with memory. Remember what the user tells you and use that context in future responses.
 
@@ -241,7 +241,7 @@ def run_all_tests(model, model_name="unknown"):
         print(f"  ⚠ Summarization did NOT trigger (tokens: {mem_stats['current_tokens']}/{512})")
 
     # ── T6: Long-term memory persistence (SQLite) ──
-    tmpdir = tempfile.mkdtemp(prefix="effgen_ltm_")
+    tmpdir = tempfile.mkdtemp(prefix="teffgen_ltm_")
     print(f"\n  [T6] Using temp dir: {tmpdir}")
 
     # First session: store facts
@@ -329,7 +329,7 @@ def run_all_tests(model, model_name="unknown"):
 
 def run_regression(model, model_name="unknown"):
     """Run regression tests on the conversational agent."""
-    from effgen.presets import create_agent as create_preset_agent
+    from teffgen.presets import create_agent as create_preset_agent
 
     results = []
 
@@ -462,7 +462,7 @@ def interactive_mode(agent):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen — Conversational Agent")
+    parser = argparse.ArgumentParser(description="tideon.ai — Conversational Agent")
     parser.add_argument(
         "--model", default="Qwen/Qwen2.5-3B-Instruct",
         help="Model to use (default: Qwen/Qwen2.5-3B-Instruct)",
@@ -473,7 +473,7 @@ def main():
     args = parser.parse_args()
 
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-    print("effGen — Conversational Agent (Memory + Multi-Turn)")
+    print("tideon.ai — Conversational Agent (Memory + Multi-Turn)")
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 

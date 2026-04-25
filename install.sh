@@ -1,9 +1,9 @@
 #!/bin/bash
 
 ################################################################################
-# effGen Master Installer
+# tideon.ai Master Installer
 #
-# One-command setup for the effGen framework. This script handles everything:
+# One-command setup for the tideon.ai framework. This script handles everything:
 # - Environment setup (conda or pip)
 # - Dependency installation
 # - Configuration
@@ -64,7 +64,7 @@ print_banner() {
     echo ""
     echo -e "${CYAN}${BOLD}+================================================================+${NC}"
     echo -e "${CYAN}${BOLD}|${NC}                                                                ${CYAN}${BOLD}|${NC}"
-    echo -e "${CYAN}${BOLD}|${NC}              ${MAGENTA}${BOLD}effGen Framework Installer${NC}              ${CYAN}${BOLD}|${NC}"
+    echo -e "${CYAN}${BOLD}|${NC}              ${MAGENTA}${BOLD}tideon.ai Framework Installer${NC}              ${CYAN}${BOLD}|${NC}"
     echo -e "${CYAN}${BOLD}|${NC}                                                                ${CYAN}${BOLD}|${NC}"
     echo -e "${CYAN}${BOLD}|${NC}        ${WHITE}Efficient Agents for Small Language Models${NC}        ${CYAN}${BOLD}|${NC}"
     echo -e "${CYAN}${BOLD}|${NC}                                                                ${CYAN}${BOLD}|${NC}"
@@ -104,7 +104,7 @@ print_section() {
 
 show_help() {
     cat << 'EOF'
-effGen Master Installer
+tideon.ai Master Installer
 
 USAGE:
     ./install.sh [OPTIONS]
@@ -162,9 +162,9 @@ EXAMPLES:
 AFTER INSTALLATION:
     source activate.sh              # Activate environment
     python examples/basic_agent.py  # Run example
-    effgen run "What is 2+2?"       # Use CLI
+    teffgen run "What is 2+2?"       # Use CLI
 
-For more info: https://effgen.org/docs/
+For more info: https://tideon.ai/docs/
 EOF
     exit 0
 }
@@ -316,13 +316,13 @@ show_install_summary() {
     echo ""
 
     if [ "$SKIP_CONDA" = false ]; then
-        echo -e "  ${GREEN}[*]${NC} Conda environment: effgen"
+        echo -e "  ${GREEN}[*]${NC} Conda environment: teffgen"
     else
         echo -e "  ${DIM}[ ]${NC} ${DIM}Conda environment (skipped)${NC}"
     fi
 
     echo -e "  ${GREEN}[*]${NC} Core dependencies (PyTorch, Transformers)"
-    echo -e "  ${GREEN}[*]${NC} effGen framework"
+    echo -e "  ${GREEN}[*]${NC} tideon.ai framework"
     echo -e "  ${GREEN}[*]${NC} Configuration files"
 
     if [ "$INSTALL_VLLM" = true ]; then
@@ -366,8 +366,8 @@ show_install_summary() {
 
 export_settings() {
     # Export settings for child scripts to inherit
-    export EFFGEN_QUICK_MODE="$QUICK_MODE"
-    export EFFGEN_YES_TO_ALL="$YES_TO_ALL"
+    export TEFFGEN_QUICK_MODE="$QUICK_MODE"
+    export TEFFGEN_YES_TO_ALL="$YES_TO_ALL"
 }
 
 ################################################################################
@@ -413,7 +413,7 @@ run_installation() {
     # Check if setup script exists
     if [ ! -f "$CMD" ]; then
         print_error "Setup script not found: $CMD"
-        print_info "Make sure you're running from the effGen repository root"
+        print_info "Make sure you're running from the tideon.ai repository root"
         exit 1
     fi
 

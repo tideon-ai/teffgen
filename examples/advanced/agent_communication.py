@@ -17,9 +17,9 @@ Requires: a local model (e.g. Qwen2.5-1.5B-Instruct)
 
 from __future__ import annotations
 
-from effgen import Agent, AgentConfig
-from effgen.models import load_model
-from effgen.tools.builtin import Calculator
+from teffgen import Agent, AgentConfig
+from teffgen.models import load_model
+from teffgen.tools.builtin import Calculator
 
 
 def create_agent(name: str, model, system_prompt: str) -> Agent:

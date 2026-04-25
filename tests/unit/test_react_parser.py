@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from effgen.core.agent import Agent, AgentConfig
+from teffgen.core.agent import Agent, AgentConfig
 from tests.fixtures.mock_models import MockModel
 
 

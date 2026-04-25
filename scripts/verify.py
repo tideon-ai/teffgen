@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-effGen Framework Verification Script
+tideon.ai Framework Verification Script
 
-This comprehensive validation script verifies all components of the effGen
+This comprehensive validation script verifies all components of the tideon.ai
 framework are properly installed, configured, and functional.
 
 Usage:
@@ -50,7 +50,7 @@ class TestResult:
 
 
 class FrameworkVerifier:
-    """Main verification class for effGen framework"""
+    """Main verification class for tideon.ai framework"""
 
     def __init__(self, verbose: bool = False, skip_optional: bool = False):
         self.verbose = verbose
@@ -111,68 +111,68 @@ class FrameworkVerifier:
 
         modules = [
             # Core modules
-            ("effgen", "Main package"),
-            ("effgen.core", "Core components"),
-            ("effgen.core.agent", "Agent class"),
-            ("effgen.core.task", "Task management"),
-            ("effgen.core.state", "State management"),
-            ("effgen.core.orchestrator", "Orchestrator"),
-            ("effgen.core.router", "Router"),
-            ("effgen.core.complexity_analyzer", "Complexity analyzer"),
-            ("effgen.core.decomposition_engine", "Decomposition engine"),
-            ("effgen.core.execution_tracker", "Execution tracker"),
-            ("effgen.core.sub_agent_manager", "Sub-agent manager"),
+            ("teffgen", "Main package"),
+            ("teffgen.core", "Core components"),
+            ("teffgen.core.agent", "Agent class"),
+            ("teffgen.core.task", "Task management"),
+            ("teffgen.core.state", "State management"),
+            ("teffgen.core.orchestrator", "Orchestrator"),
+            ("teffgen.core.router", "Router"),
+            ("teffgen.core.complexity_analyzer", "Complexity analyzer"),
+            ("teffgen.core.decomposition_engine", "Decomposition engine"),
+            ("teffgen.core.execution_tracker", "Execution tracker"),
+            ("teffgen.core.sub_agent_manager", "Sub-agent manager"),
 
             # Model modules
-            ("effgen.models", "Model system"),
-            ("effgen.models.base", "Base model"),
-            ("effgen.models.vllm_engine", "vLLM engine"),
-            ("effgen.models.transformers_engine", "Transformers engine"),
-            ("effgen.models.openai_adapter", "OpenAI adapter"),
-            ("effgen.models.anthropic_adapter", "Anthropic adapter"),
-            ("effgen.models.gemini_adapter", "Gemini adapter"),
-            ("effgen.models.model_loader", "Model loader"),
+            ("teffgen.models", "Model system"),
+            ("teffgen.models.base", "Base model"),
+            ("teffgen.models.vllm_engine", "vLLM engine"),
+            ("teffgen.models.transformers_engine", "Transformers engine"),
+            ("teffgen.models.openai_adapter", "OpenAI adapter"),
+            ("teffgen.models.anthropic_adapter", "Anthropic adapter"),
+            ("teffgen.models.gemini_adapter", "Gemini adapter"),
+            ("teffgen.models.model_loader", "Model loader"),
 
             # Tool modules
-            ("effgen.tools", "Tool system"),
-            ("effgen.tools.base_tool", "Base tool"),
-            ("effgen.tools.registry", "Tool registry"),
-            ("effgen.tools.builtin.calculator", "Calculator tool"),
-            ("effgen.tools.builtin.web_search", "Web search tool"),
-            ("effgen.tools.builtin.code_executor", "Code executor tool"),
-            ("effgen.tools.builtin.file_ops", "File operations tool"),
-            ("effgen.tools.builtin.python_repl", "Python REPL tool"),
+            ("teffgen.tools", "Tool system"),
+            ("teffgen.tools.base_tool", "Base tool"),
+            ("teffgen.tools.registry", "Tool registry"),
+            ("teffgen.tools.builtin.calculator", "Calculator tool"),
+            ("teffgen.tools.builtin.web_search", "Web search tool"),
+            ("teffgen.tools.builtin.code_executor", "Code executor tool"),
+            ("teffgen.tools.builtin.file_ops", "File operations tool"),
+            ("teffgen.tools.builtin.python_repl", "Python REPL tool"),
 
             # Protocol modules
-            ("effgen.tools.protocols.mcp", "MCP protocol"),
-            ("effgen.tools.protocols.a2a", "A2A protocol"),
-            ("effgen.tools.protocols.acp", "ACP protocol"),
+            ("teffgen.tools.protocols.mcp", "MCP protocol"),
+            ("teffgen.tools.protocols.a2a", "A2A protocol"),
+            ("teffgen.tools.protocols.acp", "ACP protocol"),
 
             # Configuration modules
-            ("effgen.config", "Configuration system"),
-            ("effgen.config.loader", "Config loader"),
-            ("effgen.config.validator", "Config validator"),
+            ("teffgen.config", "Configuration system"),
+            ("teffgen.config.loader", "Config loader"),
+            ("teffgen.config.validator", "Config validator"),
 
             # Prompt modules
-            ("effgen.prompts", "Prompt system"),
-            ("effgen.prompts.template_manager", "Template manager"),
-            ("effgen.prompts.chain_manager", "Chain manager"),
-            ("effgen.prompts.optimizer", "Prompt optimizer"),
+            ("teffgen.prompts", "Prompt system"),
+            ("teffgen.prompts.template_manager", "Template manager"),
+            ("teffgen.prompts.chain_manager", "Chain manager"),
+            ("teffgen.prompts.optimizer", "Prompt optimizer"),
 
             # Memory modules
-            ("effgen.memory", "Memory system"),
-            ("effgen.memory.short_term", "Short-term memory"),
-            ("effgen.memory.long_term", "Long-term memory"),
+            ("teffgen.memory", "Memory system"),
+            ("teffgen.memory.short_term", "Short-term memory"),
+            ("teffgen.memory.long_term", "Long-term memory"),
 
             # Execution modules
-            ("effgen.execution", "Execution system"),
-            ("effgen.execution.sandbox", "Code executor"),
-            ("effgen.execution.validators", "Code validator"),
+            ("teffgen.execution", "Execution system"),
+            ("teffgen.execution.sandbox", "Code executor"),
+            ("teffgen.execution.validators", "Code validator"),
 
             # GPU modules
-            ("effgen.gpu", "GPU management"),
-            ("effgen.gpu.allocator", "GPU allocator"),
-            ("effgen.gpu.monitor", "GPU monitor"),
+            ("teffgen.gpu", "GPU management"),
+            ("teffgen.gpu.allocator", "GPU allocator"),
+            ("teffgen.gpu.monitor", "GPU monitor"),
         ]
 
         for module_name, description in modules:
@@ -188,7 +188,7 @@ class FrameworkVerifier:
         self.log(f"\n{Colors.HEADER}{Colors.BOLD}=== Testing Core Class Instantiation ==={Colors.ENDC}\n")
 
         def test_task_class():
-            from effgen.core.task import Task, TaskPriority, TaskStatus
+            from teffgen.core.task import Task, TaskPriority, TaskStatus
             task = Task(
                 description="Test task",
                 priority=TaskPriority.MEDIUM
@@ -199,14 +199,14 @@ class FrameworkVerifier:
             self.log_verbose("  Task class instantiated successfully")
 
         def test_agent_state():
-            from effgen.core.state import AgentState
+            from teffgen.core.state import AgentState
             state = AgentState(agent_id="test_agent")
             assert state.agent_id == "test_agent"
             assert len(state.conversation_history) == 0
             self.log_verbose("  AgentState instantiated successfully")
 
         def test_generation_config():
-            from effgen.models import GenerationConfig
+            from teffgen.models import GenerationConfig
             config = GenerationConfig(
                 max_tokens=100,
                 temperature=0.7,
@@ -217,7 +217,7 @@ class FrameworkVerifier:
             self.log_verbose("  GenerationConfig instantiated successfully")
 
         def test_tool_metadata():
-            from effgen.tools.base_tool import ToolCategory, ToolMetadata
+            from teffgen.tools.base_tool import ToolCategory, ToolMetadata
             metadata = ToolMetadata(
                 name="test_tool",
                 description="Test tool",
@@ -227,7 +227,7 @@ class FrameworkVerifier:
             self.log_verbose("  ToolMetadata instantiated successfully")
 
         def test_memory_message():
-            from effgen.memory import Message, MessageRole
+            from teffgen.memory import Message, MessageRole
             message = Message(
                 role=MessageRole.USER,
                 content="Test message"
@@ -253,16 +253,16 @@ class FrameworkVerifier:
         self.log(f"\n{Colors.HEADER}{Colors.BOLD}=== Testing Tool System ==={Colors.ENDC}\n")
 
         def test_tool_registry():
-            from effgen.tools import get_registry
+            from teffgen.tools import get_registry
             registry = get_registry()
             assert registry is not None
             self.log_verbose("  Tool registry initialized")
 
         def test_builtin_tools():
-            from effgen.tools.builtin.calculator import Calculator
-            from effgen.tools.builtin.file_ops import FileOperations
-            from effgen.tools.builtin.python_repl import PythonREPL
-            from effgen.tools.builtin.web_search import WebSearch
+            from teffgen.tools.builtin.calculator import Calculator
+            from teffgen.tools.builtin.file_ops import FileOperations
+            from teffgen.tools.builtin.python_repl import PythonREPL
+            from teffgen.tools.builtin.web_search import WebSearch
 
             # Test calculator
             calc = Calculator()
@@ -285,8 +285,8 @@ class FrameworkVerifier:
             self.log_verbose("  Python REPL tool initialized")
 
         def test_tool_registration():
-            from effgen.tools import BaseTool, ToolCategory, ToolMetadata, get_registry
-            from effgen.tools.base_tool import ParameterSpec, ParameterType
+            from teffgen.tools import BaseTool, ToolCategory, ToolMetadata, get_registry
+            from teffgen.tools.base_tool import ParameterSpec, ParameterType
 
             class TestTool(BaseTool):
                 def __init__(self):
@@ -331,7 +331,7 @@ class FrameworkVerifier:
         self.log(f"\n{Colors.HEADER}{Colors.BOLD}=== Testing Configuration System ==={Colors.ENDC}\n")
 
         def test_config_loader():
-            from effgen.config import Config
+            from teffgen.config import Config
 
             # Test dict config
             config_dict = {
@@ -348,7 +348,7 @@ class FrameworkVerifier:
             self.log_verbose("  Config loaded from dict successfully")
 
         def test_config_validation():
-            from effgen.config import ConfigValidator
+            from teffgen.config import ConfigValidator
 
 
             validator = ConfigValidator()
@@ -370,7 +370,7 @@ class FrameworkVerifier:
         self.log(f"\n{Colors.HEADER}{Colors.BOLD}=== Testing Model Interfaces ==={Colors.ENDC}\n")
 
         def test_generation_config():
-            from effgen.models import GenerationConfig
+            from teffgen.models import GenerationConfig
             config = GenerationConfig(
                 max_tokens=512,
                 temperature=0.7,
@@ -383,7 +383,7 @@ class FrameworkVerifier:
             self.log_verbose("  GenerationConfig created successfully")
 
         def test_model_loader_class():
-            from effgen.models import ModelLoader
+            from teffgen.models import ModelLoader
             loader = ModelLoader()
             assert loader is not None
             self.log_verbose("  ModelLoader class instantiated")
@@ -402,8 +402,8 @@ class FrameworkVerifier:
         self.log(f"\n{Colors.HEADER}{Colors.BOLD}=== Testing Prompt System ==={Colors.ENDC}\n")
 
         def test_template_manager():
-            from effgen.prompts import TemplateManager
-            from effgen.prompts.template_manager import PromptTemplate
+            from teffgen.prompts import TemplateManager
+            from teffgen.prompts.template_manager import PromptTemplate
 
             manager = TemplateManager()
 
@@ -422,7 +422,7 @@ class FrameworkVerifier:
             self.log_verbose("  Template created and rendered successfully")
 
         def test_prompt_optimizer():
-            from effgen.prompts import PromptOptimizer
+            from teffgen.prompts import PromptOptimizer
 
             optimizer = PromptOptimizer()
 
@@ -446,7 +446,7 @@ class FrameworkVerifier:
         self.log(f"\n{Colors.HEADER}{Colors.BOLD}=== Testing Memory System ==={Colors.ENDC}\n")
 
         def test_short_term_memory():
-            from effgen.memory import MessageRole, ShortTermMemory
+            from teffgen.memory import MessageRole, ShortTermMemory
 
             memory = ShortTermMemory(max_messages=10)
 
@@ -460,7 +460,7 @@ class FrameworkVerifier:
             self.log_verbose("  Short-term memory working correctly")
 
         def test_memory_entry():
-            from effgen.memory import ImportanceLevel, MemoryEntry, MemoryType
+            from teffgen.memory import ImportanceLevel, MemoryEntry, MemoryType
 
             entry = MemoryEntry(
                 content="Test memory",
@@ -486,7 +486,7 @@ class FrameworkVerifier:
         self.log(f"\n{Colors.HEADER}{Colors.BOLD}=== Testing Execution System ==={Colors.ENDC}\n")
 
         def test_code_validator():
-            from effgen.execution.validators import PythonValidator
+            from teffgen.execution.validators import PythonValidator
 
             validator = PythonValidator()
 
@@ -497,7 +497,7 @@ class FrameworkVerifier:
             self.log_verbose(f"  Code validation performed (safe: {result.is_safe})")
 
         def test_sandbox_config():
-            from effgen.execution import SandboxConfig
+            from teffgen.execution import SandboxConfig
 
             config = SandboxConfig(
                 timeout=30,
@@ -624,14 +624,14 @@ class FrameworkVerifier:
         self.log(f"\n{Colors.HEADER}{Colors.BOLD}=== Testing Agent Integration ==={Colors.ENDC}\n")
 
         def test_agent_creation():
-            from effgen.core.agent import AgentConfig
+            from teffgen.core.agent import AgentConfig
 
             # AgentConfig requires a model - just test it exists
             assert AgentConfig is not None
             self.log_verbose("  AgentConfig class available")
 
         def test_task_creation():
-            from effgen import Task, TaskPriority
+            from teffgen import Task, TaskPriority
 
             task = Task(
                 description="Test task for verification",
@@ -643,7 +643,7 @@ class FrameworkVerifier:
             self.log_verbose("  Task created successfully")
 
         def test_tool_discovery():
-            from effgen import get_tool_registry
+            from teffgen import get_tool_registry
 
             registry = get_tool_registry()
             registry.discover_builtin_tools()
@@ -673,14 +673,14 @@ class FrameworkVerifier:
             self.log_verbose("  Official MCP package imported")
 
         def test_mcp_protocol_handler():
-            from effgen.tools.protocols.mcp import MCPProtocolHandler
+            from teffgen.tools.protocols.mcp import MCPProtocolHandler
 
             handler = MCPProtocolHandler()
             assert handler is not None
             self.log_verbose("  MCP protocol handler created")
 
         def test_mcp_client():
-            from effgen.tools.protocols.mcp import MCPServerConfig, TransportType
+            from teffgen.tools.protocols.mcp import MCPServerConfig, TransportType
 
             # Create a client configuration
             config = MCPServerConfig(
@@ -693,7 +693,7 @@ class FrameworkVerifier:
             self.log_verbose("  MCP client configuration created")
 
         def test_mcp_transports():
-            from effgen.tools.protocols.mcp import HTTPTransport, SSETransport, StdioTransport
+            from teffgen.tools.protocols.mcp import HTTPTransport, SSETransport, StdioTransport
 
             # Verify all transport types are available
             assert StdioTransport is not None
@@ -702,7 +702,7 @@ class FrameworkVerifier:
             self.log_verbose("  MCP transport types available")
 
         def test_mcp_server():
-            from effgen.tools.protocols.mcp import MCPServer, create_server
+            from teffgen.tools.protocols.mcp import MCPServer, create_server
 
             # Verify server classes exist
             assert MCPServer is not None
@@ -710,7 +710,7 @@ class FrameworkVerifier:
             self.log_verbose("  MCP server classes available")
 
         def test_mcp_data_structures():
-            from effgen.tools.protocols.mcp import (
+            from teffgen.tools.protocols.mcp import (
                 MCPCapabilities,
                 MCPError,
                 MCPRequest,
@@ -729,39 +729,39 @@ class FrameworkVerifier:
             self.log_verbose("  MCP data structures available")
 
         def test_a2a_protocol():
-            from effgen.tools.protocols.a2a import A2AClient
+            from teffgen.tools.protocols.a2a import A2AClient
 
             # Just verify class can be imported
             assert A2AClient is not None
             self.log_verbose("  A2A protocol classes available")
 
         def test_acp_protocol():
-            from effgen.tools.protocols.acp import ACPClient
+            from teffgen.tools.protocols.acp import ACPClient
 
             # Just verify class can be imported
             assert ACPClient is not None
             self.log_verbose("  ACP protocol classes available")
 
         def test_mcp_official_server():
-            from effgen.tools.protocols.mcp_official import (
-                EffGenMCPServer,
-                EffGenMCPServerConfig,
+            from teffgen.tools.protocols.mcp_official import (
+                TeffgenMCPServer,
+                TeffgenMCPServerConfig,
                 create_server,
                 main_http,
                 main_stdio,
             )
 
             # Verify all server components exist
-            assert EffGenMCPServer is not None
-            assert EffGenMCPServerConfig is not None
+            assert TeffgenMCPServer is not None
+            assert TeffgenMCPServerConfig is not None
             assert create_server is not None
             assert main_stdio is not None
             assert main_http is not None
             self.log_verbose("  Official MCP server components available")
 
         def test_mcp_official_client():
-            from effgen.tools.protocols.mcp_official import (
-                EffGenMCPClient,
+            from teffgen.tools.protocols.mcp_official import (
+                TeffgenMCPClient,
                 MCPServerConfig,
                 create_client,
                 create_http_client,
@@ -769,7 +769,7 @@ class FrameworkVerifier:
             )
 
             # Verify all client components exist
-            assert EffGenMCPClient is not None
+            assert TeffgenMCPClient is not None
             assert MCPServerConfig is not None
             assert create_client is not None
             assert create_stdio_client is not None
@@ -777,7 +777,7 @@ class FrameworkVerifier:
             self.log_verbose("  Official MCP client components available")
 
         def test_mcp_official_config():
-            from effgen.tools.protocols.mcp_official import MCPServerConfig
+            from teffgen.tools.protocols.mcp_official import MCPServerConfig
 
             # Create configuration for STDIO transport
             config = MCPServerConfig(
@@ -794,9 +794,9 @@ class FrameworkVerifier:
         def test_mcp_official_imports():
             # Test that official MCP SDK types can be imported through our wrapper
             try:
-                from effgen.tools.protocols.mcp_official import EffGenMCPServer
+                from teffgen.tools.protocols.mcp_official import TeffgenMCPServer
                 # If we can import the server, official MCP is available
-                assert EffGenMCPServer is not None
+                assert TeffgenMCPServer is not None
                 self.log_verbose("  Official MCP SDK integration working")
             except ImportError as e:
                 # This is okay if mcp package isn't installed
@@ -831,7 +831,7 @@ class FrameworkVerifier:
         def test_calculator_execution():
             import asyncio
 
-            from effgen.tools.builtin.calculator import Calculator
+            from teffgen.tools.builtin.calculator import Calculator
 
             calc = Calculator()
             # Test basic arithmetic
@@ -840,7 +840,7 @@ class FrameworkVerifier:
             self.log_verbose("  Calculator execution works")
 
         def test_parameter_validation():
-            from effgen.tools.base_tool import ParameterSpec, ParameterType
+            from teffgen.tools.base_tool import ParameterSpec, ParameterType
 
             param = ParameterSpec(
                 name="test_param",
@@ -863,7 +863,7 @@ class FrameworkVerifier:
             self.log_verbose("  Parameter validation working")
 
         def test_tool_metadata_serialization():
-            from effgen.tools.base_tool import ToolCategory, ToolMetadata
+            from teffgen.tools.base_tool import ToolCategory, ToolMetadata
 
             metadata = ToolMetadata(
                 name="test_tool",
@@ -879,7 +879,7 @@ class FrameworkVerifier:
             self.log_verbose("  Tool metadata serialization working")
 
         def test_tool_result():
-            from effgen.tools.base_tool import ToolResult
+            from teffgen.tools.base_tool import ToolResult
 
             result = ToolResult(
                 success=True,
@@ -909,8 +909,8 @@ class FrameworkVerifier:
         def test_async_tool_registry():
             import asyncio
 
-            from effgen.tools import get_registry
-            from effgen.tools.builtin.calculator import Calculator
+            from teffgen.tools import get_registry
+            from teffgen.tools.builtin.calculator import Calculator
 
             async def async_test():
                 registry = get_registry()
@@ -926,7 +926,7 @@ class FrameworkVerifier:
         def test_async_tool_execution():
             import asyncio
 
-            from effgen.tools.builtin.calculator import Calculator
+            from teffgen.tools.builtin.calculator import Calculator
 
             async def async_test():
                 calc = Calculator()
@@ -951,7 +951,7 @@ class FrameworkVerifier:
         self.log(f"\n{Colors.HEADER}{Colors.BOLD}=== Testing Memory Integration ==={Colors.ENDC}\n")
 
         def test_message_serialization():
-            from effgen.memory import Message, MessageRole
+            from teffgen.memory import Message, MessageRole
 
             message = Message(
                 role=MessageRole.USER,
@@ -970,7 +970,7 @@ class FrameworkVerifier:
             self.log_verbose("  Message serialization working")
 
         def test_memory_token_counting():
-            from effgen.memory import MessageRole, ShortTermMemory
+            from teffgen.memory import MessageRole, ShortTermMemory
 
             memory = ShortTermMemory(max_tokens=1000)
             memory.add_message(MessageRole.USER, "Hello")
@@ -983,7 +983,7 @@ class FrameworkVerifier:
         def test_long_term_memory_storage():
             import tempfile
 
-            from effgen.memory import (
+            from teffgen.memory import (
                 ImportanceLevel,
                 JSONStorageBackend,
                 LongTermMemory,
@@ -1012,7 +1012,7 @@ class FrameworkVerifier:
                 self.log_verbose("  Long-term memory storage working")
 
         def test_conversation_summary():
-            from effgen.memory.short_term import ConversationSummary
+            from teffgen.memory.short_term import ConversationSummary
 
             summary = ConversationSummary(
                 summary="Test summary",
@@ -1040,7 +1040,7 @@ class FrameworkVerifier:
         self.log(f"\n{Colors.HEADER}{Colors.BOLD}=== Testing Error Handling ==={Colors.ENDC}\n")
 
         def test_invalid_tool_name():
-            from effgen.tools import get_registry
+            from teffgen.tools import get_registry
 
             registry = get_registry()
             # Should handle gracefully
@@ -1048,7 +1048,7 @@ class FrameworkVerifier:
             self.log_verbose("  Invalid tool name handled")
 
         def test_parameter_validation_errors():
-            from effgen.tools.base_tool import ParameterSpec, ParameterType
+            from teffgen.tools.base_tool import ParameterSpec, ParameterType
 
             param = ParameterSpec(
                 name="test",
@@ -1064,7 +1064,7 @@ class FrameworkVerifier:
             self.log_verbose("  Parameter validation errors working")
 
         def test_code_validator_safety():
-            from effgen.execution.validators import PythonValidator
+            from teffgen.execution.validators import PythonValidator
 
             validator = PythonValidator()
 
@@ -1076,7 +1076,7 @@ class FrameworkVerifier:
             self.log_verbose("  Code validator safety checks working")
 
         def test_memory_overflow_handling():
-            from effgen.memory import MessageRole, ShortTermMemory
+            from teffgen.memory import MessageRole, ShortTermMemory
 
             # Create memory with very small limit
             memory = ShortTermMemory(max_messages=2)
@@ -1106,7 +1106,7 @@ class FrameworkVerifier:
         self.log(f"\n{Colors.HEADER}{Colors.BOLD}=== Testing Advanced Features ==={Colors.ENDC}\n")
 
         def test_gpu_allocation():
-            from effgen.gpu import GPUAllocator
+            from teffgen.gpu import GPUAllocator
 
             allocator = GPUAllocator()
             assert allocator is not None
@@ -1114,7 +1114,7 @@ class FrameworkVerifier:
 
         def test_vector_memory():
             try:
-                from effgen.memory import VectorMemoryStore
+                from teffgen.memory import VectorMemoryStore
 
                 # Test with simple embedding provider
                 store = VectorMemoryStore()
@@ -1130,21 +1130,21 @@ class FrameworkVerifier:
                     raise
 
         def test_chain_manager():
-            from effgen.prompts import ChainManager
+            from teffgen.prompts import ChainManager
 
             manager = ChainManager()
             assert manager is not None
             self.log_verbose("  Chain manager initialized")
 
         def test_orchestrator():
-            from effgen.core.orchestrator import MultiAgentOrchestrator
+            from teffgen.core.orchestrator import MultiAgentOrchestrator
 
             # Orchestrator can be imported
             assert MultiAgentOrchestrator is not None
             self.log_verbose("  Orchestrator available")
 
         def test_complexity_analyzer():
-            from effgen.core.complexity_analyzer import ComplexityAnalyzer
+            from teffgen.core.complexity_analyzer import ComplexityAnalyzer
 
             analyzer = ComplexityAnalyzer()
 
@@ -1155,7 +1155,7 @@ class FrameworkVerifier:
             self.log_verbose("  Complexity analyzer working")
 
         def test_decomposition_engine():
-            from effgen.core.decomposition_engine import DecompositionEngine
+            from teffgen.core.decomposition_engine import DecompositionEngine
 
             engine = DecompositionEngine()
 
@@ -1166,21 +1166,21 @@ class FrameworkVerifier:
             self.log_verbose("  Decomposition engine working")
 
         def test_execution_tracker():
-            from effgen.core.execution_tracker import ExecutionTracker
+            from teffgen.core.execution_tracker import ExecutionTracker
 
             tracker = ExecutionTracker()
             assert tracker is not None
             self.log_verbose("  Execution tracker initialized")
 
         def test_router():
-            from effgen.core.router import SubAgentRouter
+            from teffgen.core.router import SubAgentRouter
 
             router = SubAgentRouter()
             assert router is not None
             self.log_verbose("  Router initialized")
 
         def test_sub_agent_manager():
-            from effgen.core.sub_agent_manager import SubAgentManager
+            from teffgen.core.sub_agent_manager import SubAgentManager
 
             manager = SubAgentManager()
             assert manager is not None
@@ -1205,7 +1205,7 @@ class FrameworkVerifier:
     def run_all_verifications(self):
         """Run all verification tests"""
         self.log(f"{Colors.HEADER}{Colors.BOLD}{'='*60}{Colors.ENDC}")
-        self.log(f"{Colors.HEADER}{Colors.BOLD}effGen Framework Verification{Colors.ENDC}")
+        self.log(f"{Colors.HEADER}{Colors.BOLD}tideon.ai Framework Verification{Colors.ENDC}")
         self.log(f"{Colors.HEADER}{Colors.BOLD}Super Comprehensive Test Suite{Colors.ENDC}")
         self.log(f"{Colors.HEADER}{Colors.BOLD}{'='*60}{Colors.ENDC}")
 
@@ -1238,7 +1238,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="Verify effGen framework installation and functionality"
+        description="Verify tideon.ai framework installation and functionality"
     )
     parser.add_argument(
         "--verbose", "-v",

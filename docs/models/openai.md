@@ -1,6 +1,6 @@
-# OpenAI Models in effGen
+# OpenAI Models in tideon.ai
 
-effGen's `OpenAIAdapter` supports the full OpenAI chat and reasoning model lineup.
+tideon.ai's `OpenAIAdapter` supports the full OpenAI chat and reasoning model lineup.
 
 ## Supported Models
 
@@ -35,8 +35,8 @@ Reasoning models perform extended internal thinking before producing an answer. 
 
 ```python
 import os
-from effgen.models.openai_adapter import OpenAIAdapter
-from effgen.models.base import GenerationConfig
+from teffgen.models.openai_adapter import OpenAIAdapter
+from teffgen.models.base import GenerationConfig
 
 # OPENAI_API_KEY must be set in env or .env
 adapter = OpenAIAdapter("gpt-5.4-nano")
@@ -51,8 +51,8 @@ adapter.unload()
 Pass `reasoning_effort` through `GenerationConfig` to control how much the model reasons:
 
 ```python
-from effgen.models.openai_adapter import OpenAIAdapter
-from effgen.models.base import GenerationConfig
+from teffgen.models.openai_adapter import OpenAIAdapter
+from teffgen.models.base import GenerationConfig
 
 adapter = OpenAIAdapter("o4-mini")
 adapter.load()
@@ -85,7 +85,7 @@ adapter.unload()
 All OpenAI chat and most reasoning models support native function calling:
 
 ```python
-from effgen.models.openai_adapter import OpenAIAdapter
+from teffgen.models.openai_adapter import OpenAIAdapter
 
 tools = [
     {
@@ -113,9 +113,9 @@ adapter.unload()
 ## Using with the Agent
 
 ```python
-from effgen import Agent, AgentConfig
-from effgen.models.openai_adapter import OpenAIAdapter
-from effgen.tools.builtin.calculator import CalculatorTool
+from teffgen import Agent, AgentConfig
+from teffgen.models.openai_adapter import OpenAIAdapter
+from teffgen.tools.builtin.calculator import CalculatorTool
 
 model = OpenAIAdapter("gpt-5.4-nano")
 model.load()
@@ -133,7 +133,7 @@ model.unload()
 ## Listing Models Programmatically
 
 ```python
-from effgen import openai_available_models, openai_chat_models, openai_reasoning_models, openai_model_info
+from teffgen import openai_available_models, openai_chat_models, openai_reasoning_models, openai_model_info
 
 print(openai_available_models())     # all models
 print(openai_chat_models())          # chat family only

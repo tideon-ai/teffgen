@@ -40,40 +40,40 @@ jobs:
           results = []
           all_passed = True
 
-          # 1. Check effgen.org HTTP 200
+          # 1. Check tideon.ai HTTP 200
           try:
-              r = requests.get('https://effgen.org', timeout=10)
+              r = requests.get('https://tideon.ai', timeout=10)
               passed = r.status_code == 200
               results.append({
-                  'name': 'effgen.org HTTP',
+                  'name': 'tideon.ai HTTP',
                   'passed': passed,
                   'message': f'HTTP {r.status_code} ({r.elapsed.total_seconds():.1f}s)',
               })
               if not passed:
                   all_passed = False
           except Exception as e:
-              results.append({'name': 'effgen.org HTTP', 'passed': False, 'message': str(e)})
+              results.append({'name': 'tideon.ai HTTP', 'passed': False, 'message': str(e)})
               all_passed = False
 
-          # 2. Check docs.effgen.org HTTP 200
+          # 2. Check docs.tideon.ai HTTP 200
           try:
-              r = requests.get('https://docs.effgen.org', timeout=10)
+              r = requests.get('https://docs.tideon.ai', timeout=10)
               passed = r.status_code == 200
               results.append({
-                  'name': 'docs.effgen.org HTTP',
+                  'name': 'docs.tideon.ai HTTP',
                   'passed': passed,
                   'message': f'HTTP {r.status_code} ({r.elapsed.total_seconds():.1f}s)',
               })
               if not passed:
                   all_passed = False
           except Exception as e:
-              results.append({'name': 'docs.effgen.org HTTP', 'passed': False, 'message': str(e)})
+              results.append({'name': 'docs.tideon.ai HTTP', 'passed': False, 'message': str(e)})
               all_passed = False
 
           # 3. DNS resolution
           try:
-              ip = socket.gethostbyname('effgen.org')
-              results.append({'name': 'DNS Resolution', 'passed': True, 'message': f'effgen.org -> {ip}'})
+              ip = socket.gethostbyname('tideon.ai')
+              results.append({'name': 'DNS Resolution', 'passed': True, 'message': f'tideon.ai -> {ip}'})
           except Exception as e:
               results.append({'name': 'DNS Resolution', 'passed': False, 'message': str(e)})
               all_passed = False
@@ -81,9 +81,9 @@ jobs:
           # 4. SSL certificate expiry
           try:
               ctx = ssl.create_default_context()
-              with ctx.wrap_socket(socket.socket(), server_hostname='effgen.org') as s:
+              with ctx.wrap_socket(socket.socket(), server_hostname='tideon.ai') as s:
                   s.settimeout(10)
-                  s.connect(('effgen.org', 443))
+                  s.connect(('tideon.ai', 443))
                   cert = s.getpeercert()
                   expires = datetime.datetime.strptime(cert['notAfter'], '%b %d %H:%M:%S %Y %Z')
                   days_left = (expires - datetime.datetime.utcnow()).days
@@ -101,7 +101,7 @@ jobs:
 
           # 5. Response time < 5s
           try:
-              r = requests.get('https://effgen.org', timeout=10)
+              r = requests.get('https://tideon.ai', timeout=10)
               passed = r.elapsed.total_seconds() < 5.0
               results.append({
                   'name': 'Response Time',
@@ -116,10 +116,10 @@ jobs:
 
           # 6. PyPI package availability
           try:
-              r = requests.get('https://pypi.org/pypi/effgen/json', timeout=10)
+              r = requests.get('https://pypi.org/pypi/teffgen/json', timeout=10)
               if r.status_code == 200:
                   version = r.json()['info']['version']
-                  results.append({'name': 'PyPI Package', 'passed': True, 'message': f'effgen {version} available'})
+                  results.append({'name': 'PyPI Package', 'passed': True, 'message': f'teffgen {version} available'})
               else:
                   results.append({'name': 'PyPI Package', 'passed': False, 'message': f'HTTP {r.status_code}'})
                   all_passed = False
@@ -129,7 +129,7 @@ jobs:
 
           # 7. API docs endpoint (if docs site serves API reference)
           try:
-              r = requests.get('https://docs.effgen.org/api/', timeout=10, allow_redirects=True)
+              r = requests.get('https://docs.tideon.ai/api/', timeout=10, allow_redirects=True)
               passed = r.status_code in (200, 301, 302, 404)  # 404 is OK if docs restructured
               results.append({
                   'name': 'API Docs',

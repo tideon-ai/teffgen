@@ -1,9 +1,9 @@
 """
-Full effGen Agent using OpenAI models with native tools + effGen tools.
+Full tideon.ai Agent using OpenAI models with native tools + tideon.ai tools.
 
 Demonstrates:
 - Agent with OpenAIAdapter (gpt-4.1-nano for cost efficiency)
-- effGen built-in tools (Calculator, DateTime)
+- tideon.ai built-in tools (Calculator, DateTime)
 - Hard agentic tasks: multi-step math + calendar reasoning + portfolio analysis
 - Native OpenAI tool-calling path integrated transparently
 
@@ -18,17 +18,17 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path.home() / ".effgen" / ".env", override=False)
+load_dotenv(Path.home() / ".teffgen" / ".env", override=False)
 load_dotenv(Path(__file__).parent.parent.parent / ".env", override=False)
 
 # Show token/cost info
 logging.basicConfig(level=logging.WARNING)
-logging.getLogger("effgen.models.openai_adapter.usage").setLevel(logging.INFO)
+logging.getLogger("teffgen.models.openai_adapter.usage").setLevel(logging.INFO)
 
-from effgen.core.agent import Agent, AgentConfig
-from effgen.models.openai_adapter import OpenAIAdapter
-from effgen.tools.builtin.calculator import Calculator
-from effgen.tools.builtin.datetime_tool import DateTimeTool
+from teffgen.core.agent import Agent, AgentConfig
+from teffgen.models.openai_adapter import OpenAIAdapter
+from teffgen.tools.builtin.calculator import Calculator
+from teffgen.tools.builtin.datetime_tool import DateTimeTool
 
 
 def run_agent(task: str, model_name: str = "gpt-4.1-nano"):

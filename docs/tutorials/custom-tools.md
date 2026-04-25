@@ -1,6 +1,6 @@
 # Custom Tools Guide
 
-Learn how to create your own tools for effGen agents.
+Learn how to create your own tools for tideon.ai agents.
 
 ## Basic Tool Structure
 
@@ -9,7 +9,7 @@ Every tool extends `BaseTool` and implements two things:
 2. An `_execute` async method that does the work
 
 ```python
-from effgen.tools.base_tool import (
+from teffgen.tools.base_tool import (
     BaseTool, ToolMetadata, ToolCategory, ParameterSpec, ParameterType,
 )
 
@@ -38,7 +38,7 @@ class UpperCaseTool(BaseTool):
 ## Using Your Tool
 
 ```python
-from effgen import Agent, AgentConfig, load_model
+from teffgen import Agent, AgentConfig, load_model
 
 model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization="4bit")
 agent = Agent(AgentConfig(

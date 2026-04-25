@@ -3,7 +3,7 @@ requires = ["setuptools>=69.0.0", "wheel>=0.42.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "effgen"
+name = "teffgen"
 dynamic = ["version"]
 description = "A comprehensive framework for building agents with Small Language Models"
 readme = "README_PYPI.md"
@@ -98,16 +98,16 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://effgen.org/"
-Documentation = "https://effgen.org/docs/"
-Repository = "https://github.com/ctrl-gaurav/effGen"
-"Bug Tracker" = "https://github.com/ctrl-gaurav/effGen/issues"
-Changelog = "https://github.com/ctrl-gaurav/effGen/blob/main/CHANGELOG.md"
+Homepage = "https://tideon.ai/"
+Documentation = "https://tideon.ai/docs/"
+Repository = "https://github.com/tideon-ai/teffgen"
+"Bug Tracker" = "https://github.com/tideon-ai/teffgen/issues"
+Changelog = "https://github.com/tideon-ai/teffgen/blob/main/CHANGELOG.md"
 
 [project.scripts]
-effgen = "effgen.cli:main"
-effgen-agent = "effgen.cli:agent_main"
-effgen-web = "effgen.cli:web_agent_main"
+teffgen = "teffgen.cli:main"
+teffgen-agent = "teffgen.cli:agent_main"
+teffgen-web = "teffgen.cli:web_agent_main"
 
 [project.optional-dependencies]
 dev = [
@@ -177,7 +177,7 @@ monitoring = [
 all = [
     # NOTE: flash-attn is intentionally NOT in [all]. Its setup.py imports
     # torch before pip's isolated build env has torch installed (well-known
-    # upstream bug), which makes `pip install effgen[all]` always fail.
+    # upstream bug), which makes `pip install teffgen[all]` always fail.
     # Install flash-attn separately: see docs/installation.md.
     "vllm>=0.2.7",
     "faiss-cpu>=1.7.4",
@@ -205,13 +205,13 @@ all = [
 ]
 
 [tool.setuptools.dynamic]
-version = {attr = "effgen.__version__"}
+version = {attr = "teffgen.__version__"}
 
 [tool.setuptools.packages.find]
 exclude = ["tests", "tests.*", "examples", "docs", "scripts"]
 
 [tool.setuptools.package-data]
-effgen = [
+teffgen = [
     "prompts/templates/*.yaml",
     "prompts/templates/*.json",
     "config/schemas/*.json",
@@ -252,7 +252,7 @@ force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
 skip_glob = ["*/migrations/*", "*/build/*", "*/dist/*"]
-known_first_party = ["effgen"]
+known_first_party = ["teffgen"]
 known_third_party = [
     "torch",
     "transformers",
@@ -316,7 +316,7 @@ addopts = [
     "--strict-config",
     "--showlocals",
     "--tb=short",
-    "--cov=effgen",
+    "--cov=teffgen",
     "--cov-report=term-missing",
     "--cov-report=html",
     "--cov-report=xml",
@@ -339,7 +339,7 @@ filterwarnings = [
 
 # Coverage - Code Coverage
 [tool.coverage.run]
-source = ["effgen"]
+source = ["teffgen"]
 omit = [
     "*/tests/*",
     "*/test_*.py",
@@ -422,16 +422,16 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]  # Ignore unused imports in __init__.py
-"effgen/cli.py" = ["F403"]  # Star import is intentional
-# Examples and validation scripts call load_dotenv() before effgen imports so
+"teffgen/cli.py" = ["F403"]  # Star import is intentional
+# Examples and validation scripts call load_dotenv() before teffgen imports so
 # env-dependent modules see the keys at import time — the E402 is intentional.
 "examples/**/*.py" = ["E402"]
 "build_plan/**/*.py" = ["E402"]
 "scripts/**/*.py" = ["E402"]
-"tests/conftest.py" = ["E402"]  # sys.path manipulation must precede effgen imports
+"tests/conftest.py" = ["E402"]  # sys.path manipulation must precede teffgen imports
 
 [tool.ruff.lint.isort]
-known-first-party = ["effgen"]
+known-first-party = ["teffgen"]
 
 # Pydocstyle - Docstring Checker
 [tool.pydocstyle]

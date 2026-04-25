@@ -1,9 +1,9 @@
 #!/bin/bash
 
 ################################################################################
-# effGen Verification Script
+# tideon.ai Verification Script
 #
-# This script verifies that effGen framework is properly installed and
+# This script verifies that tideon.ai framework is properly installed and
 # functional. It performs comprehensive checks on all components with beautiful
 # CLI output.
 #
@@ -17,7 +17,7 @@
 #   --help                 Show this help message
 #
 # Requirements:
-#   - effGen must be installed (pip install -e .)
+#   - tideon.ai must be installed (pip install -e .)
 ################################################################################
 
 set -e  # Exit on error
@@ -47,7 +47,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # Check for inherited settings from parent script
-QUICK_MODE="${EFFGEN_QUICK_MODE:-false}"
+QUICK_MODE="${TEFFGEN_QUICK_MODE:-false}"
 
 # Animation delay (0 in quick mode)
 if [ "$QUICK_MODE" = true ]; then
@@ -84,7 +84,7 @@ print_banner() {
     line_delay
     echo -e "${CYAN}${BOLD}║${NC}                                                                ${CYAN}${BOLD}║${NC}"
     line_delay
-    echo -e "${CYAN}${BOLD}║${NC}             ${MAGENTA}${BOLD}🔍  EFFGEN VERIFIER  🔍${NC}             ${CYAN}${BOLD}║${NC}"
+    echo -e "${CYAN}${BOLD}║${NC}             ${MAGENTA}${BOLD}🔍  TEFFGEN VERIFIER  🔍${NC}             ${CYAN}${BOLD}║${NC}"
     line_delay
     echo -e "${CYAN}${BOLD}║${NC}                                                                ${CYAN}${BOLD}║${NC}"
     line_delay
@@ -188,7 +188,7 @@ display_summary() {
     if [ $failed -eq 0 ]; then
         echo -e "${GREEN}${BOLD}✓ ALL VERIFICATIONS PASSED!${NC}"
         echo ""
-        echo -e "${GREEN}effGen framework is properly installed and functional.${NC}"
+        echo -e "${GREEN}tideon.ai framework is properly installed and functional.${NC}"
     else
         echo -e "${RED}${BOLD}✗ SOME VERIFICATIONS FAILED!${NC}"
         echo ""
@@ -204,7 +204,7 @@ display_summary() {
 ################################################################################
 
 show_help() {
-    echo "effGen Verification Script"
+    echo "tideon.ai Verification Script"
     echo ""
     echo "Usage: $0 [OPTIONS]"
     echo ""
@@ -263,14 +263,14 @@ main() {
     print_subheader "🐍 Verifying Python Environment"
 
     if command -v conda &> /dev/null; then
-        # Check if effgen environment exists
-        if conda env list | grep -q "^effgen "; then
-            print_progress "Activating conda environment 'effgen'..."
+        # Check if teffgen environment exists
+        if conda env list | grep -q "^teffgen "; then
+            print_progress "Activating conda environment 'teffgen'..."
             eval "$(conda shell.bash hook)"
-            conda activate effgen
-            print_success "Conda environment 'effgen' activated"
+            conda activate teffgen
+            print_success "Conda environment 'teffgen' activated"
         else
-            print_info "Conda environment 'effgen' not found, using system Python"
+            print_info "Conda environment 'teffgen' not found, using system Python"
         fi
     fi
 
@@ -282,19 +282,19 @@ main() {
     PYTHON_VERSION=$(python3 --version | cut -d' ' -f2)
     print_success "Python $PYTHON_VERSION detected"
 
-    # Check if effGen is importable
-    print_progress "Checking effGen installation..."
+    # Check if tideon.ai is importable
+    print_progress "Checking tideon.ai installation..."
 
-    if ! python3 -c "import effgen" &> /dev/null; then
-        print_error "effGen not importable"
+    if ! python3 -c "import teffgen" &> /dev/null; then
+        print_error "tideon.ai not importable"
         echo ""
         print_info "Make sure you've activated the conda environment:"
-        print_info "  conda activate effgen"
+        print_info "  conda activate teffgen"
         print_info "Or install with: pip install -e ."
         exit 1
     fi
 
-    print_success "effGen is importable"
+    print_success "tideon.ai is importable"
 
     # Build verification command
     print_header "🔍 Running Comprehensive Verification"
@@ -327,10 +327,10 @@ main() {
         print_header "🎉 Verification Complete"
         print_success "All verifications passed successfully!"
         echo ""
-        echo -e "${GREEN}${BOLD}effGen is ready to use!${NC}"
+        echo -e "${GREEN}${BOLD}tideon.ai is ready to use!${NC}"
         echo ""
         print_info "Quick start guide:"
-        echo -e "  ${CYAN}1.${NC} Check the documentation: ${BLUE}https://effgen.org/docs/${NC}"
+        echo -e "  ${CYAN}1.${NC} Check the documentation: ${BLUE}https://tideon.ai/docs/${NC}"
         echo -e "  ${CYAN}2.${NC} Explore examples: ${DIM}cd examples${NC}"
         echo -e "  ${CYAN}3.${NC} Run your first agent: ${DIM}python examples/basic_agent.py${NC}"
         echo ""

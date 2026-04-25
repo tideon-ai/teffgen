@@ -17,9 +17,9 @@ import asyncio
 import logging
 from pathlib import Path
 
-from effgen import Agent, load_model
-from effgen.core.agent import AgentConfig
-from effgen.tools.builtin import AgenticSearch, Calculator
+from teffgen import Agent, load_model
+from teffgen.core.agent import AgentConfig
+from teffgen.tools.builtin import AgenticSearch, Calculator
 
 # ============================================================================
 # CONFIGURATION: Set to True for detailed logging, False for minimal logging

@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from dotenv import load_dotenv
 
-load_dotenv(Path.home() / ".effgen" / ".env", override=False)
+load_dotenv(Path.home() / ".teffgen" / ".env", override=False)
 # Also load from project .env for CI convenience
 load_dotenv(Path(__file__).parent.parent.parent / ".env", override=False)
 
@@ -36,7 +36,7 @@ class TestCerebrasAllModelsParallel:
     def test_all_models_gather(self):
         """Call all 4 models concurrently; require ≥3 successes."""
 
-        from effgen.models.cerebras_adapter import CerebrasAdapter
+        from teffgen.models.cerebras_adapter import CerebrasAdapter
 
         async def call_model(model_id: str) -> tuple[str, str | None, str | None]:
             """Return (model_id, text_or_None, error_or_None). Retries on 429."""

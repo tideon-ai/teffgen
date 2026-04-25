@@ -1,11 +1,11 @@
-# Prometheus config for effGen monitoring
+# Prometheus config for tideon.ai monitoring
 
 global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: "effgen-api"
+  - job_name: "teffgen-api"
     static_configs:
-      - targets: ["effgen-api:8000"]
+      - targets: ["teffgen-api:8000"]
     metrics_path: /metrics

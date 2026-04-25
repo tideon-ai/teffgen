@@ -23,13 +23,13 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path.home() / ".effgen" / ".env", override=False)
+load_dotenv(Path.home() / ".teffgen" / ".env", override=False)
 load_dotenv(Path(__file__).parent.parent.parent / ".env", override=False)
 
 logging.basicConfig(level=logging.WARNING)
-logging.getLogger("effgen.models.openai_adapter.usage").setLevel(logging.INFO)
+logging.getLogger("teffgen.models.openai_adapter.usage").setLevel(logging.INFO)
 
-from effgen.models.openai_adapter import OpenAIAdapter
+from teffgen.models.openai_adapter import OpenAIAdapter
 
 # ---------------------------------------------------------------------------
 # Build a large, stable system prompt (≥1024 tokens needed for caching)

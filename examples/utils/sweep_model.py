@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-effGen — Cross-Model Compatibility Sweep (Single Model Runner)
+tideon.ai — Cross-Model Compatibility Sweep (Single Model Runner)
 
 Runs all 10 example agents on a single model and outputs structured results.
 Designed to be called in parallel across GPUs for different models.
@@ -124,7 +124,7 @@ def _quick_test(agent, question, expected_keywords=None, check_fn=None):
 
 def _test_qa(model, model_name):
     """Test Q&A agent — 3 questions, no tools."""
-    from effgen.presets import create_agent
+    from teffgen.presets import create_agent
 
     agent = create_agent(
         "minimal", model,
@@ -151,7 +151,7 @@ def _test_qa(model, model_name):
 
 def _test_calculator(model, model_name):
     """Test calculator agent — 5 math tasks."""
-    from effgen.presets import create_agent
+    from teffgen.presets import create_agent
 
     agent = create_agent("math", model)
 
@@ -177,12 +177,12 @@ def _test_calculator(model, model_name):
 
 def _test_multi_tool(model, model_name):
     """Test multi-tool agent — 5 tool-selection tasks (skip T6/T7 circuit breaker programmatic tests)."""
-    from effgen.core.agent import Agent, AgentConfig
-    from effgen.tools.builtin.bash_tool import BashTool
-    from effgen.tools.builtin.calculator import Calculator
-    from effgen.tools.builtin.datetime_tool import DateTimeTool
-    from effgen.tools.builtin.python_repl import PythonREPL
-    from effgen.tools.builtin.text_processing import TextProcessingTool
+    from teffgen.core.agent import Agent, AgentConfig
+    from teffgen.tools.builtin.bash_tool import BashTool
+    from teffgen.tools.builtin.calculator import Calculator
+    from teffgen.tools.builtin.datetime_tool import DateTimeTool
+    from teffgen.tools.builtin.python_repl import PythonREPL
+    from teffgen.tools.builtin.text_processing import TextProcessingTool
 
     tools = [Calculator(), PythonREPL(), DateTimeTool(), BashTool(), TextProcessingTool()]
     config = AgentConfig(
@@ -230,12 +230,12 @@ def _test_multi_tool(model, model_name):
 
 def _test_file_ops(model, model_name):
     """Test file operations agent — 4 tests (write, read, list, search)."""
-    from effgen.core.agent import Agent, AgentConfig
-    from effgen.tools.builtin.bash_tool import BashTool
-    from effgen.tools.builtin.file_ops import FileOperations
-    from effgen.tools.builtin.text_processing import TextProcessingTool
+    from teffgen.core.agent import Agent, AgentConfig
+    from teffgen.tools.builtin.bash_tool import BashTool
+    from teffgen.tools.builtin.file_ops import FileOperations
+    from teffgen.tools.builtin.text_processing import TextProcessingTool
 
-    test_dir = tempfile.mkdtemp(prefix="effgen_sweep_fileops_")
+    test_dir = tempfile.mkdtemp(prefix="teffgen_sweep_fileops_")
 
     tools = [
         FileOperations(allowed_directories=[test_dir]),
@@ -258,16 +258,16 @@ def _test_file_ops(model, model_name):
     try:
         # T1: Write file
         write_path = os.path.join(test_dir, "test.txt")
-        ok1, d1 = _quick_test(agent, f"Create a file at {write_path} with the content 'Hello from effgen'",
+        ok1, d1 = _quick_test(agent, f"Create a file at {write_path} with the content 'Hello from teffgen'",
                               check_fn=lambda out, resp: resp.tool_calls >= 1)
 
         # Ensure file exists for read test
         if not os.path.exists(write_path):
             with open(write_path, "w") as f:
-                f.write("Hello from effgen")
+                f.write("Hello from teffgen")
 
         # T2: Read file
-        ok2, d2 = _quick_test(agent, f"Read the file {write_path}", expected_keywords=["hello", "effgen"])
+        ok2, d2 = _quick_test(agent, f"Read the file {write_path}", expected_keywords=["hello", "teffgen"])
 
         # T3: List directory
         for fn in ["alpha.txt", "beta.txt"]:
@@ -296,7 +296,7 @@ def _test_file_ops(model, model_name):
 
 def _test_coding(model, model_name):
     """Test coding agent — 4 code execution tests."""
-    from effgen.presets import create_agent
+    from teffgen.presets import create_agent
 
     agent = create_agent(
         "coding", model,
@@ -335,9 +335,9 @@ def _test_coding(model, model_name):
 
 def _test_conversational(model, model_name):
     """Test conversational agent — 3 multi-turn memory tests."""
-    from effgen.core.agent import Agent, AgentConfig
-    from effgen.tools.builtin.calculator import Calculator
-    from effgen.tools.builtin.datetime_tool import DateTimeTool
+    from teffgen.core.agent import Agent, AgentConfig
+    from teffgen.tools.builtin.calculator import Calculator
+    from teffgen.tools.builtin.datetime_tool import DateTimeTool
 
     def make_agent():
         config = AgentConfig(
@@ -392,16 +392,16 @@ def _test_conversational(model, model_name):
 
 def _test_error_recovery(model, model_name):
     """Test error recovery — 5 key tests (T1-T5 from phase 7)."""
-    from effgen.core.agent import Agent, AgentConfig
-    from effgen.tools.base_tool import (
+    from teffgen.core.agent import Agent, AgentConfig
+    from teffgen.tools.base_tool import (
         BaseTool,
         ParameterSpec,
         ParameterType,
         ToolCategory,
         ToolMetadata,
     )
-    from effgen.tools.builtin.calculator import Calculator
-    from effgen.tools.builtin.python_repl import PythonREPL
+    from teffgen.tools.builtin.calculator import Calculator
+    from teffgen.tools.builtin.python_repl import PythonREPL
 
     class BrokenTool(BaseTool):
         def __init__(self):
@@ -457,7 +457,7 @@ def _test_error_recovery(model, model_name):
     print(f"  {'PASS' if ok4 else 'FAIL'} — max iterations: {d4[:80]}")
 
     # T5: Control character sanitization (non-model, always passes if framework works)
-    from effgen.core.agent import Agent as AgentClass
+    from teffgen.core.agent import Agent as AgentClass
     sanitized = AgentClass._sanitize_tool_input("\x00\x01hello\x03world")
     ok5 = sanitized == "helloworld"
     tests_passed += ok5
@@ -469,10 +469,10 @@ def _test_error_recovery(model, model_name):
 
 def _test_data_processing(model, model_name):
     """Test data processing — 4 JSON/text tests."""
-    from effgen.core.agent import Agent, AgentConfig
-    from effgen.tools.builtin.json_tool import JSONTool
-    from effgen.tools.builtin.python_repl import PythonREPL
-    from effgen.tools.builtin.text_processing import TextProcessingTool
+    from teffgen.core.agent import Agent, AgentConfig
+    from teffgen.tools.builtin.json_tool import JSONTool
+    from teffgen.tools.builtin.python_repl import PythonREPL
+    from teffgen.tools.builtin.text_processing import TextProcessingTool
 
     tools = [JSONTool(), TextProcessingTool(), PythonREPL()]
 
@@ -533,9 +533,9 @@ def _test_data_processing(model, model_name):
 
 def _test_streaming(model, model_name):
     """Test streaming agent — 3 streaming tests."""
-    from effgen.core.agent import Agent, AgentConfig
-    from effgen.tools.builtin.calculator import Calculator
-    from effgen.tools.builtin.datetime_tool import DateTimeTool
+    from teffgen.core.agent import Agent, AgentConfig
+    from teffgen.tools.builtin.calculator import Calculator
+    from teffgen.tools.builtin.datetime_tool import DateTimeTool
 
     agent = Agent(AgentConfig(
         name="stream_agent", model=model,
@@ -605,10 +605,10 @@ def _test_streaming(model, model_name):
 
 def _test_multi_agent(model, model_name):
     """Test multi-agent pipeline — 3 tests (manual pipeline, routing, synthesis)."""
-    from effgen.core.agent import Agent, AgentConfig
-    from effgen.core.router import SubAgentRouter
-    from effgen.tools.builtin.calculator import Calculator
-    from effgen.tools.builtin.python_repl import PythonREPL
+    from teffgen.core.agent import Agent, AgentConfig
+    from teffgen.core.router import SubAgentRouter
+    from teffgen.tools.builtin.calculator import Calculator
+    from teffgen.tools.builtin.python_repl import PythonREPL
 
     tests_passed = 0
     details = []
@@ -722,7 +722,7 @@ def main():
     # Load model once
     print(f"\nLoading model {model_name}...")
     t0 = time.time()
-    from effgen import load_model
+    from teffgen import load_model
     model = load_model(model_name)
     load_time = time.time() - t0
     print(f"Model loaded in {load_time:.1f}s")

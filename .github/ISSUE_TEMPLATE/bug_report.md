@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug in effGen
+about: Report a bug in tideon.ai
 title: "[BUG] "
 labels: bug
 ---
@@ -18,7 +18,7 @@ What you expected to happen.
 **Environment:**
 - OS: [e.g., Ubuntu 22.04]
 - Python version: [e.g., 3.11]
-- effGen version: [e.g., 0.0.2]
+- tideon.ai version: [e.g., 0.0.2]
 - GPU: [e.g., NVIDIA A40]
 
 **Error traceback**

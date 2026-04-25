@@ -2,7 +2,7 @@
 
 import pytest
 
-from effgen.tools.protocols.acp.protocol import (
+from teffgen.tools.protocols.acp.protocol import (
     ACPProtocolHandler,
     AgentManifest,
     CapabilityDefinition,

@@ -1,11 +1,11 @@
 """
-Basic effGen agent using MLX on Apple Silicon.
+Basic tideon.ai agent using MLX on Apple Silicon.
 
 This example demonstrates using the LiquidAI LFM2.5-1.2B-Instruct model
 via the MLX backend for native Metal GPU acceleration on M-series Macs.
 
 Requirements:
-    pip install effgen[mlx]
+    pip install teffgen[mlx]
     # or: pip install mlx mlx-lm
 
 Usage:
@@ -14,10 +14,10 @@ Usage:
 
 import logging
 
-from effgen import Agent, load_model
-from effgen.core.agent import AgentConfig
-from effgen.models.base import GenerationConfig
-from effgen.tools.builtin import Calculator, CodeExecutor, PythonREPL
+from teffgen import Agent, load_model
+from teffgen.core.agent import AgentConfig
+from teffgen.models.base import GenerationConfig
+from teffgen.tools.builtin import Calculator, CodeExecutor, PythonREPL
 
 # ============================================================================
 # CONFIGURATION
@@ -38,7 +38,7 @@ else:
 
 def main():
     print("=" * 70)
-    print("effGen Agent — MLX Backend (Apple Silicon)")
+    print("tideon.ai Agent — MLX Backend (Apple Silicon)")
     print(f"Model: {MODEL_ID}")
     print("=" * 70)
 

@@ -1,7 +1,7 @@
-# effGen — Cross-Model Compatibility Matrix
+# tideon.ai — Cross-Model Compatibility Matrix
 
 > Generated 2026-03-12 | 11 models tested across 10 agent types (110 combinations)
-> Environment: Python 3.11, effgen (dev), 8x NVIDIA A40 (46GB)
+> Environment: Python 3.11, teffgen (dev), 8x NVIDIA A40 (46GB)
 > Sweep script: `examples/sweep_model.py`
 
 ---

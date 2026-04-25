@@ -1,7 +1,7 @@
 # Model Configuration
 #
 # This file defines all available models (both local and API-based)
-# and their configurations for the effGen framework.
+# and their configurations for the tideon.ai framework.
 #
 # Supported model types:
 # - huggingface: Local models via HuggingFace Transformers/vLLM
@@ -357,7 +357,7 @@ task_routing:
 optimization:
   # Enable model caching
   enable_caching: true
-  cache_dir: ~/.cache/effgen/models
+  cache_dir: ~/.cache/teffgen/models
 
   # Automatic batching for multiple requests
   enable_batching: true

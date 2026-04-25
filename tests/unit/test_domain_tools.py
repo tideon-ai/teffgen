@@ -22,8 +22,8 @@ import socket
 
 import pytest
 
-from effgen.tools.base_tool import ToolResult
-from effgen.tools.builtin import (
+from teffgen.tools.base_tool import ToolResult
+from teffgen.tools.builtin import (
     ArxivTool,
     CryptoTool,
     CurrencyConverterTool,
@@ -361,13 +361,13 @@ def test_system_info_memory_only():
 @needs_net
 def test_http_get_json_response():
     out = _ok(_run(HTTPTool().execute(
-        url="https://api.github.com/repos/ctrl-gaurav/effGen",
+        url="https://api.github.com/repos/octocat/Hello-World",
         method="GET",
-        headers={"User-Agent": "effGen-tests"},
+        headers={"User-Agent": "tideon.ai-tests"},
     )))
     assert out["status"] == 200
     assert out["json"] is not None
-    assert out["json"].get("name", "").lower() == "effgen"
+    assert out["json"].get("name", "").lower() == "hello-world"
 
 
 def test_http_invalid_scheme_rejected():
@@ -411,12 +411,11 @@ def test_stackoverflow_search():
 
 @needs_net
 def test_github_search_repositories():
-    out = _ok(_run(GitHubTool().execute(query="effgen", kind="repositories", max_results=3)))
+    out = _ok(_run(GitHubTool().execute(query="octocat", kind="repositories", max_results=3)))
     assert "results" in out
     assert out["total_count"] >= 0
-    # Should find ctrl-gaurav/effGen
     full_names = [r["full_name"] for r in out["results"]]
-    assert any("effgen" in (fn or "").lower() for fn in full_names)
+    assert any("octocat" in (fn or "").lower() for fn in full_names)
 
 
 def test_wolfram_alpha_without_key_fails():
@@ -491,7 +490,7 @@ def test_notification_graceful_without_plyer():
 # ---------------------------------------------------------------------------
 
 def test_registry_auto_discovers_phase10_tools():
-    from effgen.tools.registry import ToolRegistry
+    from teffgen.tools.registry import ToolRegistry
     reg = ToolRegistry()
     reg.discover_builtin_tools()
     names = set(reg.list_tools())

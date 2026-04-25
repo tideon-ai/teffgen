@@ -1,26 +1,26 @@
 # Cerebras Backend
 
-effGen supports [Cerebras Cloud](https://inference.cerebras.ai/) as a hosted
+tideon.ai supports [Cerebras Cloud](https://inference.cerebras.ai/) as a hosted
 inference backend via `CerebrasAdapter`.  All four free-tier models are
 registered, with automatic rate-limit enforcement built in.
 
 ## Setup
 
 ```bash
-pip install "effgen[cerebras]"
+pip install "teffgen[cerebras]"
 ```
 
 Set your API key (get one at <https://cloud.cerebras.ai/>):
 
 ```bash
 export CEREBRAS_API_KEY="your-key-here"
-# or place it in ~/.effgen/.env
+# or place it in ~/.teffgen/.env
 ```
 
 ## Quick start
 
 ```python
-from effgen import CerebrasAdapter
+from teffgen import CerebrasAdapter
 
 adapter = CerebrasAdapter(model_name="llama3.1-8b")
 adapter.load()
@@ -35,7 +35,7 @@ adapter.unload()
 ### Via `load_model`
 
 ```python
-from effgen.models import load_model
+from teffgen.models import load_model
 
 model = load_model("llama3.1-8b", provider="cerebras")
 print(model.generate("Hello!").text)
@@ -46,7 +46,7 @@ model.unload()
 
 ```python
 import asyncio
-from effgen import CerebrasAdapter
+from teffgen import CerebrasAdapter
 
 async def main():
     adapter = CerebrasAdapter(model_name="llama3.1-8b")
@@ -83,14 +83,14 @@ are scheduled for deprecation on **2026-05-27** per Cerebras docs.
 
 The Pay-as-You-Go tier has no hourly/daily caps and significantly higher
 per-minute limits (e.g. `llama3.1-8b` is 2M TPM / 2K RPM on paid tier).
-The effGen `RateLimitCoordinator` is initialised with free-tier limits by
+The tideon.ai `RateLimitCoordinator` is initialised with free-tier limits by
 default — construct `CerebrasAdapter(model_name=..., enable_rate_limiting=False)`
 or pass a custom `RateLimitCoordinator` if you're on the paid tier.
 
 ### Inspect the registry in code
 
 ```python
-from effgen.models.cerebras_models import available_models, free_tier_models, model_info
+from teffgen.models.cerebras_models import available_models, free_tier_models, model_info
 
 print(available_models())          # all 4 models
 print(free_tier_models())          # models accessible on the free tier
@@ -130,10 +130,10 @@ adapter = CerebrasAdapter(model_name="llama3.1-8b", enable_rate_limiting=False)
 ### RateLimitExceeded
 
 If the **daily** budget is fully consumed, `acquire()` raises
-`effgen.models._rate_limit.RateLimitExceeded` instead of sleeping indefinitely.
+`teffgen.models._rate_limit.RateLimitExceeded` instead of sleeping indefinitely.
 
 ```python
-from effgen import RateLimitExceeded
+from teffgen import RateLimitExceeded
 
 try:
     result = adapter.generate("hello")
@@ -144,9 +144,9 @@ except RateLimitExceeded as exc:
 ## Agent integration
 
 ```python
-from effgen.core.agent import Agent, AgentConfig
-from effgen.models.cerebras_adapter import CerebrasAdapter
-from effgen.tools.builtin import Calculator, DateTimeTool
+from teffgen.core.agent import Agent, AgentConfig
+from teffgen.models.cerebras_adapter import CerebrasAdapter
+from teffgen.tools.builtin import Calculator, DateTimeTool
 
 adapter = CerebrasAdapter(model_name="llama3.1-8b")
 adapter.load()

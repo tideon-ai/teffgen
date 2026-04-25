@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from effgen.models.base import GenerationConfig, GenerationResult, ModelType, TokenCount
-from effgen.models.mlx_engine import MLXEngine
+from teffgen.models.base import GenerationConfig, GenerationResult, ModelType, TokenCount
+from teffgen.models.mlx_engine import MLXEngine
 
 
 @pytest.fixture
@@ -66,27 +66,27 @@ class TestMLXEngineInit:
 class TestMLXEngineLoad:
     """Tests for MLXEngine.load()."""
 
-    @patch("effgen.hardware.platform.is_apple_silicon", return_value=False)
+    @patch("teffgen.hardware.platform.is_apple_silicon", return_value=False)
     def test_mlx_engine_load_not_apple_silicon(self, mock_as, engine):
-        from effgen.hardware.platform import is_apple_silicon
+        from teffgen.hardware.platform import is_apple_silicon
         is_apple_silicon.cache_clear()
         with pytest.raises(RuntimeError, match="MLX requires Apple Silicon"):
             engine.load()
         is_apple_silicon.cache_clear()
 
-    @patch("effgen.hardware.platform.is_apple_silicon", return_value=True)
+    @patch("teffgen.hardware.platform.is_apple_silicon", return_value=True)
     def test_mlx_engine_load_no_mlx_installed(self, mock_as, engine):
-        from effgen.hardware.platform import is_apple_silicon
+        from teffgen.hardware.platform import is_apple_silicon
         is_apple_silicon.cache_clear()
         with patch.dict("sys.modules", {"mlx_lm": None}):
             with pytest.raises(RuntimeError, match="mlx-lm is not installed"):
                 engine.load()
         is_apple_silicon.cache_clear()
 
-    @patch("effgen.hardware.platform.get_unified_memory_gb", return_value=16.0)
-    @patch("effgen.hardware.platform.is_apple_silicon", return_value=True)
+    @patch("teffgen.hardware.platform.get_unified_memory_gb", return_value=16.0)
+    @patch("teffgen.hardware.platform.is_apple_silicon", return_value=True)
     def test_mlx_engine_load_success(self, mock_as, mock_mem):
-        from effgen.hardware.platform import is_apple_silicon
+        from teffgen.hardware.platform import is_apple_silicon
         is_apple_silicon.cache_clear()
 
         # Create engine without explicit max_tokens so _detect_context_length
@@ -122,7 +122,7 @@ class TestMLXEngineGenerate:
         with pytest.raises(RuntimeError, match="Model is not loaded"):
             engine.generate("Hello")
 
-    @patch("effgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
+    @patch("teffgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
     def test_mlx_engine_generate(self, mock_validate, loaded_engine):
         mock_mlx_generate = MagicMock(return_value="Generated response text")
         mock_mlx_lm = MagicMock()
@@ -142,7 +142,7 @@ class TestMLXEngineGenerate:
         assert result.model_name == "mlx-community/test-model-4bit"
         assert result.metadata["engine"] == "mlx"
 
-    @patch("effgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
+    @patch("teffgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
     def test_generation_config_mapping(self, mock_validate, loaded_engine):
         """Verify GenerationConfig fields map to MLX params correctly."""
         mock_mlx_generate = MagicMock(return_value="output")
@@ -212,7 +212,7 @@ class TestMLXEngineStream:
         with pytest.raises(RuntimeError, match="Model is not loaded"):
             list(engine.generate_stream("Hello"))
 
-    @patch("effgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
+    @patch("teffgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
     def test_mlx_engine_generate_stream(self, mock_validate, loaded_engine):
         """Verify streaming yields text chunks."""
         chunk1 = MagicMock()
@@ -237,7 +237,7 @@ class TestMLXEngineBatch:
         with pytest.raises(RuntimeError, match="Model is not loaded"):
             engine.generate_batch(["Hello", "World"])
 
-    @patch("effgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
+    @patch("teffgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
     def test_mlx_engine_generate_batch(self, mock_validate, loaded_engine):
         """Verify batch processes prompts sequentially."""
         mock_mlx_generate = MagicMock(side_effect=["Response 1", "Response 2"])

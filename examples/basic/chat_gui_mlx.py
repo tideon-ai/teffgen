@@ -114,8 +114,8 @@ def chat_respond(
 def build_app(default_model: str):
     import gradio as gr
 
-    with gr.Blocks(title="effGen MLX Chat") as app:
-        gr.Markdown("# effGen — MLX Chat\nTest MLX models on Apple Silicon with streaming.")
+    with gr.Blocks(title="tideon.ai MLX Chat") as app:
+        gr.Markdown("# tideon.ai — MLX Chat\nTest MLX models on Apple Silicon with streaming.")
 
         # --- Model loading bar ---
         with gr.Row():

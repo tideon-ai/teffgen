@@ -1,11 +1,11 @@
 # Guardrails & Safety
 
-effGen provides a guardrails framework to protect your agents from producing harmful output, leaking PII, or executing dangerous tool calls.
+tideon.ai provides a guardrails framework to protect your agents from producing harmful output, leaking PII, or executing dangerous tool calls.
 
 ## Quick Start — Presets
 
 ```python
-from effgen.guardrails import get_guardrail_preset
+from teffgen.guardrails import get_guardrail_preset
 
 # Strict: blocks PII, injection, toxicity, limits output length
 chain = get_guardrail_preset("strict")
@@ -23,8 +23,8 @@ chain = get_guardrail_preset("none")
 Attach to an agent:
 
 ```python
-from effgen import Agent
-from effgen.core.agent import AgentConfig
+from teffgen import Agent
+from teffgen.core.agent import AgentConfig
 
 config = AgentConfig(
     name="safe_agent",
@@ -40,7 +40,7 @@ agent = Agent(config=config)
 ### Content Guardrails
 
 ```python
-from effgen.guardrails import PIIGuardrail, ToxicityGuardrail, LengthGuardrail, TopicGuardrail
+from teffgen.guardrails import PIIGuardrail, ToxicityGuardrail, LengthGuardrail, TopicGuardrail
 
 # PII detection — SSN, email, phone, credit card (Luhn validated), IP address
 pii = PIIGuardrail()
@@ -58,7 +58,7 @@ topic = TopicGuardrail(blocked_topics=["violence", "weapons"])
 ### Prompt Injection
 
 ```python
-from effgen.guardrails import PromptInjectionGuardrail
+from teffgen.guardrails import PromptInjectionGuardrail
 
 # Sensitivity levels: "low", "medium", "high"
 injection = PromptInjectionGuardrail(sensitivity="high")
@@ -69,7 +69,7 @@ Zero false positives on normal questions — only blocks actual injection attemp
 ### Tool Safety
 
 ```python
-from effgen.guardrails import ToolInputGuardrail, ToolOutputGuardrail, ToolPermissionGuardrail
+from teffgen.guardrails import ToolInputGuardrail, ToolOutputGuardrail, ToolPermissionGuardrail
 
 # Validate tool inputs before execution
 input_guard = ToolInputGuardrail()
@@ -87,7 +87,7 @@ permission = ToolPermissionGuardrail(
 ## Custom Guardrail Chain
 
 ```python
-from effgen.guardrails import GuardrailChain, GuardrailPosition
+from teffgen.guardrails import GuardrailChain, GuardrailPosition
 
 chain = GuardrailChain([
     PromptInjectionGuardrail(sensitivity="medium"),
@@ -115,7 +115,7 @@ Guardrails are checked at four points in the agent pipeline:
 ## Writing Custom Guardrails
 
 ```python
-from effgen.guardrails import Guardrail, GuardrailResult, GuardrailPosition
+from teffgen.guardrails import Guardrail, GuardrailResult, GuardrailPosition
 
 class ProfanityGuardrail(Guardrail):
     name = "profanity"

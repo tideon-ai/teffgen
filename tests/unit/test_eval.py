@@ -1,4 +1,4 @@
-"""Unit tests for effgen.eval module (Phase 11)."""
+"""Unit tests for teffgen.eval module (Phase 11)."""
 
 from __future__ import annotations
 
@@ -6,9 +6,9 @@ import json
 
 import pytest
 
-from effgen.core.agent import Agent, AgentConfig
-from effgen.eval.comparison import ComparisonMatrix, ModelComparison, ModelScore
-from effgen.eval.evaluator import (
+from teffgen.core.agent import Agent, AgentConfig
+from teffgen.eval.comparison import ComparisonMatrix, ModelComparison, ModelScore
+from teffgen.eval.evaluator import (
     AgentEvaluator,
     Difficulty,
     EvalResult,
@@ -20,8 +20,8 @@ from effgen.eval.evaluator import (
     _score_exact_match,
     _score_regex,
 )
-from effgen.eval.regression import RegressionAlert, RegressionTracker
-from effgen.eval.suites import (
+from teffgen.eval.regression import RegressionAlert, RegressionTracker
+from teffgen.eval.suites import (
     ConversationSuite,
     MathSuite,
     ReasoningSuite,
@@ -437,12 +437,12 @@ class TestModelComparison:
 
 class TestImports:
     def test_top_level_import(self):
-        from effgen.eval import (
+        from teffgen.eval import (
             AgentEvaluator,
         )
         # Just verify they are importable
         assert AgentEvaluator is not None
 
-    def test_effgen_level_import(self):
-        from effgen import AgentEvaluator
+    def test_teffgen_level_import(self):
+        from teffgen import AgentEvaluator
         assert AgentEvaluator is not None

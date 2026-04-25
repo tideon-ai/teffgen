@@ -41,7 +41,7 @@ def _create_test_app(api_key=None, rate_limit=60):
         if api_key and key != api_key:
             raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
-    app = FastAPI(title="effGen API Test")
+    app = FastAPI(title="tideon.ai API Test")
 
     @app.middleware("http")
     async def request_middleware(request: Request, call_next):
@@ -59,7 +59,7 @@ def _create_test_app(api_key=None, rate_limit=60):
 
     @app.get("/health")
     async def health():
-        from effgen import __version__
+        from teffgen import __version__
         return {"status": "healthy", "version": __version__}
 
     @app.get("/metrics", dependencies=[Depends(verify_api_key)])

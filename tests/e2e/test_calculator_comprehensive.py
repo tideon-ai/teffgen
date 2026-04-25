@@ -14,8 +14,8 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from effgen import load_model
-from effgen.presets import create_agent
+from teffgen import load_model
+from teffgen.presets import create_agent
 
 # Enable detailed logging for debugging
 logging.basicConfig(

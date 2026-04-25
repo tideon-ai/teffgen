@@ -5,8 +5,8 @@ This tutorial walks through creating an agent that solves mathematical problems 
 ## Quick Way — Using Presets
 
 ```python
-from effgen.presets import create_agent
-from effgen import load_model
+from teffgen.presets import create_agent
+from teffgen import load_model
 
 model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization="4bit")
 agent = create_agent("math", model)
@@ -20,8 +20,8 @@ print(result.output)
 For more control, build the agent manually:
 
 ```python
-from effgen import Agent, AgentConfig, load_model
-from effgen.tools.builtin import Calculator, PythonREPL
+from teffgen import Agent, AgentConfig, load_model
+from teffgen.tools.builtin import Calculator, PythonREPL
 
 model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization="4bit")
 

@@ -11,8 +11,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from effgen.models.base import GenerationConfig
-from effgen.models.openai_models import (
+from teffgen.models.base import GenerationConfig
+from teffgen.models.openai_models import (
     OPENAI_MODELS,
     available_models,
     chat_models,
@@ -143,7 +143,7 @@ class TestOpenAIAdapterReasoningPayload:
     """Verify _build_request_params produces correct payloads."""
 
     def _make_adapter(self, model_name: str):
-        from effgen.models.openai_adapter import OpenAIAdapter
+        from teffgen.models.openai_adapter import OpenAIAdapter
         with patch.dict("os.environ", {"OPENAI_API_KEY": "sk-test"}):
             adapter = OpenAIAdapter(model_name=model_name)
         adapter._is_loaded = True  # skip real load()
@@ -241,20 +241,20 @@ class TestOpenAIAdapterReasoningPayload:
 
     def test_is_reasoning_model_flag(self):
         with patch.dict("os.environ", {"OPENAI_API_KEY": "sk-test"}):
-            from effgen.models.openai_adapter import OpenAIAdapter
+            from teffgen.models.openai_adapter import OpenAIAdapter
             chat = OpenAIAdapter("gpt-4o-mini")
             reasoning = OpenAIAdapter("o3-mini")
         assert not chat.is_reasoning_model()
         assert reasoning.is_reasoning_model()
 
     def test_list_models_class_method(self):
-        from effgen.models.openai_adapter import OpenAIAdapter
+        from teffgen.models.openai_adapter import OpenAIAdapter
         models = OpenAIAdapter.list_models()
         assert "gpt-4o-mini" in models
         assert "o3-mini" in models
 
     def test_list_reasoning_models_class_method(self):
-        from effgen.models.openai_adapter import OpenAIAdapter
+        from teffgen.models.openai_adapter import OpenAIAdapter
         rm = OpenAIAdapter.list_reasoning_models()
         assert "o4-mini" in rm
         assert "gpt-4o-mini" not in rm

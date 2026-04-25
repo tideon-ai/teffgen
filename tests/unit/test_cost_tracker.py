@@ -1,4 +1,4 @@
-"""Unit tests for CostTracker (effgen/models/_cost.py)."""
+"""Unit tests for CostTracker (teffgen/models/_cost.py)."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import threading
 
 import pytest
 
-from effgen.models._cost import CostTracker, _rate
+from teffgen.models._cost import CostTracker, _rate
 
 
 # Reset global tracker before each test

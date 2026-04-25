@@ -324,13 +324,13 @@
 </g>
 
 <!-- ═══════════════════════════════════════════════════════════
-     LAYER 7  ─  "effGen" title + neon underline pulse
+     LAYER 7  ─  "tideon.ai" title + neon underline pulse
      ═══════════════════════════════════════════════════════════ -->
 <!-- bloom behind -->
 <text x="640" y="120" text-anchor="middle"
       font-family="'Segoe UI',Inter,'Helvetica Neue',Arial,sans-serif"
       font-size="68" font-weight="700" letter-spacing="-1"
-      fill="#6C63FF" opacity=".4" filter="url(#bloom)">effGen</text>
+      fill="#6C63FF" opacity=".4" filter="url(#bloom)">tideon.ai</text>
 
 <!-- "eff" -->
 <text x="624" y="120" text-anchor="end"

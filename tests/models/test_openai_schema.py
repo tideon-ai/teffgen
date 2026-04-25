@@ -1,4 +1,4 @@
-"""Unit tests for effgen.models.openai_schema.to_openai_schema."""
+"""Unit tests for teffgen.models.openai_schema.to_openai_schema."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from effgen.models.openai_schema import to_openai_schema
+from teffgen.models.openai_schema import to_openai_schema
 
 
 class SimpleAnswer(BaseModel):

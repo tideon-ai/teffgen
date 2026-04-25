@@ -1,10 +1,10 @@
-# effGen Examples
+# tideon.ai Examples
 
-Ready-to-run examples demonstrating effGen's agentic AI capabilities with Small Language Models.
+Ready-to-run examples demonstrating tideon.ai's agentic AI capabilities with Small Language Models.
 
 ## Requirements
 
-- effGen installed (`pip install -e .`)
+- tideon.ai installed (`pip install -e .`)
 - GPU recommended (all examples use local model inference)
 - Default model: `Qwen/Qwen2.5-3B-Instruct` (downloaded automatically on first run)
 

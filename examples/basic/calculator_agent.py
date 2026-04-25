@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-effGen — Calculator Agent (Single Tool)
+tideon.ai — Calculator Agent (Single Tool)
 
 A math agent using the Calculator and PythonREPL tools via the ReAct loop.
 Demonstrates the core tool-calling pipeline: model produces Thought/Action/Action Input,
@@ -33,11 +33,11 @@ import os
 import sys
 import time
 
-# Ensure effgen is importable
+# Ensure teffgen is importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from effgen import load_model
-from effgen.presets import create_agent
+from teffgen import load_model
+from teffgen.presets import create_agent
 
 
 def demo_calculator(agent):
@@ -100,7 +100,7 @@ def interactive_mode(agent):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen Calculator Agent Example")
+    parser = argparse.ArgumentParser(description="tideon.ai Calculator Agent Example")
     parser.add_argument(
         "--model",
         default="Qwen/Qwen2.5-3B-Instruct",
@@ -110,7 +110,7 @@ def main():
     args = parser.parse_args()
 
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-    print("effGen — Calculator Agent")
+    print("tideon.ai — Calculator Agent")
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 

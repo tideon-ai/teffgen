@@ -1,0 +1,211 @@
+"""
+tideon.ai Core Module
+
+This module contains the core agent system components:
+- Agent: Main agent class with ReAct loop and sub-agent support
+- Router: Intelligent routing for sub-agent decisions
+- SubAgentManager: Sub-agent lifecycle management
+- ExecutionTracker: Transparent execution tracking
+- Orchestrator: Multi-agent coordination
+- Task and State management
+"""
+
+# Agent
+from .agent import Agent, AgentConfig, AgentMode, AgentResponse
+
+# Result Aggregation
+from .aggregation import AggregatedResult, MergeStrategy, ResultAggregator, ToolResultCache
+
+# Batch Execution
+from .batch import BatchConfig, BatchResult, BatchRunner
+
+# Clarification (Phase 9)
+from .clarification import ClarificationDetector, ClarificationRequest
+
+# Complexity Analyzer
+from .complexity_analyzer import ComplexityAnalyzer, ComplexityScore
+
+# Decomposition Engine
+from .decomposition_engine import DecompositionEngine, TaskStructure
+
+# Execution Tracker
+from .execution_tracker import (
+    EventType,
+    ExecutionEvent,
+    ExecutionNode,
+    ExecutionStatus,
+    ExecutionTracker,
+)
+
+# Feedback (Phase 9)
+from .feedback import FeedbackCollector, FeedbackEntry, FeedbackType
+
+# Human-in-the-Loop (Phase 9)
+from .human_loop import (
+    ApprovalDecision,
+    ApprovalManager,
+    ApprovalMode,
+    HumanApproval,
+    HumanChoice,
+    HumanInput,
+)
+
+# Lifecycle Management
+from .lifecycle import AgentEntry, AgentLifecycleState, AgentPool, AgentRegistry
+
+# Message Bus
+from .message_bus import AgentMessage, MessageBus, MessageType
+
+# Orchestrator
+from .orchestrator import MultiAgentOrchestrator, OrchestrationPattern, TeamConfig, TeamResponse
+
+# Router
+from .router import RoutingDecision, RoutingStrategy, SubAgentRouter
+
+# Shared State
+from .shared_state import SharedState, StateMutation
+
+# State
+from .state import AgentState
+
+# Structured Output
+from .structured_output import StructuredOutputConfig, constrain_output, validate_json_schema
+
+# Sub-Agent Manager
+from .sub_agent_manager import (
+    SubAgentConfig,
+    SubAgentManager,
+    SubAgentResult,
+    SubAgentSpecialization,
+)
+
+# Task
+from .task import SubTask, Task, TaskPriority, TaskStatus
+
+# Tool Calling Strategy
+from .tool_calling import (
+    HybridStrategy,
+    NativeFunctionCallingStrategy,
+    ReActStrategy,
+    ToolCallingStrategy,
+    ToolCallResult,
+    ToolDefinition,
+    get_strategy,
+    tools_to_definitions,
+)
+
+# Workflow
+from .workflow import WorkflowDAG, WorkflowEdge, WorkflowNode, WorkflowResult
+
+__all__ = [
+    # Agent
+    "Agent",
+    "AgentConfig",
+    "AgentResponse",
+    "AgentMode",
+
+    # Router
+    "SubAgentRouter",
+    "RoutingDecision",
+    "RoutingStrategy",
+
+    # Sub-Agent Manager
+    "SubAgentManager",
+    "SubAgentConfig",
+    "SubAgentResult",
+    "SubAgentSpecialization",
+
+    # Execution Tracker
+    "ExecutionTracker",
+    "ExecutionEvent",
+    "ExecutionStatus",
+    "ExecutionNode",
+    "EventType",
+
+    # Orchestrator
+    "MultiAgentOrchestrator",
+    "TeamConfig",
+    "TeamResponse",
+    "OrchestrationPattern",
+
+    # Complexity Analyzer
+    "ComplexityAnalyzer",
+    "ComplexityScore",
+
+    # Decomposition Engine
+    "DecompositionEngine",
+    "TaskStructure",
+
+    # Task
+    "Task",
+    "SubTask",
+    "TaskStatus",
+    "TaskPriority",
+
+    # Lifecycle Management
+    "AgentLifecycleState",
+    "AgentEntry",
+    "AgentPool",
+    "AgentRegistry",
+
+    # Message Bus
+    "MessageBus",
+    "AgentMessage",
+    "MessageType",
+
+    # Shared State
+    "SharedState",
+    "StateMutation",
+
+    # Workflow
+    "WorkflowDAG",
+    "WorkflowNode",
+    "WorkflowEdge",
+    "WorkflowResult",
+
+    # Batch Execution
+    "BatchRunner",
+    "BatchConfig",
+    "BatchResult",
+
+    # Result Aggregation
+    "ResultAggregator",
+    "AggregatedResult",
+    "MergeStrategy",
+    "ToolResultCache",
+
+    # State
+    "AgentState",
+
+    # Structured Output
+    "StructuredOutputConfig",
+    "constrain_output",
+    "validate_json_schema",
+
+    # Human-in-the-Loop
+    "ApprovalMode",
+    "ApprovalDecision",
+    "ApprovalManager",
+    "HumanApproval",
+    "HumanInput",
+    "HumanChoice",
+
+    # Clarification
+    "ClarificationDetector",
+    "ClarificationRequest",
+
+    # Feedback
+    "FeedbackCollector",
+    "FeedbackEntry",
+    "FeedbackType",
+
+    # Tool Calling Strategy
+    "ToolCallingStrategy",
+    "ReActStrategy",
+    "NativeFunctionCallingStrategy",
+    "HybridStrategy",
+    "ToolCallResult",
+    "ToolDefinition",
+    "get_strategy",
+    "tools_to_definitions",
+]

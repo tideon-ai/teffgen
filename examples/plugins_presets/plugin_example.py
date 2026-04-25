@@ -17,8 +17,8 @@ os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 
-from effgen import Agent, AgentConfig, load_model
-from effgen.tools.base_tool import (
+from teffgen import Agent, AgentConfig, load_model
+from teffgen.tools.base_tool import (
     BaseTool,
     ParameterSpec,
     ParameterType,
@@ -26,7 +26,7 @@ from effgen.tools.base_tool import (
     ToolMetadata,
     ToolResult,
 )
-from effgen.tools.plugin import PluginManager, ToolPlugin
+from teffgen.tools.plugin import PluginManager, ToolPlugin
 
 
 # Step 1: Define a custom tool
@@ -51,7 +51,7 @@ class GreetingTool(BaseTool):
         )
 
     async def _execute(self, name: str, **kwargs) -> ToolResult:
-        greeting = f"Hello, {name}! Welcome to effGen!"
+        greeting = f"Hello, {name}! Welcome to tideon.ai!"
         return ToolResult(success=True, output=greeting)
 
 

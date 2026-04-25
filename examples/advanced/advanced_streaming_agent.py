@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-effGen — Advanced Streaming Agent (Real-Time Output)
+tideon.ai — Advanced Streaming Agent (Real-Time Output)
 
 Demonstrates agent.stream() with real-time token-by-token output and
 callbacks for thoughts, tool calls, observations, and final answers.
@@ -31,10 +31,10 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from effgen import load_model
-from effgen.core.agent import Agent, AgentConfig
-from effgen.tools.builtin.calculator import Calculator
-from effgen.tools.builtin.datetime_tool import DateTimeTool
+from teffgen import load_model
+from teffgen.core.agent import Agent, AgentConfig
+from teffgen.tools.builtin.calculator import Calculator
+from teffgen.tools.builtin.datetime_tool import DateTimeTool
 
 # ANSI color codes
 BLUE = "\033[94m"
@@ -169,7 +169,7 @@ def run_test(agent, tracker, test_id, desc, task, checks, timeout_sec=120, **str
 def run_streaming_tests(model_name: str):
     """Run all streaming tests."""
     print(f"\n{'#'*60}")
-    print("effGen — Advanced Streaming Agent")
+    print("tideon.ai — Advanced Streaming Agent")
     print(f"Model: {model_name}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES', 'not set')}")
     print(f"{'#'*60}")
@@ -301,11 +301,11 @@ def run_regression(model_name: str):
     print(f"Regression Tests — {model_name}")
     print(f"{'#'*60}")
 
-    from effgen.presets import create_agent as create_preset_agent
-    from effgen.tools.builtin.bash_tool import BashTool
-    from effgen.tools.builtin.json_tool import JSONTool
-    from effgen.tools.builtin.python_repl import PythonREPL
-    from effgen.tools.builtin.text_processing import TextProcessingTool
+    from teffgen.presets import create_agent as create_preset_agent
+    from teffgen.tools.builtin.bash_tool import BashTool
+    from teffgen.tools.builtin.json_tool import JSONTool
+    from teffgen.tools.builtin.python_repl import PythonREPL
+    from teffgen.tools.builtin.text_processing import TextProcessingTool
 
     print("\nLoading model...")
     t0 = time.time()
@@ -369,7 +369,7 @@ def run_regression(model_name: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen Advanced Streaming Agent Example")
+    parser = argparse.ArgumentParser(description="tideon.ai Advanced Streaming Agent Example")
     parser.add_argument("--model", default="Qwen/Qwen2.5-3B-Instruct")
     parser.add_argument("--regression-only", action="store_true")
     parser.add_argument("--tests-only", action="store_true")

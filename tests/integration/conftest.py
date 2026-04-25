@@ -51,7 +51,7 @@ def gpu_id():
 def _load_and_yield(gpu_id, quantization=None):
     """Load a model and clean up CUDA state on teardown."""
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
-    from effgen import load_model
+    from teffgen import load_model
     if quantization:
         try:
             model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization=quantization)

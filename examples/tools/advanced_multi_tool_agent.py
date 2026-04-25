@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-effGen — Advanced Multi-Tool Agent (Tool Selection + Fallback)
+tideon.ai — Advanced Multi-Tool Agent (Tool Selection + Fallback)
 
 A multi-tool agent with 5 tools: Calculator, PythonREPL, DateTimeTool,
 BashTool, and TextProcessingTool. Demonstrates the agent's ability to select
@@ -29,13 +29,13 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from effgen import load_model
-from effgen.core.agent import Agent, AgentConfig
-from effgen.tools.builtin.bash_tool import BashTool
-from effgen.tools.builtin.calculator import Calculator
-from effgen.tools.builtin.datetime_tool import DateTimeTool
-from effgen.tools.builtin.python_repl import PythonREPL
-from effgen.tools.builtin.text_processing import TextProcessingTool
+from teffgen import load_model
+from teffgen.core.agent import Agent, AgentConfig
+from teffgen.tools.builtin.bash_tool import BashTool
+from teffgen.tools.builtin.calculator import Calculator
+from teffgen.tools.builtin.datetime_tool import DateTimeTool
+from teffgen.tools.builtin.python_repl import PythonREPL
+from teffgen.tools.builtin.text_processing import TextProcessingTool
 
 MULTI_TOOL_SYSTEM_PROMPT = """You are a helpful AI assistant with access to multiple tools.
 
@@ -284,7 +284,7 @@ def interactive_mode(agent):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen Multi-Tool Agent Example")
+    parser = argparse.ArgumentParser(description="tideon.ai Multi-Tool Agent Example")
     parser.add_argument(
         "--model",
         default="Qwen/Qwen2.5-3B-Instruct",
@@ -295,7 +295,7 @@ def main():
     args = parser.parse_args()
 
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-    print("effGen — Multi-Tool Agent")
+    print("tideon.ai — Multi-Tool Agent")
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 

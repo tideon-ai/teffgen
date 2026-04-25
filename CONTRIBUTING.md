@@ -1,6 +1,6 @@
-# Contributing to effGen
+# Contributing to tideon.ai
 
-Thank you for your interest in contributing to effGen! This guide will help you get started.
+Thank you for your interest in contributing to tideon.ai! This guide will help you get started.
 
 ## Development Setup
 
@@ -14,12 +14,12 @@ Thank you for your interest in contributing to effGen! This guide will help you 
 
 ```bash
 # Clone the repository
-git clone https://github.com/ctrl-gaurav/effGen.git
-cd effGen
+git clone https://github.com/tideon-ai/teffgen.git
+cd tideon.ai
 
 # Create a virtual environment
-conda create -n effgen python=3.11 -y
-conda activate effgen
+conda create -n teffgen python=3.11 -y
+conda activate teffgen
 
 # Install in development mode
 pip install -e ".[dev]"
@@ -58,10 +58,10 @@ We use the following tools to maintain code quality:
 All these run automatically via pre-commit hooks. You can also run them manually:
 
 ```bash
-black effgen/
-isort effgen/
-flake8 effgen/
-mypy effgen/ --ignore-missing-imports
+black teffgen/
+isort teffgen/
+flake8 teffgen/
+mypy teffgen/ --ignore-missing-imports
 ```
 
 ## Pull Request Process
@@ -85,7 +85,7 @@ mypy effgen/ --ignore-missing-imports
 When reporting bugs, please include:
 
 - Python version (`python --version`)
-- effGen version (`python -c "import effgen; print(effgen.__version__)"`)
+- tideon.ai version (`python -c "import teffgen; print(teffgen.__version__)"`)
 - GPU info (if relevant): `nvidia-smi`
 - Full error traceback
 - Steps to reproduce
@@ -93,7 +93,7 @@ When reporting bugs, please include:
 ## Architecture Overview
 
 ```
-effgen/
+teffgen/
 ├── core/           # Agent, AgentConfig, ReAct loop
 ├── models/         # Model backends (vLLM, Transformers, API adapters)
 ├── tools/          # Built-in tools and protocols (MCP, A2A, ACP)

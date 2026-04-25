@@ -18,12 +18,12 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path.home() / ".effgen" / ".env", override=False)
+load_dotenv(Path.home() / ".teffgen" / ".env", override=False)
 load_dotenv(Path(__file__).parent.parent.parent / ".env", override=False)
 
-from effgen.models.base import GenerationConfig
-from effgen.models.openai_adapter import OpenAIAdapter
-from effgen.models.openai_models import reasoning_models
+from teffgen.models.base import GenerationConfig
+from teffgen.models.openai_adapter import OpenAIAdapter
+from teffgen.models.openai_models import reasoning_models
 
 PROBLEM = (
     "A farmer has 17 sheep. All but 9 die. How many sheep does the farmer have left? "

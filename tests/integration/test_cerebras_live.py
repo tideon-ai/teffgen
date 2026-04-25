@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from dotenv import load_dotenv
 
-load_dotenv(Path.home() / ".effgen" / ".env", override=False)
+load_dotenv(Path.home() / ".teffgen" / ".env", override=False)
 
 
 def _has_key() -> bool:
@@ -17,11 +17,11 @@ def _has_key() -> bool:
 
 @pytest.mark.integration
 @pytest.mark.api
-@pytest.mark.skipif(not _has_key(), reason="SKIPPED: CEREBRAS_API_KEY not in ~/.effgen/.env")
+@pytest.mark.skipif(not _has_key(), reason="SKIPPED: CEREBRAS_API_KEY not in ~/.teffgen/.env")
 class TestCerebrasLive:
     def test_generate_returns_text(self):
-        from effgen.models.cerebras_adapter import CerebrasAdapter
-        from effgen.models.cerebras_models import CEREBRAS_DEFAULT_MODEL
+        from teffgen.models.cerebras_adapter import CerebrasAdapter
+        from teffgen.models.cerebras_models import CEREBRAS_DEFAULT_MODEL
 
         adapter = CerebrasAdapter(model_name=CEREBRAS_DEFAULT_MODEL)
         adapter.load()
@@ -34,8 +34,8 @@ class TestCerebrasLive:
             adapter.unload()
 
     def test_load_model_via_provider(self):
-        from effgen.models import load_model
-        from effgen.models.cerebras_models import CEREBRAS_DEFAULT_MODEL
+        from teffgen.models import load_model
+        from teffgen.models.cerebras_models import CEREBRAS_DEFAULT_MODEL
 
         model = load_model(CEREBRAS_DEFAULT_MODEL, provider="cerebras")
         try:
@@ -45,7 +45,7 @@ class TestCerebrasLive:
             model.unload()
 
     def test_generate_stream_yields_chunks(self):
-        from effgen.models.cerebras_adapter import CerebrasAdapter
+        from teffgen.models.cerebras_adapter import CerebrasAdapter
 
         adapter = CerebrasAdapter()
         adapter.load()

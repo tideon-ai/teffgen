@@ -1,10 +1,10 @@
 """
-Advanced effGen agent: prompt caching + structured outputs + native tools.
+Advanced tideon.ai agent: prompt caching + structured outputs + native tools.
 
 This example demonstrates:
   1. Stable system prompt for automatic prefix caching across agent calls.
   2. Structured output extraction from agent reasoning.
-  3. effGen tools (Calculator, DateTimeTool) + hard multi-step agentic tasks.
+  3. tideon.ai tools (Calculator, DateTimeTool) + hard multi-step agentic tasks.
   4. Combining generate_structured() for structured result extraction with
      the Agent loop for complex reasoning.
   5. How AgentConfig.stable_system_prompt enables caching-friendly behaviour.
@@ -21,20 +21,20 @@ from typing import Literal
 
 from dotenv import load_dotenv
 
-load_dotenv(Path.home() / ".effgen" / ".env", override=False)
+load_dotenv(Path.home() / ".teffgen" / ".env", override=False)
 load_dotenv(Path(__file__).parent.parent.parent / ".env", override=False)
 
 logging.basicConfig(level=logging.WARNING)
-logging.getLogger("effgen.models.openai_adapter.usage").setLevel(logging.INFO)
+logging.getLogger("teffgen.models.openai_adapter.usage").setLevel(logging.INFO)
 
 from pydantic import BaseModel, Field
 
-from effgen.core.agent import Agent, AgentConfig
-from effgen.models.errors import ModelRefusalError
-from effgen.models.openai_adapter import OpenAIAdapter
-from effgen.models.openai_schema import to_openai_schema
-from effgen.tools.builtin.calculator import Calculator
-from effgen.tools.builtin.datetime_tool import DateTimeTool
+from teffgen.core.agent import Agent, AgentConfig
+from teffgen.models.errors import ModelRefusalError
+from teffgen.models.openai_adapter import OpenAIAdapter
+from teffgen.models.openai_schema import to_openai_schema
+from teffgen.tools.builtin.calculator import Calculator
+from teffgen.tools.builtin.datetime_tool import DateTimeTool
 
 MODEL = "gpt-5.4-nano"
 
@@ -88,7 +88,7 @@ def run_task(adapter: OpenAIAdapter, agent: Agent, label: str, task: str) -> str
 
 
 def main():
-    print("effGen: Caching + Structured Outputs + Native Tools Demo")
+    print("tideon.ai: Caching + Structured Outputs + Native Tools Demo")
     print(f"Model: {MODEL}")
     print()
 

@@ -29,11 +29,11 @@ jobs:
         id: import_check
         run: |
           python - <<'PY'
-          import effgen, sys
+          import teffgen, sys
           failed = []
-          for name in effgen.__all__:
+          for name in teffgen.__all__:
               try:
-                  obj = getattr(effgen, name)
+                  obj = getattr(teffgen, name)
                   assert obj is not None
               except Exception as e:
                   failed.append(f"{name}: {e}")
@@ -41,7 +41,7 @@ jobs:
               print("IMPORT FAILURES:")
               for f in failed: print(f" - {f}")
               sys.exit(1)
-          print(f"OK: {len(effgen.__all__)} public symbols imported cleanly")
+          print(f"OK: {len(teffgen.__all__)} public symbols imported cleanly")
           PY
 
   # ------------------------------------------------------------------ #
@@ -60,7 +60,7 @@ jobs:
         id: unit
         run: |
           pytest tests/unit/ tests/benchmarks/ \
-            --cov=effgen --cov-report=json:coverage.json \
+            --cov=teffgen --cov-report=json:coverage.json \
             -m "not gpu and not api and not docker" \
             --tb=short -q
       - name: Coverage gate (≥60%)
@@ -100,17 +100,17 @@ jobs:
           python - <<'PY'
           import os, sys
           from pathlib import Path
-          from effgen.eval import AgentEvaluator, MathSuite, RegressionTracker
-          from effgen.eval.evaluator import ScoringMode
+          from teffgen.eval import AgentEvaluator, MathSuite, RegressionTracker
+          from teffgen.eval.evaluator import ScoringMode
 
           api_key = os.getenv("CEREBRAS_API_KEY", "")
           if not api_key:
               print("SKIPPED: CEREBRAS_API_KEY secret not set.")
               sys.exit(0)
 
-          from effgen.models.cerebras_adapter import CerebrasAdapter
-          from effgen.core.agent import Agent, AgentConfig
-          from effgen.tools.builtin.calculator import Calculator
+          from teffgen.models.cerebras_adapter import CerebrasAdapter
+          from teffgen.core.agent import Agent, AgentConfig
+          from teffgen.tools.builtin.calculator import Calculator
 
           adapter = CerebrasAdapter("llama3.1-8b", enable_rate_limiting=False)
           adapter.load()
@@ -214,7 +214,7 @@ jobs:
         run: pip install ruff -q
       - name: Ruff check
         id: lint
-        run: ruff check effgen/
+        run: ruff check teffgen/
       - name: Open issue on lint failure
         if: failure()
         continue-on-error: true

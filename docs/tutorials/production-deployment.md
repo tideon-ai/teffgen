@@ -1,18 +1,18 @@
 # Production Deployment
 
-This guide covers deploying effGen as a production API server with the v0.2.0 production gateway features.
+This guide covers deploying tideon.ai as a production API server with the v0.2.0 production gateway features.
 
 ## API Server Quick Start
 
 ```bash
 # Start the server
-effgen serve --host 0.0.0.0 --port 8000
+teffgen serve --host 0.0.0.0 --port 8000
 
 # With authentication
-EFFGEN_API_KEY=your-secret-key effgen serve --port 8000
+TEFFGEN_API_KEY=your-secret-key teffgen serve --port 8000
 
 # With rate limiting
-EFFGEN_RATE_LIMIT=120 effgen serve --port 8000
+TEFFGEN_RATE_LIMIT=120 teffgen serve --port 8000
 ```
 
 ## OpenAI-Compatible API
@@ -52,14 +52,14 @@ curl http://localhost:8000/v1/embeddings \
 
 ```bash
 # Build
-docker build -t effgen .
+docker build -t teffgen .
 
 # Run
 docker run -p 8000:8000 \
-  -e EFFGEN_API_KEY=your-secret \
-  -e EFFGEN_RATE_LIMIT=60 \
+  -e TEFFGEN_API_KEY=your-secret \
+  -e TEFFGEN_RATE_LIMIT=60 \
   --gpus all \
-  effgen
+  teffgen
 
 # With Docker Compose (see examples/deployment/)
 docker compose up -d
@@ -68,7 +68,7 @@ docker compose up -d
 ## Multi-Tenancy
 
 ```python
-from effgen.api.tenancy import TenantManager
+from teffgen.api.tenancy import TenantManager
 
 manager = TenantManager()
 
@@ -102,9 +102,9 @@ The server automatically includes:
 ### Python
 
 ```python
-from effgen.client import EffGenClient
+from teffgen.client import TeffgenClient
 
-client = EffGenClient(base_url="http://localhost:8000", api_key="your-key")
+client = TeffgenClient(base_url="http://localhost:8000", api_key="your-key")
 
 # Sync
 response = client.chat("What is 2+2?")
@@ -125,9 +125,9 @@ print(health.status)  # "ok"
 ### TypeScript/JavaScript
 
 ```typescript
-import { EffGenClient } from 'effgen-client';
+import { TeffgenClient } from 'teffgen-client';
 
-const client = new EffGenClient({
+const client = new TeffgenClient({
   baseUrl: 'http://localhost:8000',
   apiKey: 'your-key',
 });
@@ -149,11 +149,11 @@ curl http://localhost:8000/health
 # Prometheus metrics
 curl http://localhost:8000/metrics
 
-# effGen CLI health check
-effgen health
+# tideon.ai CLI health check
+teffgen health
 ```
 
-Import the Grafana dashboard from `configs/grafana/effgen-dashboard.json` for:
+Import the Grafana dashboard from `configs/grafana/teffgen-dashboard.json` for:
 - Response latency (p50/p95/p99)
 - Throughput (requests/sec)
 - Error rate

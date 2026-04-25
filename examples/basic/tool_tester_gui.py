@@ -1,5 +1,5 @@
 """
-effGen Tool Tester — Interactive playground for testing all tools.
+tideon.ai Tool Tester — Interactive playground for testing all tools.
 
 A Gradio web app that lets users:
   - Load a model (MLX, vLLM, Transformers, or API)
@@ -33,7 +33,7 @@ from collections.abc import Iterator
 from html import escape as _html_escape
 from typing import Any
 
-from effgen.tools.base_tool import ToolResult
+from teffgen.tools.base_tool import ToolResult
 
 logging.basicConfig(level=logging.WARNING, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -107,7 +107,7 @@ def load_model_op(model_id: str, custom_model: str) -> str:
         gc.collect()
 
     try:
-        from effgen.models import load_model
+        from teffgen.models import load_model
         engine = _get_engine_for_model(chosen.strip())
         kwargs = {}
         if engine:
@@ -151,7 +151,7 @@ def build_agent_with_tools(selected_tools: list[str]) -> str:
         return "Select at least one tool."
 
     try:
-        from effgen.core.agent import Agent, AgentConfig
+        from teffgen.core.agent import Agent, AgentConfig
 
         tools = []
         for tool_key in selected_tools:
@@ -190,7 +190,7 @@ def run_agent_with_prompt(prompt: str) -> Iterator[str]:
         return
 
     try:
-        from effgen.core.agent import AgentResponse
+        from teffgen.core.agent import AgentResponse
 
         start = time.perf_counter()
         result = _agent.run(prompt)
@@ -272,7 +272,7 @@ TOOL_INFO = {
     "json_tool": {
         "class": "JSONTool",
         "desc": "Parse, query, validate, and transform JSON data",
-        "example_input": '{"operation": "parse", "data": "{\\\"name\\\": \\\"effGen\\\", \\\"version\\\": \\\"0.1.3\\\"}"}',
+        "example_input": '{"operation": "parse", "data": "{\\\"name\\\": \\\"tideon.ai\\\", \\\"version\\\": \\\"0.1.3\\\"}"}',
         "params": ["operation (str: parse|query|validate|format)", "data (str, required)", "query (str)", "schema (str)"],
     },
     "datetime": {
@@ -284,7 +284,7 @@ TOOL_INFO = {
     "text_processing": {
         "class": "TextProcessingTool",
         "desc": "Text analysis: word count, regex matching, comparison, and transformation",
-        "example_input": '{"operation": "analyze", "text": "Hello World! This is effGen."}',
+        "example_input": '{"operation": "analyze", "text": "Hello World! This is tideon.ai."}',
         "params": ["operation (str: analyze|regex|compare|transform)", "text (str, required)", "pattern (str)", "replacement (str)"],
     },
     "url_fetch": {
@@ -308,13 +308,13 @@ TOOL_INFO = {
     "retrieval": {
         "class": "Retrieval",
         "desc": "Semantic search over a knowledge base using RAG + BM25",
-        "example_input": '{"query": "How does effGen handle tool calling?"}',
+        "example_input": '{"query": "How does tideon.ai handle tool calling?"}',
         "params": ["query (str, required)", "top_k (int, default 5)", "collection (str)"],
     },
     "agentic_search": {
         "class": "AgenticSearch",
         "desc": "Exact string search over files using ripgrep",
-        "example_input": '{"query": "BaseTool", "path": "effgen/tools/"}',
+        "example_input": '{"query": "BaseTool", "path": "teffgen/tools/"}',
         "params": ["query (str, required)", "path (str)", "file_pattern (str)", "max_results (int)"],
     },
 }
@@ -332,7 +332,7 @@ def _get_tool_instance(tool_key: str):
         return _tool_instances[tool_key]
 
     try:
-        from effgen.tools.builtin import (
+        from teffgen.tools.builtin import (
             AgenticSearch,
             BashTool,
             Calculator,
@@ -587,10 +587,10 @@ def build_app(default_model: str):
     tool_keys = list(TOOL_INFO.keys())
     all_model_choices = _get_all_model_choices()
 
-    with gr.Blocks(title="effGen Tool Tester") as app:
+    with gr.Blocks(title="tideon.ai Tool Tester") as app:
 
         gr.Markdown(
-            "# effGen Tool Tester\n"
+            "# tideon.ai Tool Tester\n"
             "Load a model, browse tools, test them directly or through an agent."
         )
 
@@ -894,7 +894,7 @@ This tests the full pipeline: model reasoning + tool schema + tool execution.
 
 **Step 1: Subclass BaseTool**
 ```python
-from effgen.tools.base_tool import BaseTool, ToolMetadata, ToolCategory, ParameterSpec, ParameterType
+from teffgen.tools.base_tool import BaseTool, ToolMetadata, ToolCategory, ParameterSpec, ParameterType
 
 class MyTool(BaseTool):
     def __init__(self):
@@ -913,8 +913,8 @@ class MyTool(BaseTool):
 
 **Step 2: Register with an Agent**
 ```python
-from effgen import Agent, load_model
-from effgen.core.agent import AgentConfig
+from teffgen import Agent, load_model
+from teffgen.core.agent import AgentConfig
 
 model = load_model("LiquidAI/LFM2.5-1.2B-Instruct-MLX-8bit", engine="mlx")
 agent = Agent(config=AgentConfig(
@@ -927,14 +927,14 @@ result = agent.run("Use my_tool on 'hello'")
 
 **Step 3: Or use the Plugin System**
 ```python
-from effgen.tools.plugin import ToolPlugin
+from teffgen.tools.plugin import ToolPlugin
 
 class MyPlugin(ToolPlugin):
     name = "my_tools"
     version = "1.0.0"
     tools = [MyTool]
 ```
-Save to `~/.effgen/plugins/my_tools.py` for auto-discovery.
+Save to `~/.teffgen/plugins/my_tools.py` for auto-discovery.
 
 ### Tool Builder GUI
 Use the **Tool Builder** (`tool_builder_gui.py`) to visually create tools
@@ -960,7 +960,7 @@ without writing boilerplate code.
 # ---------------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen Tool Tester GUI")
+    parser = argparse.ArgumentParser(description="tideon.ai Tool Tester GUI")
     parser.add_argument(
         "--model",
         default="LiquidAI/LFM2.5-1.2B-Instruct-MLX-8bit",

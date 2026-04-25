@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from effgen.models.base import GenerationConfig, GenerationResult, TokenCount
-from effgen.models.cerebras_adapter import CerebrasAdapter
+from teffgen.models.base import GenerationConfig, GenerationResult, TokenCount
+from teffgen.models.cerebras_adapter import CerebrasAdapter
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -300,7 +300,7 @@ class TestCerebrasAdapterUnload:
 
 class TestCerebrasModelRegistry:
     def test_available_models_returns_all_four(self):
-        from effgen.models.cerebras_models import available_models
+        from teffgen.models.cerebras_models import available_models
         models = available_models()
         assert "gpt-oss-120b" in models
         assert "llama3.1-8b" in models
@@ -309,25 +309,25 @@ class TestCerebrasModelRegistry:
         assert len(models) == 4
 
     def test_free_tier_models_excludes_gpt_oss(self):
-        from effgen.models.cerebras_models import free_tier_models
+        from teffgen.models.cerebras_models import free_tier_models
         free = free_tier_models()
         assert "gpt-oss-120b" not in free
         assert "llama3.1-8b" in free
 
     def test_model_info_returns_limits(self):
-        from effgen.models.cerebras_models import model_info
+        from teffgen.models.cerebras_models import model_info
         info = model_info("llama3.1-8b")
         assert info["rpm"] == 30
         assert info["tpm"] == 60_000
         assert info["context"] == 8_192
 
     def test_model_info_unknown_raises(self):
-        from effgen.models.cerebras_models import model_info
+        from teffgen.models.cerebras_models import model_info
         with pytest.raises(KeyError):
             model_info("nonexistent-model")
 
     def test_all_models_have_rate_limits(self):
-        from effgen.models.cerebras_models import CEREBRAS_MODELS
+        from teffgen.models.cerebras_models import CEREBRAS_MODELS
         for mid, info in CEREBRAS_MODELS.items():
             for field in ("rpm", "rph", "rpd", "tpm", "tph", "tpd"):
                 assert field in info, f"Model {mid!r} missing {field!r}"
@@ -462,17 +462,17 @@ class TestCerebrasNativeTools:
 
 class TestCostTracker:
     def setup_method(self):
-        from effgen.models._cost import CostTracker
+        from teffgen.models._cost import CostTracker
         CostTracker.reset()
 
     def test_cerebras_cost_is_zero(self):
-        from effgen.models._cost import CostTracker
+        from teffgen.models._cost import CostTracker
         tracker = CostTracker.get()
         cost = tracker.record("cerebras", "llama3.1-8b", 100, 50)
         assert cost == 0.0
 
     def test_accumulates_tokens(self):
-        from effgen.models._cost import CostTracker
+        from teffgen.models._cost import CostTracker
         tracker = CostTracker.get()
         tracker.record("cerebras", "llama3.1-8b", 50, 20)
         tracker.record("cerebras", "llama3.1-8b", 30, 10)
@@ -482,7 +482,7 @@ class TestCostTracker:
         assert totals["total"] == 110
 
     def test_total_cost_across_providers(self):
-        from effgen.models._cost import CostTracker
+        from teffgen.models._cost import CostTracker
         tracker = CostTracker.get()
         tracker.record("cerebras", "llama3.1-8b", 100, 50)
         tracker.record("openai", "gpt-4o-mini", 1000, 500)
@@ -492,7 +492,7 @@ class TestCostTracker:
         assert openai_cost > 0.0
 
     def test_summary_returns_rows(self):
-        from effgen.models._cost import CostTracker
+        from teffgen.models._cost import CostTracker
         tracker = CostTracker.get()
         tracker.record("cerebras", "qwen-3-235b-a22b-instruct-2507", 100, 40)
         summary = tracker.summary()
@@ -505,7 +505,7 @@ class TestCostTracker:
         assert row["cost_usd"] == 0.0
 
     def test_cost_tracker_wired_into_adapter(self):
-        from effgen.models._cost import CostTracker
+        from teffgen.models._cost import CostTracker
         CostTracker.reset()
         tracker = CostTracker.get()
 

@@ -1,13 +1,13 @@
 # Scaling Guide
 
-This guide covers scaling effGen for production workloads — from request throughput to multi-GPU model management.
+This guide covers scaling tideon.ai for production workloads — from request throughput to multi-GPU model management.
 
 ## Request Queue Tuning
 
 The production API server uses a priority queue with backpressure:
 
 ```python
-from effgen.api.queue import RequestQueue, RequestPriority
+from teffgen.api.queue import RequestQueue, RequestPriority
 
 queue = RequestQueue(
     max_size=1000,          # Max pending requests before backpressure (503)
@@ -24,7 +24,7 @@ When the queue is full, new requests receive a `QueueFullError` (HTTP 503). Clie
 Pre-warm agents to avoid cold-start latency:
 
 ```python
-from effgen.api.pool import AgentPool
+from teffgen.api.pool import AgentPool
 
 pool = AgentPool(
     factory=lambda: create_agent("general", model),
@@ -44,7 +44,7 @@ pool = AgentPool(
 Manage multiple models across GPUs:
 
 ```python
-from effgen.models.pool import ModelPool, PoolConfig
+from teffgen.models.pool import ModelPool, PoolConfig
 
 pool = ModelPool(config=PoolConfig(
     max_loaded_models=4,        # Keep at most 4 models in GPU memory
@@ -63,7 +63,7 @@ model = pool.get_or_load("Qwen/Qwen2.5-7B-Instruct")
 Defer model loading until first use:
 
 ```python
-from effgen.models import LazyModel
+from teffgen.models import LazyModel
 
 model = LazyModel(
     model_name="Qwen/Qwen2.5-3B-Instruct",
@@ -78,7 +78,7 @@ result = model.generate(prompt)  # NOW it loads, then generates
 Coalesce concurrent requests for higher GPU throughput:
 
 ```python
-from effgen.models import ContinuousBatcher
+from teffgen.models import ContinuousBatcher
 
 batcher = ContinuousBatcher(
     model=model,
@@ -94,11 +94,11 @@ with batcher:
 
 ## Multi-GPU Distribution
 
-effGen uses `CUDA_VISIBLE_DEVICES` for GPU targeting:
+tideon.ai uses `CUDA_VISIBLE_DEVICES` for GPU targeting:
 
 ```bash
 # Run on specific GPUs
-CUDA_VISIBLE_DEVICES=0,1 effgen serve --port 8000
+CUDA_VISIBLE_DEVICES=0,1 teffgen serve --port 8000
 
 # Model loader respects device_map
 model = load_model("Qwen/Qwen2.5-7B-Instruct", device_map="auto")
@@ -122,7 +122,7 @@ results = agent.run_batch(
 Or via CLI:
 
 ```bash
-effgen batch --input queries.jsonl --output results.jsonl \
+teffgen batch --input queries.jsonl --output results.jsonl \
   --concurrency 10 --batch-size 100 --timeout 60 --retries 2
 ```
 
@@ -131,7 +131,7 @@ effgen batch --input queries.jsonl --output results.jsonl \
 Scale keyword coverage per domain:
 
 ```python
-from effgen.domains import KeywordExpander
+from teffgen.domains import KeywordExpander
 
 expander = KeywordExpander()
 
@@ -152,7 +152,7 @@ expanded = expander.expand_llm(["machine learning", "data science"], model=model
 Avoid re-computing prompts for identical or similar queries:
 
 ```python
-from effgen.cache import PromptCache
+from teffgen.cache import PromptCache
 
 cache = PromptCache(max_size=10000, ttl=3600)
 cache.put(prompt, result)
@@ -165,7 +165,7 @@ print(cache.stats)  # {"hits": 42, "misses": 10, "hit_rate": 0.81}
 Cache tool results with per-tool TTL:
 
 ```python
-from effgen.cache import ResultCache
+from teffgen.cache import ResultCache
 
 cache = ResultCache(max_size=5000)
 cache.set_tool_ttl("web_search", 300)   # 5 minutes for web search
@@ -177,7 +177,7 @@ cache.set_tool_ttl("calculator", 86400)  # 24 hours for math (deterministic)
 Optimize context window usage:
 
 ```python
-from effgen.memory.token_budget import TokenBudget
+from teffgen.memory.token_budget import TokenBudget
 
 budget = TokenBudget(
     total_tokens=4096,
@@ -193,6 +193,6 @@ truncated = budget.fit_to_budget(system=system_prompt, tools=tools_text, history
 ## Monitoring at Scale
 
 - **Prometheus metrics** — `GET /metrics` exposes latency histograms (p50/p95/p99), throughput, error rates, GPU memory
-- **Grafana dashboard** — import `configs/grafana/effgen-dashboard.json`
+- **Grafana dashboard** — import `configs/grafana/teffgen-dashboard.json`
 - **OpenTelemetry** — trace propagation across agents, exporters for OTLP/Jaeger/Zipkin
 - **Structured logging** — JSON format with run_id correlation for distributed tracing

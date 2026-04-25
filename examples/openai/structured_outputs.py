@@ -25,16 +25,16 @@ from typing import Literal
 
 from dotenv import load_dotenv
 
-load_dotenv(Path.home() / ".effgen" / ".env", override=False)
+load_dotenv(Path.home() / ".teffgen" / ".env", override=False)
 load_dotenv(Path(__file__).parent.parent.parent / ".env", override=False)
 
 logging.basicConfig(level=logging.WARNING)
 
 from pydantic import BaseModel, Field
 
-from effgen.models.errors import ModelRefusalError
-from effgen.models.openai_adapter import OpenAIAdapter
-from effgen.models.openai_schema import to_openai_schema
+from teffgen.models.errors import ModelRefusalError
+from teffgen.models.openai_adapter import OpenAIAdapter
+from teffgen.models.openai_schema import to_openai_schema
 
 MODEL = "gpt-5.4-nano"
 

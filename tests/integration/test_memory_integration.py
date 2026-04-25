@@ -2,8 +2,8 @@
 
 import pytest
 
-from effgen import Agent
-from effgen.core.agent import AgentConfig
+from teffgen import Agent
+from teffgen.core.agent import AgentConfig
 
 
 @pytest.mark.gpu

@@ -1,5 +1,5 @@
 """
-Basic OpenAI chat example using the effGen OpenAIAdapter.
+Basic OpenAI chat example using the tideon.ai OpenAIAdapter.
 
 Demonstrates:
 - Initializing OpenAIAdapter with gpt-5.4-nano
@@ -18,15 +18,15 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path.home() / ".effgen" / ".env", override=False)
+load_dotenv(Path.home() / ".teffgen" / ".env", override=False)
 load_dotenv(Path(__file__).parent.parent.parent / ".env", override=False)
 
 # Show token/cost breakdown from the adapter
 logging.basicConfig(level=logging.WARNING)
-logging.getLogger("effgen.models.openai_adapter.usage").setLevel(logging.INFO)
+logging.getLogger("teffgen.models.openai_adapter.usage").setLevel(logging.INFO)
 
-from effgen.models.base import GenerationConfig
-from effgen.models.openai_adapter import OpenAIAdapter
+from teffgen.models.base import GenerationConfig
+from teffgen.models.openai_adapter import OpenAIAdapter
 
 
 def main():

@@ -5,7 +5,7 @@
 ### Agent
 
 ```python
-from effgen import Agent, AgentConfig
+from teffgen import Agent, AgentConfig
 
 config = AgentConfig(
     name="my-agent",
@@ -46,7 +46,7 @@ Clear conversation history.
 ### load_model
 
 ```python
-from effgen import load_model
+from teffgen import load_model
 
 model = load_model(
     "Qwen/Qwen2.5-3B-Instruct",
@@ -58,7 +58,7 @@ model = load_model(
 
 Supported backends:
 - **Transformers** (default): HuggingFace models
-- **vLLM**: High-throughput serving (`pip install effgen[vllm]`)
+- **vLLM**: High-throughput serving (`pip install teffgen[vllm]`)
 - **OpenAI**: `load_model("openai:gpt-4o")`
 - **Anthropic**: `load_model("anthropic:claude-3-haiku")`
 - **Gemini**: `load_model("gemini:gemini-pro")`
@@ -68,7 +68,7 @@ Supported backends:
 ### Presets
 
 ```python
-from effgen.presets import create_agent, list_presets
+from teffgen.presets import create_agent, list_presets
 
 # See available presets
 print(list_presets())
@@ -85,10 +85,10 @@ agent = create_agent("coding", model, extra_tools=[MyTool()])
 
 ### BaseTool
 
-All tools extend `BaseTool` from `effgen.tools.base_tool`:
+All tools extend `BaseTool` from `teffgen.tools.base_tool`:
 
 ```python
-from effgen.tools.base_tool import BaseTool, ToolMetadata, ToolCategory, ParameterSpec, ParameterType
+from teffgen.tools.base_tool import BaseTool, ToolMetadata, ToolCategory, ParameterSpec, ParameterType
 
 class MyTool(BaseTool):
     @property
@@ -112,43 +112,43 @@ class MyTool(BaseTool):
 
 | Tool | Import | Description |
 |------|--------|-------------|
-| Calculator | `from effgen.tools.builtin import Calculator` | Arithmetic expressions |
-| PythonREPL | `from effgen.tools.builtin import PythonREPL` | Execute Python code |
-| CodeExecutor | `from effgen.tools.builtin import CodeExecutor` | Multi-language code execution |
-| WebSearch | `from effgen.tools.builtin import WebSearch` | Web search (DuckDuckGo free) |
-| FileOperations | `from effgen.tools.builtin import FileOperations` | Read/write/list files |
-| BashTool | `from effgen.tools.builtin import BashTool` | Shell commands |
-| JSONTool | `from effgen.tools.builtin import JSONTool` | JSON manipulation |
-| DateTimeTool | `from effgen.tools.builtin import DateTimeTool` | Date/time operations |
-| TextProcessingTool | `from effgen.tools.builtin import TextProcessingTool` | Text manipulation |
-| URLFetchTool | `from effgen.tools.builtin import URLFetchTool` | Fetch URL content |
-| WikipediaTool | `from effgen.tools.builtin import WikipediaTool` | Wikipedia lookup |
-| AgenticSearch | `from effgen.tools.builtin import AgenticSearch` | Local file search |
-| Retrieval | `from effgen.tools.builtin import Retrieval` | RAG retrieval |
-| StockPriceTool | `from effgen.tools.builtin import StockPriceTool` | Stock prices (yfinance/Yahoo) |
-| CurrencyConverterTool | `from effgen.tools.builtin import CurrencyConverterTool` | Currency conversion (ECB) |
-| CryptoTool | `from effgen.tools.builtin import CryptoTool` | Crypto prices (CoinGecko) |
-| DataFrameTool | `from effgen.tools.builtin import DataFrameTool` | Pandas DataFrame ops |
-| PlotTool | `from effgen.tools.builtin import PlotTool` | Matplotlib charts |
-| StatsTool | `from effgen.tools.builtin import StatsTool` | Statistical analysis |
-| GitTool | `from effgen.tools.builtin import GitTool` | Git operations (read-only) |
-| DockerTool | `from effgen.tools.builtin import DockerTool` | Docker operations (read-only) |
-| SystemInfoTool | `from effgen.tools.builtin import SystemInfoTool` | System monitoring |
-| HTTPTool | `from effgen.tools.builtin import HTTPTool` | HTTP requests |
-| ArxivTool | `from effgen.tools.builtin import ArxivTool` | arXiv paper search |
-| StackOverflowTool | `from effgen.tools.builtin import StackOverflowTool` | StackOverflow search |
-| GitHubTool | `from effgen.tools.builtin import GitHubTool` | GitHub search |
-| WolframAlphaTool | `from effgen.tools.builtin import WolframAlphaTool` | Wolfram Alpha (API key) |
-| EmailDraftTool | `from effgen.tools.builtin import EmailDraftTool` | Email drafting |
-| SlackDraftTool | `from effgen.tools.builtin import SlackDraftTool` | Slack message drafting |
-| NotificationTool | `from effgen.tools.builtin import NotificationTool` | Desktop notifications |
+| Calculator | `from teffgen.tools.builtin import Calculator` | Arithmetic expressions |
+| PythonREPL | `from teffgen.tools.builtin import PythonREPL` | Execute Python code |
+| CodeExecutor | `from teffgen.tools.builtin import CodeExecutor` | Multi-language code execution |
+| WebSearch | `from teffgen.tools.builtin import WebSearch` | Web search (DuckDuckGo free) |
+| FileOperations | `from teffgen.tools.builtin import FileOperations` | Read/write/list files |
+| BashTool | `from teffgen.tools.builtin import BashTool` | Shell commands |
+| JSONTool | `from teffgen.tools.builtin import JSONTool` | JSON manipulation |
+| DateTimeTool | `from teffgen.tools.builtin import DateTimeTool` | Date/time operations |
+| TextProcessingTool | `from teffgen.tools.builtin import TextProcessingTool` | Text manipulation |
+| URLFetchTool | `from teffgen.tools.builtin import URLFetchTool` | Fetch URL content |
+| WikipediaTool | `from teffgen.tools.builtin import WikipediaTool` | Wikipedia lookup |
+| AgenticSearch | `from teffgen.tools.builtin import AgenticSearch` | Local file search |
+| Retrieval | `from teffgen.tools.builtin import Retrieval` | RAG retrieval |
+| StockPriceTool | `from teffgen.tools.builtin import StockPriceTool` | Stock prices (yfinance/Yahoo) |
+| CurrencyConverterTool | `from teffgen.tools.builtin import CurrencyConverterTool` | Currency conversion (ECB) |
+| CryptoTool | `from teffgen.tools.builtin import CryptoTool` | Crypto prices (CoinGecko) |
+| DataFrameTool | `from teffgen.tools.builtin import DataFrameTool` | Pandas DataFrame ops |
+| PlotTool | `from teffgen.tools.builtin import PlotTool` | Matplotlib charts |
+| StatsTool | `from teffgen.tools.builtin import StatsTool` | Statistical analysis |
+| GitTool | `from teffgen.tools.builtin import GitTool` | Git operations (read-only) |
+| DockerTool | `from teffgen.tools.builtin import DockerTool` | Docker operations (read-only) |
+| SystemInfoTool | `from teffgen.tools.builtin import SystemInfoTool` | System monitoring |
+| HTTPTool | `from teffgen.tools.builtin import HTTPTool` | HTTP requests |
+| ArxivTool | `from teffgen.tools.builtin import ArxivTool` | arXiv paper search |
+| StackOverflowTool | `from teffgen.tools.builtin import StackOverflowTool` | StackOverflow search |
+| GitHubTool | `from teffgen.tools.builtin import GitHubTool` | GitHub search |
+| WolframAlphaTool | `from teffgen.tools.builtin import WolframAlphaTool` | Wolfram Alpha (API key) |
+| EmailDraftTool | `from teffgen.tools.builtin import EmailDraftTool` | Email drafting |
+| SlackDraftTool | `from teffgen.tools.builtin import SlackDraftTool` | Slack message drafting |
+| NotificationTool | `from teffgen.tools.builtin import NotificationTool` | Desktop notifications |
 
 ---
 
 ## Guardrails
 
 ```python
-from effgen.guardrails import (
+from teffgen.guardrails import (
     GuardrailChain, PIIGuardrail, PromptInjectionGuardrail,
     ToxicityGuardrail, LengthGuardrail, TopicGuardrail,
     ToolPermissionGuardrail, get_guardrail_preset,
@@ -173,7 +173,7 @@ config = AgentConfig(name="safe_agent", model=model, guardrails=chain)
 ## RAG Pipeline
 
 ```python
-from effgen.rag import DocumentIngester, HybridSearchEngine, ContextBuilder
+from teffgen.rag import DocumentIngester, HybridSearchEngine, ContextBuilder
 
 # Ingest documents
 ingester = DocumentIngester()
@@ -188,7 +188,7 @@ builder = ContextBuilder(max_tokens=2048)
 context, citations = builder.build(results)
 
 # Or use the preset
-from effgen.presets import create_agent
+from teffgen.presets import create_agent
 agent = create_agent("rag", model, knowledge_base="./docs/")
 result = agent.run("What does the architecture doc say about scaling?")
 print(result.citations)
@@ -199,8 +199,8 @@ print(result.citations)
 ## Evaluation
 
 ```python
-from effgen.eval import AgentEvaluator, MathSuite, RegressionTracker
-from effgen.eval.evaluator import ScoringMode
+from teffgen.eval import AgentEvaluator, MathSuite, RegressionTracker
+from teffgen.eval.evaluator import ScoringMode
 
 evaluator = AgentEvaluator(agent, scoring=ScoringMode.CONTAINS)
 results = evaluator.run_suite(MathSuite())
@@ -217,8 +217,8 @@ report = tracker.compare("math", new_results, version="0.2.1")
 ## Model Router
 
 ```python
-from effgen.models.router import ModelRouter
-from effgen.models.capabilities import MODEL_CAPABILITIES, estimate_complexity
+from teffgen.models.router import ModelRouter
+from teffgen.models.capabilities import MODEL_CAPABILITIES, estimate_complexity
 
 # Auto-routing
 config = AgentConfig(
@@ -255,7 +255,7 @@ result = agent.run("What's my name?")  # Recalls "Alice"
 ## Human-in-the-Loop
 
 ```python
-from effgen.core.human_loop import HumanApproval
+from teffgen.core.human_loop import HumanApproval
 
 config = AgentConfig(
     name="careful_agent",
@@ -277,11 +277,11 @@ trace = result.metadata["debug_trace"]
 trace.print_rich()  # Rich TUI output
 
 # Structured logging
-from effgen.utils.structured_logging import StructuredLogger
+from teffgen.utils.structured_logging import StructuredLogger
 logger = StructuredLogger("my_app")
 
 # Prometheus metrics
-from effgen.utils.prometheus_metrics import get_metrics
+from teffgen.utils.prometheus_metrics import get_metrics
 metrics = get_metrics()
 print(metrics.export())
 ```
@@ -291,9 +291,9 @@ print(metrics.export())
 ## Client SDK
 
 ```python
-from effgen.client import EffGenClient
+from teffgen.client import TeffgenClient
 
-client = EffGenClient(base_url="http://localhost:8000", api_key="...")
+client = TeffgenClient(base_url="http://localhost:8000", api_key="...")
 
 # Chat
 response = client.chat("What is 2+2?")
@@ -311,7 +311,7 @@ vectors = client.embed(["hello", "world"])
 ## Plugin System
 
 ```python
-from effgen.tools.plugin import ToolPlugin, PluginManager, discover_plugins
+from teffgen.tools.plugin import ToolPlugin, PluginManager, discover_plugins
 
 # Auto-discover all plugins
 discover_plugins()
@@ -328,7 +328,7 @@ See [Plugin Development Guide](../guides/plugin-development.md) for details.
 ## Configuration
 
 ```python
-from effgen import ConfigLoader, Config
+from teffgen import ConfigLoader, Config
 
 loader = ConfigLoader()
 config = loader.load_config("config.yaml")
@@ -341,13 +341,13 @@ See [Configuration Reference](configuration.md) for all options.
 ## Memory
 
 ```python
-from effgen import ShortTermMemory, LongTermMemory, VectorMemoryStore
+from teffgen import ShortTermMemory, LongTermMemory, VectorMemoryStore
 
 # Short-term (conversation context)
 stm = ShortTermMemory(max_tokens=4096)
 
 # Long-term (persistent facts)
-ltm = LongTermMemory(backend="sqlite", persist_path="~/.effgen/memory/")
+ltm = LongTermMemory(backend="sqlite", persist_path="~/.teffgen/memory/")
 
 # Vector store (semantic search)
 vs = VectorMemoryStore()

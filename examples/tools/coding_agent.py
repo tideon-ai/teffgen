@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-effGen — Code Execution Agent (Write + Run + Iterate)
+tideon.ai — Code Execution Agent (Write + Run + Iterate)
 
 A coding agent that writes Python code, executes it, reads output, and iterates
 on errors. Demonstrates PythonREPL and CodeExecutor tools, markdown fence stripping,
@@ -30,8 +30,8 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from effgen import load_model
-from effgen.presets import create_agent
+from teffgen import load_model
+from teffgen.presets import create_agent
 
 CODING_SYSTEM_PROMPT = """You are an expert Python coding agent. You write, execute, and debug code.
 
@@ -157,14 +157,14 @@ def run_all_tests(agent, model_name="unknown"):
     # Use code_executor (subprocess) so we can import from /tmp
     results.append(run_test(
         agent, "T5", "Multi-file — create and import module",
-        ("First use bash to write a file /tmp/effgen_p5_utils.py with this exact content:\n"
+        ("First use bash to write a file /tmp/teffgen_p5_utils.py with this exact content:\n"
          "def greet(name):\n"
          "    return f'Hello, {name}!'\n\n"
          "Then use the code_executor tool with language='python' to run this code:\n"
          "import sys; sys.path.insert(0, '/tmp')\n"
-         "from effgen_p5_utils import greet\n"
-         "print(greet('effgen'))"),
-        expected_keywords=["hello", "effgen"],
+         "from teffgen_p5_utils import greet\n"
+         "print(greet('teffgen'))"),
+        expected_keywords=["hello", "teffgen"],
         check_fn=lambda out, resp: resp.tool_calls >= 1,
     ))
 
@@ -238,8 +238,8 @@ def run_regression(agent, model_name="unknown"):
 def cleanup_generated_files():
     """Remove all generated .py files from code execution tests."""
     patterns = [
-        "/tmp/effgen_p5_*",
-        "/tmp/effgen_phase5_*",
+        "/tmp/teffgen_p5_*",
+        "/tmp/teffgen_phase5_*",
     ]
     count = 0
     for pattern in patterns:
@@ -277,7 +277,7 @@ def interactive_mode(agent):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen Code Execution Agent Example")
+    parser = argparse.ArgumentParser(description="tideon.ai Code Execution Agent Example")
     parser.add_argument(
         "--model",
         default="Qwen/Qwen2.5-3B-Instruct",
@@ -289,7 +289,7 @@ def main():
     args = parser.parse_args()
 
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-    print("effGen — Code Execution Agent")
+    print("tideon.ai — Code Execution Agent")
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 

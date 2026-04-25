@@ -1,6 +1,6 @@
 # Multi-Agent Orchestration
 
-effGen supports task decomposition via sub-agents.
+tideon.ai supports task decomposition via sub-agents.
 
 ## How Sub-Agents Work
 
@@ -14,8 +14,8 @@ When `enable_sub_agents=True` (default), the agent can decompose complex tasks:
 ## Example
 
 ```python
-from effgen import Agent, AgentConfig, load_model
-from effgen.tools.builtin import Calculator, PythonREPL, WebSearch
+from teffgen import Agent, AgentConfig, load_model
+from teffgen.tools.builtin import Calculator, PythonREPL, WebSearch
 
 model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization="4bit")
 
@@ -37,7 +37,7 @@ result = agent.run(
 ## Execution Modes
 
 ```python
-from effgen.core.agent import AgentMode
+from teffgen.core.agent import AgentMode
 
 # Let the agent decide
 result = agent.run(task, mode=AgentMode.AUTO)

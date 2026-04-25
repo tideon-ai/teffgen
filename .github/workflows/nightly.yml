@@ -32,18 +32,18 @@ jobs:
       - name: Verify critical imports
         run: |
           python -c "
-          import effgen; print(f'effgen {effgen.__version__}')
-          from effgen.guardrails import GuardrailChain
-          from effgen.rag import DocumentIngester
-          from effgen.eval import AgentEvaluator
-          from effgen.domains import TechDomain
-          from effgen.cache import PromptCache
+          import teffgen; print(f'teffgen {teffgen.__version__}')
+          from teffgen.guardrails import GuardrailChain
+          from teffgen.rag import DocumentIngester
+          from teffgen.eval import AgentEvaluator
+          from teffgen.domains import TechDomain
+          from teffgen.cache import PromptCache
           print('All imports OK')
           "
 
       - name: Run all unit tests
         run: |
-          pytest tests/unit/ -v --cov=effgen --cov-report=xml \
+          pytest tests/unit/ -v --cov=teffgen --cov-report=xml \
             --tb=short --no-header
 
       - name: Run integration tests (non-GPU)
@@ -87,17 +87,17 @@ jobs:
           python - <<'PY'
           import os, sys
           from pathlib import Path
-          from effgen.eval import AgentEvaluator, MathSuite, RegressionTracker
-          from effgen.eval.evaluator import ScoringMode
+          from teffgen.eval import AgentEvaluator, MathSuite, RegressionTracker
+          from teffgen.eval.evaluator import ScoringMode
 
           api_key = os.getenv("CEREBRAS_API_KEY", "")
           if not api_key:
               print("SKIPPED: CEREBRAS_API_KEY secret not set — add it in GitHub Settings > Secrets.")
               sys.exit(0)
 
-          from effgen.models.cerebras_adapter import CerebrasAdapter
-          from effgen.core.agent import Agent, AgentConfig
-          from effgen.tools.builtin.calculator import Calculator
+          from teffgen.models.cerebras_adapter import CerebrasAdapter
+          from teffgen.core.agent import Agent, AgentConfig
+          from teffgen.tools.builtin.calculator import Calculator
 
           adapter = CerebrasAdapter("llama3.1-8b", enable_rate_limiting=False)
           adapter.load()
@@ -182,8 +182,8 @@ jobs:
               print("SKIPPED: CEREBRAS_API_KEY not set")
               sys.exit(0)
 
-          from effgen.models.cerebras_adapter import CerebrasAdapter
-          from effgen.models._cost import CostTracker
+          from teffgen.models.cerebras_adapter import CerebrasAdapter
+          from teffgen.models._cost import CostTracker
 
           for model_id in ["llama3.1-8b", "qwen-3-235b-a22b-instruct-2507"]:
               adapter = CerebrasAdapter(model_id, enable_rate_limiting=False)
@@ -242,9 +242,9 @@ jobs:
               print("SKIPPED: CEREBRAS_API_KEY not set")
               sys.exit(0)
 
-          from effgen.models.cerebras_adapter import CerebrasAdapter
-          from effgen.core.agent import Agent, AgentConfig
-          from effgen.tools.builtin.calculator import Calculator
+          from teffgen.models.cerebras_adapter import CerebrasAdapter
+          from teffgen.core.agent import Agent, AgentConfig
+          from teffgen.tools.builtin.calculator import Calculator
 
           adapter = CerebrasAdapter("llama3.1-8b", enable_rate_limiting=False)
           adapter.load()
@@ -309,7 +309,7 @@ jobs:
               print("SKIPPED: CEREBRAS_API_KEY not set")
               sys.exit(0)
 
-          from effgen.models.cerebras_adapter import CerebrasAdapter
+          from teffgen.models.cerebras_adapter import CerebrasAdapter
 
           passed = 0
           total = 0
@@ -342,7 +342,7 @@ jobs:
             await github.rest.issues.create({
               owner: context.repo.owner, repo: context.repo.repo,
               title: `Cerebras reasoning smoke failure (${new Date().toISOString().slice(0,10)})`,
-              body: "Nightly reasoning smoke: both llama3.1-8b and qwen-3-235b failed a basic yes/no logic question. This may indicate a model API issue or effGen regression.",
+              body: "Nightly reasoning smoke: both llama3.1-8b and qwen-3-235b failed a basic yes/no logic question. This may indicate a model API issue or tideon.ai regression.",
               labels: ["bug", "cerebras", "automated"],
             });
 
@@ -352,7 +352,7 @@ jobs:
   # gpu-tests:
   #   name: GPU Tests
   #   runs-on: [self-hosted, gpu]
-  #   if: github.repository == 'ctrl-gaurav/effGen'
+  #   if: github.repository == 'ctrl-gaurav/tideon.ai'
   #   steps:
   #     - uses: actions/checkout@v4
   #     - name: Install dependencies

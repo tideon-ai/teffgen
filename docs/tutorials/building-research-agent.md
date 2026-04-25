@@ -5,8 +5,8 @@ Create an agent that searches the web and synthesizes information.
 ## Quick Way
 
 ```python
-from effgen.presets import create_agent
-from effgen import load_model
+from teffgen.presets import create_agent
+from teffgen import load_model
 
 model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization="4bit")
 agent = create_agent("research", model)
@@ -18,8 +18,8 @@ print(result.output)
 ## Custom Configuration
 
 ```python
-from effgen import Agent, AgentConfig, load_model
-from effgen.tools.builtin import WebSearch, URLFetchTool, WikipediaTool
+from teffgen import Agent, AgentConfig, load_model
+from teffgen.tools.builtin import WebSearch, URLFetchTool, WikipediaTool
 
 model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization="4bit")
 

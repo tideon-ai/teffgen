@@ -1,7 +1,7 @@
 FROM python:3.11-slim
 
 LABEL maintainer="Gaurav Srivastava <gks@vt.edu>"
-LABEL description="effGen — Agentic AI framework for Small Language Models"
+LABEL description="tideon.ai — Agentic AI framework for Small Language Models"
 LABEL version="0.2.0"
 
 WORKDIR /app
@@ -20,15 +20,15 @@ COPY . .
 RUN pip install --no-cache-dir -e .
 
 # Verify install
-RUN python -c "import effgen; print(f'effGen {effgen.__version__} installed')"
-RUN python -c "from effgen.guardrails import GuardrailChain; print('Guardrails OK')"
-RUN python -c "from effgen.rag import DocumentIngester; print('RAG OK')"
-RUN python -c "from effgen.eval import AgentEvaluator; print('Eval OK')"
-RUN python -c "from effgen.domains import TechDomain; print('Domains OK')"
+RUN python -c "import teffgen; print(f'tideon.ai {teffgen.__version__} installed')"
+RUN python -c "from teffgen.guardrails import GuardrailChain; print('Guardrails OK')"
+RUN python -c "from teffgen.rag import DocumentIngester; print('RAG OK')"
+RUN python -c "from teffgen.eval import AgentEvaluator; print('Eval OK')"
+RUN python -c "from teffgen.domains import TechDomain; print('Domains OK')"
 
 # Default: start the API server
 EXPOSE 8000
-ENV EFFGEN_RATE_LIMIT=60
+ENV TEFFGEN_RATE_LIMIT=60
 
-ENTRYPOINT ["effgen"]
+ENTRYPOINT ["teffgen"]
 CMD ["serve", "--host", "0.0.0.0", "--port", "8000"]

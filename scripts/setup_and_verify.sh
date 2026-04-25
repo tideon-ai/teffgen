@@ -1,10 +1,10 @@
 #!/bin/bash
 
 ################################################################################
-# effGen Master Setup & Verification Script
+# tideon.ai Master Setup & Verification Script
 #
 # This script orchestrates the complete installation and verification process
-# for the effGen framework with beautiful, smooth animations.
+# for the tideon.ai framework with beautiful, smooth animations.
 #
 # Usage:
 #   ./setup_and_verify.sh [OPTIONS]
@@ -44,7 +44,7 @@ DIM='\033[2m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Check for inherited settings from parent script
-QUICK_MODE="${EFFGEN_QUICK_MODE:-false}"
+QUICK_MODE="${TEFFGEN_QUICK_MODE:-false}"
 
 # Animation Settings (disabled in quick mode)
 if [ "$QUICK_MODE" = true ]; then
@@ -98,7 +98,7 @@ print_master_banner() {
     line_delay
     echo -e "${MAGENTA}${BOLD}║${NC}                                                                ${MAGENTA}${BOLD}║${NC}"
     line_delay
-    echo -e "${MAGENTA}${BOLD}║${NC}           ${CYAN}${BOLD}🚀  EFFGEN MASTER SETUP  🚀${NC}            ${MAGENTA}${BOLD}║${NC}"
+    echo -e "${MAGENTA}${BOLD}║${NC}           ${CYAN}${BOLD}🚀  TEFFGEN MASTER SETUP  🚀${NC}            ${MAGENTA}${BOLD}║${NC}"
     line_delay
     echo -e "${MAGENTA}${BOLD}║${NC}                                                                ${MAGENTA}${BOLD}║${NC}"
     line_delay
@@ -225,7 +225,7 @@ print_completion_celebration() {
     section_delay
 
     # Success message
-    echo -e "${GREEN}${BOLD}✨ EffGen Framework is Ready! ✨${NC}"
+    echo -e "${GREEN}${BOLD}✨ tideon.ai Framework is Ready! ✨${NC}"
     echo ""
     line_delay
 
@@ -259,7 +259,7 @@ print_error() {
 }
 
 show_help() {
-    echo "EffGen Master Setup & Verification Script"
+    echo "tideon.ai Master Setup & Verification Script"
     echo ""
     echo "Usage: $0 [OPTIONS]"
     echo ""
@@ -331,7 +331,7 @@ main() {
     print_master_banner
 
     # Build install command
-    INSTALL_CMD="$SCRIPT_DIR/install_effgen.sh"
+    INSTALL_CMD="$SCRIPT_DIR/install_teffgen.sh"
     INSTALL_ARGS=""
 
     if [ "$INSTALL_VLLM" = true ]; then
@@ -402,22 +402,22 @@ main() {
     echo -e "${WHITE}${BOLD}🚀 Quick Start Commands:${NC}"
     echo ""
     echo -e "  ${CYAN}1.${NC} Activate environment:"
-    echo -e "     ${DIM}conda activate effgen${NC}"
+    echo -e "     ${DIM}conda activate teffgen${NC}"
     echo ""
     echo -e "  ${CYAN}2.${NC} Try an example:"
     echo -e "     ${DIM}python examples/basic_agent.py${NC}"
     echo ""
     echo -e "  ${CYAN}3.${NC} Use the CLI:"
-    echo -e "     ${DIM}effgen run \"What is 2+2?\"${NC}"
+    echo -e "     ${DIM}teffgen run \"What is 2+2?\"${NC}"
     echo ""
     echo -e "  ${CYAN}4.${NC} Read the docs:"
-    echo -e "     ${DIM}https://effgen.org/docs/${NC}"
+    echo -e "     ${DIM}https://tideon.ai/docs/${NC}"
     echo ""
     echo -e "${CYAN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
     # Final message
-    echo -e "${GREEN}${BOLD}Happy building with EffGen! 🤖✨${NC}"
+    echo -e "${GREEN}${BOLD}Happy building with tideon.ai! 🤖✨${NC}"
     echo ""
 }
 

@@ -33,7 +33,7 @@
 
 ## Core Components
 
-### Agent (`effgen/core/agent.py`)
+### Agent (`teffgen/core/agent.py`)
 
 The central class. Implements the ReAct reasoning loop:
 
@@ -49,7 +49,7 @@ Key features:
 - Memory integration (short-term, long-term, vector)
 - Configurable via `AgentConfig` dataclass
 
-### Model Backends (`effgen/models/`)
+### Model Backends (`teffgen/models/`)
 
 Abstraction over multiple LLM backends:
 
@@ -73,7 +73,7 @@ Additional model infrastructure:
 - `lazy.py`: `LazyModel` — deferred loading until first use
 - `batching.py`: `ContinuousBatcher` — coalesces concurrent requests
 
-### Tools (`effgen/tools/`)
+### Tools (`teffgen/tools/`)
 
 - `base_tool.py`: `BaseTool` abstract class with metadata and validation
 - `registry.py`: `ToolRegistry` for discovery, lazy loading, dependency management
@@ -81,7 +81,7 @@ Additional model infrastructure:
 - `plugin.py`: External plugin loading via entry points
 - `protocols/`: MCP, A2A, ACP protocol implementations
 
-### Guardrails (`effgen/guardrails/`)
+### Guardrails (`teffgen/guardrails/`)
 
 Safety and validation framework:
 - `base.py`: `Guardrail` ABC, `GuardrailChain`, `GuardrailPosition`
@@ -90,7 +90,7 @@ Safety and validation framework:
 - `tool_safety.py`: `ToolInputGuardrail`, `ToolOutputGuardrail`, `ToolPermissionGuardrail`
 - `presets.py`: `get_guardrail_preset()` — strict/standard/minimal/none
 
-### RAG (`effgen/rag/`)
+### RAG (`teffgen/rag/`)
 
 Production RAG pipeline:
 - `ingest.py`: `DocumentIngester` — multi-format document loading with deduplication
@@ -100,14 +100,14 @@ Production RAG pipeline:
 - `context_builder.py`: `ContextBuilder` — token budget management with citations
 - `attribution.py`: `Citation`, `CitationTracker`
 
-### Evaluation (`effgen/eval/`)
+### Evaluation (`teffgen/eval/`)
 
 - `evaluator.py`: `AgentEvaluator`, `TestCase`, `EvalResult`, `SuiteResults`
 - `suites.py`: 5 built-in suites (math, tool_use, reasoning, safety, conversation)
 - `regression.py`: `RegressionTracker` — baseline comparison with severity alerts
 - `comparison.py`: `ModelComparison` — multi-model matrix benchmarking
 
-### Memory (`effgen/memory/`)
+### Memory (`teffgen/memory/`)
 
 Three tiers:
 1. **ShortTermMemory**: Recent conversation context (token-limited)
@@ -115,12 +115,12 @@ Three tiers:
 3. **VectorMemoryStore**: Semantic search over past interactions
 - `token_budget.py`: `TokenBudget` — smart context window allocation
 
-### Cache (`effgen/cache/`)
+### Cache (`teffgen/cache/`)
 
 - `prompt_cache.py`: `PromptCache` — LRU + TTL with sha256 fingerprinting
 - `result_cache.py`: `ResultCache` — per-tool TTL, optional semantic similarity
 
-### Orchestration (`effgen/core/`)
+### Orchestration (`teffgen/core/`)
 
 - `message_bus.py`: `MessageBus` — pub/sub inter-agent communication
 - `workflow.py`: `WorkflowDAG` — DAG execution with conditional branching
@@ -131,15 +131,15 @@ Three tiers:
 - `human_loop.py`: `HumanApproval`, `HumanInput`, `HumanChoice`
 - `batch.py`: `BatchRunner` — concurrent batch execution
 
-### Hardware (`effgen/hardware/`)
+### Hardware (`teffgen/hardware/`)
 
 - `platform.py`: Apple Silicon/CUDA/MLX detection and backend recommendation
 
-### Debug (`effgen/debug/`)
+### Debug (`teffgen/debug/`)
 
 - `inspector.py`: `DebugAgent` — rich TUI step-through with `DebugTrace`
 
-### API Server (`effgen/api/`)
+### API Server (`teffgen/api/`)
 
 - `openai_compat.py`: OpenAI-compatible `/v1/chat/completions` and `/v1/completions`
 - `embeddings.py`: `/v1/embeddings` endpoint with caching
@@ -148,24 +148,24 @@ Three tiers:
 - `tenancy.py`: `TenantManager`, `APIKey` management
 - `middleware.py`: CORS, request ID, GZip, graceful shutdown
 
-### Client SDK (`effgen/client/`)
+### Client SDK (`teffgen/client/`)
 
-- `client.py`: `EffGenClient` — sync/async with retries, streaming, typed exceptions
+- `client.py`: `TeffgenClient` — sync/async with retries, streaming, typed exceptions
 
-### Prompts (`effgen/prompts/`)
+### Prompts (`teffgen/prompts/`)
 
 - `TemplateManager`: Prompt template management
 - `ChainManager`: Prompt chaining
 - `PromptOptimizer`: SLM-specific prompt optimization
 - `AgentSystemPromptBuilder`: Auto-generates system prompts from tools
 
-### Domains (`effgen/domains/`)
+### Domains (`teffgen/domains/`)
 
 - `base.py`: `Domain` — keywords, system_prompt, tool_names
 - `expander.py`: `KeywordExpander` — WordNet/template/LLM expansion
 - 5 built-in: `TechDomain`, `ScienceDomain`, `FinanceDomain`, `HealthDomain`, `LegalDomain`
 
-### Configuration (`effgen/config/`)
+### Configuration (`teffgen/config/`)
 
 YAML/JSON configuration loading with validation and defaults.
 
@@ -203,8 +203,8 @@ AgentResponse (output, stats, trace)
 ## Plugin Architecture
 
 Plugins are discovered from three sources:
-1. Python entry points (`effgen.plugins` group)
-2. User plugin directory (`~/.effgen/plugins/`)
-3. Environment variable (`EFFGEN_PLUGINS_DIR`)
+1. Python entry points (`teffgen.plugins` group)
+2. User plugin directory (`~/.teffgen/plugins/`)
+3. Environment variable (`TEFFGEN_PLUGINS_DIR`)
 
 Each plugin provides a `ToolPlugin` subclass that registers `BaseTool` implementations into the global `ToolRegistry`.

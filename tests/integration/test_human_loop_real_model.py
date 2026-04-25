@@ -12,11 +12,11 @@ import tempfile
 
 import pytest
 
-from effgen.core.agent import Agent, AgentConfig
-from effgen.core.clarification import ClarificationDetector
-from effgen.core.feedback import FeedbackCollector
-from effgen.models import load_model
-from effgen.tools.builtin.calculator import Calculator as CalculatorTool
+from teffgen.core.agent import Agent, AgentConfig
+from teffgen.core.clarification import ClarificationDetector
+from teffgen.core.feedback import FeedbackCollector
+from teffgen.models import load_model
+from teffgen.tools.builtin.calculator import Calculator as CalculatorTool
 
 MODEL_NAME = "Qwen/Qwen2.5-1.5B-Instruct"
 

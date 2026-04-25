@@ -1,5 +1,5 @@
 """
-Unit tests for the effgen.rag pipeline.
+Unit tests for the teffgen.rag pipeline.
 
 **IMPORTANT: These are MOCK-MODEL tests.**
 
@@ -21,7 +21,7 @@ from pathlib import Path
 
 import pytest
 
-from effgen.rag import (
+from teffgen.rag import (
     Citation,
     CitationTracker,
     CodeChunker,
@@ -35,7 +35,7 @@ from effgen.rag import (
     SemanticChunker,
     TableChunker,
 )
-from effgen.rag.ingest import IngestedChunk
+from teffgen.rag.ingest import IngestedChunk
 
 # ---------------------------------------------------------------------------
 # DocumentIngester
@@ -398,7 +398,7 @@ class TestHybridSearchEngine:
 
     def test_accepts_documents(self, sample_chunks):
         """HybridSearchEngine should accept Document objects too."""
-        from effgen.tools.builtin.retrieval import Document
+        from teffgen.tools.builtin.retrieval import Document
 
         docs = [
             Document(id="d1", content="test content", metadata={"source": "test.md"}),
@@ -696,7 +696,7 @@ class TestCitationTracker:
 
 class TestAgentResponseCitations:
     def test_has_citations_and_sources_fields(self):
-        from effgen.core.agent import AgentResponse
+        from teffgen.core.agent import AgentResponse
 
         resp = AgentResponse(
             output="hello",
@@ -707,7 +707,7 @@ class TestAgentResponseCitations:
         assert resp.sources == ["a.md"]
 
     def test_to_dict_includes_citations(self):
-        from effgen.core.agent import AgentResponse
+        from teffgen.core.agent import AgentResponse
 
         resp = AgentResponse(
             output="hello",
@@ -726,12 +726,12 @@ class TestAgentResponseCitations:
 
 class TestRagPreset:
     def test_rag_preset_registered(self):
-        from effgen.presets import list_presets
+        from teffgen.presets import list_presets
 
         assert "rag" in list_presets()
 
     def test_create_rag_agent_ingests_knowledge_base(self, tmp_path: Path):
-        from effgen.presets import create_agent
+        from teffgen.presets import create_agent
         from tests.fixtures.mock_models import MockModel
 
         (tmp_path / "arch.md").write_text(
@@ -749,7 +749,7 @@ class TestRagPreset:
         assert retrieval.num_documents > 0
 
     def test_create_rag_agent_without_knowledge_base(self):
-        from effgen.presets import create_agent
+        from teffgen.presets import create_agent
         from tests.fixtures.mock_models import MockModel
 
         agent = create_agent("rag", MockModel(responses=["ok"]))
@@ -761,7 +761,7 @@ class TestRagPreset:
         assert retrieval is not None
 
     def test_create_rag_agent_missing_kb_dir_doesnt_crash(self, tmp_path: Path):
-        from effgen.presets import create_agent
+        from teffgen.presets import create_agent
         from tests.fixtures.mock_models import MockModel
 
         agent = create_agent(

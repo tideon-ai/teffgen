@@ -1,23 +1,23 @@
-# Getting Started with effGen
+# Getting Started with tideon.ai
 
-Get up and running with effGen in 5 minutes.
+Get up and running with tideon.ai in 5 minutes.
 
 ## Installation
 
 ```bash
-pip install effgen
+pip install teffgen
 ```
 
 For GPU support with vLLM:
 ```bash
-pip install effgen[vllm]
+pip install teffgen[vllm]
 ```
 
 ## Your First Agent
 
 ```python
-from effgen import Agent, AgentConfig, load_model
-from effgen.tools.builtin import Calculator
+from teffgen import Agent, AgentConfig, load_model
+from teffgen.tools.builtin import Calculator
 
 # Load a small language model (runs on a single GPU)
 model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization="4bit")
@@ -39,8 +39,8 @@ print(result.output)  # "2436"
 Skip configuration boilerplate with presets:
 
 ```python
-from effgen.presets import create_agent
-from effgen import load_model
+from teffgen.presets import create_agent
+from teffgen import load_model
 
 model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization="4bit")
 
@@ -59,19 +59,19 @@ Available presets: `math`, `research`, `coding`, `general`, `minimal`
 
 ```bash
 # Run a task directly
-effgen run "What is 2+2?" --model Qwen/Qwen2.5-3B-Instruct
+teffgen run "What is 2+2?" --model Qwen/Qwen2.5-3B-Instruct
 
 # Use a preset
-effgen run --preset math "What is the square root of 144?"
+teffgen run --preset math "What is the square root of 144?"
 
 # Interactive chat
-effgen chat --model Qwen/Qwen2.5-3B-Instruct
+teffgen chat --model Qwen/Qwen2.5-3B-Instruct
 
 # List presets
-effgen presets
+teffgen presets
 
 # Verbose output with execution trace
-effgen run "Calculate 10!" --preset math --verbose
+teffgen run "Calculate 10!" --preset math --verbose
 ```
 
 ## Next Steps

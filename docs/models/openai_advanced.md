@@ -17,7 +17,7 @@ When consecutive API calls share the same prefix, cached tokens are billed at a 
 This method places the system prompt at position 0 in the message list — a requirement for reliable prefix caching.
 
 ```python
-from effgen.models.openai_adapter import OpenAIAdapter
+from teffgen.models.openai_adapter import OpenAIAdapter
 
 SYSTEM_PROMPT = (
     "You are a research assistant specializing in physics and chemistry. " * 100
@@ -53,7 +53,7 @@ result.metadata["cost"]                   # cost this call (cached tokens cheape
 Set `stable_system_prompt=True` (default) on `AgentConfig` to signal that the agent's system prompt should remain fixed across all calls — enabling automatic prefix caching.
 
 ```python
-from effgen.core.agent import Agent, AgentConfig
+from teffgen.core.agent import Agent, AgentConfig
 
 agent = Agent(config=AgentConfig(
     name="my-agent",
@@ -79,9 +79,9 @@ OpenAI's structured outputs mode enforces your Pydantic schema at the token leve
 ```python
 from typing import Literal
 from pydantic import BaseModel
-from effgen.models.openai_adapter import OpenAIAdapter
-from effgen.models.openai_schema import to_openai_schema
-from effgen.models.errors import ModelRefusalError
+from teffgen.models.openai_adapter import OpenAIAdapter
+from teffgen.models.openai_schema import to_openai_schema
+from teffgen.models.errors import ModelRefusalError
 
 class SentimentResult(BaseModel):
     sentiment: Literal["positive", "negative", "neutral"]
@@ -122,9 +122,9 @@ Transformations applied:
 - Every object node gets an explicit `"required"` array listing all properties.
 
 ```python
-from effgen.models.openai_schema import to_openai_schema
+from teffgen.models.openai_schema import to_openai_schema
 # Also available as:
-from effgen import to_openai_schema
+from teffgen import to_openai_schema
 
 schema = to_openai_schema(SentimentResult)
 # {
@@ -158,9 +158,9 @@ schema = to_openai_schema(Person)
 When OpenAI returns a `refusal` field instead of content, `generate_structured()` raises `ModelRefusalError`.
 
 ```python
-from effgen.models.errors import ModelRefusalError
+from teffgen.models.errors import ModelRefusalError
 # Also available as:
-from effgen import ModelRefusalError
+from teffgen import ModelRefusalError
 
 try:
     result = adapter.generate_structured(...)

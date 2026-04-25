@@ -7,11 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased] - Project rename: effGen → tideon.ai (package: `teffgen`)
+
+### Breaking Changes
+
+The project has been rebranded as **tideon.ai** and the Python distribution renamed from `effgen` to `teffgen`. All historic identifiers were renamed in lockstep — there is no compatibility shim.
+
+#### Package & CLI
+
+- **PyPI package**: `pip install effgen` → `pip install teffgen`
+- **Python import**: `from effgen import …` → `from teffgen import …`
+- **Console scripts**: `effgen`, `effgen-agent`, `effgen-web` → `teffgen`, `teffgen-agent`, `teffgen-web`
+- **TypeScript client**: `@…/effgen-client` → `teffgen-client`; `EffGenClient` → `TeffgenClient` (and all `EffGen*` exception/option classes → `Teffgen*`)
+- **GitHub repo**: `github.com/ctrl-gaurav/effGen` → `github.com/tideon-ai/teffgen`
+- **Domain**: `effgen.org` → `tideon.ai` (`docs.effgen.org` → `docs.tideon.ai`)
+
+#### Environment variables
+
+| Old | New |
+|-----|-----|
+| `EFFGEN_API_KEY` | `TEFFGEN_API_KEY` |
+| `EFFGEN_RATE_LIMIT` | `TEFFGEN_RATE_LIMIT` |
+| `EFFGEN_PLUGINS_DIR` | `TEFFGEN_PLUGINS_DIR` |
+| `EFFGEN_TEST_GROUP` | `TEFFGEN_TEST_GROUP` |
+| `EFFGEN_MODEL` | `TEFFGEN_MODEL` |
+| `EFFGEN_HOST` / `EFFGEN_PORT` | `TEFFGEN_HOST` / `TEFFGEN_PORT` |
+| `EFFGEN_QUICK_MODE` / `EFFGEN_YES_TO_ALL` | `TEFFGEN_QUICK_MODE` / `TEFFGEN_YES_TO_ALL` |
+
+#### User config directory
+
+`~/.effgen/` → `~/.teffgen/` for sessions, plugins, history, and `.env`. Migrate manually:
+
+```bash
+mv ~/.effgen ~/.teffgen
+```
+
+#### Internal class/identifier renames (TypeScript + Python)
+
+`EffGenJSONFormatter` → `TeffgenJSONFormatter`, `EffGenMetrics` → `TeffgenMetrics`, `EffGenMCPServer` / `EffGenMCPClient` / `EffGenMCPServerConfig` → `Teffgen*` equivalents, plus `EffGenClient`, `EffGenClientError`, `EffGenAPIError`, `EffGenAuthError`, `EffGenRateLimitError`, `EffGenServerError`, `EffGenConnectionError`, `EffGenTimeoutError`, `EffGenClientOptions` in the TypeScript SDK.
+
+#### Citation key
+
+```bibtex
+@software{srivastava2026teffgen, ... }   # was: srivastava2026effgen
+```
+
+### Migration
+
+```bash
+pip uninstall effgen
+pip install teffgen
+mv ~/.effgen ~/.teffgen 2>/dev/null || true
+# update env vars in shell rc / docker-compose / CI:
+sed -i '' 's/EFFGEN_/TEFFGEN_/g' .env docker-compose.yml
+# update Python imports:
+grep -rl 'from effgen\|import effgen' . | xargs sed -i '' 's/effgen/teffgen/g'
+```
+
+---
+
 ## [0.2.0] - 2026-04-09
 
 ### Highlights
 
-**effGen v0.2.0** is a major release that transforms the framework from a capable agent toolkit into a **production-grade agentic AI platform** — with native tool calling, guardrails, multi-agent orchestration, RAG pipelines, evaluation, and a production API server — all optimized for Small Language Models.
+**tideon.ai v0.2.0** is a major release that transforms the framework from a capable agent toolkit into a **production-grade agentic AI platform** — with native tool calling, guardrails, multi-agent orchestration, RAG pipelines, evaluation, and a production API server — all optimized for Small Language Models.
 
 ### Added
 
@@ -34,7 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`ToolDefinition`** — with OpenAI/Anthropic format converters and `tools_to_definitions()` utility
 
 #### Guardrails, Safety & Input/Output Validation
-- **`effgen.guardrails`** module — `Guardrail` ABC, `GuardrailChain`, `GuardrailPosition` enum
+- **`teffgen.guardrails`** module — `Guardrail` ABC, `GuardrailChain`, `GuardrailPosition` enum
 - **Content guardrails** — `ToxicityGuardrail`, `PIIGuardrail` (SSN/email/phone/CC with Luhn/IP), `LengthGuardrail`, `TopicGuardrail`
 - **`PromptInjectionGuardrail`** — low/medium/high sensitivity with zero false positives on normal queries
 - **Tool safety** — `ToolInputGuardrail`, `ToolOutputGuardrail` (PII stripping, size limit), `ToolPermissionGuardrail` (allow/deny/require_approval)
@@ -43,47 +102,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Advanced Multi-Agent Orchestration
 - **`MessageBus`** — pub/sub, mailbox, broadcast inter-agent communication with topic-based wildcard subscriptions and optional persistence
-- **`WorkflowDAG`** — DAG-based workflow engine with cycle detection (Kahn's topological sort), conditional branching, auto-parallelization via `asyncio.gather`; YAML workflow definitions; `effgen workflow run/validate` CLI
+- **`WorkflowDAG`** — DAG-based workflow engine with cycle detection (Kahn's topological sort), conditional branching, auto-parallelization via `asyncio.gather`; YAML workflow definitions; `teffgen workflow run/validate` CLI
 - **`SharedState`** — thread-safe namespaced key-value store with per-namespace RLock, snapshots for rollback, event-sourced mutation log
 - **Agent lifecycle management** — `AgentLifecycleState` (8 states), `AgentEntry` state machine, `AgentPool` (pre-warmed), `AgentRegistry` (thread-safe); per-agent timeout and cancellation
 
 #### Batch Execution & Domain Scaling
-- **`BatchRunner`** — asyncio-based concurrent batch execution with semaphore, retry, timeout; JSONL/CSV/JSON/text I/O; `Agent.run_batch()` convenience; `effgen batch` CLI
+- **`BatchRunner`** — asyncio-based concurrent batch execution with semaphore, retry, timeout; JSONL/CSV/JSON/text I/O; `Agent.run_batch()` convenience; `teffgen batch` CLI
 - **`ResultAggregator`** — exact hash + fuzzy Jaccard deduplication, ranking (confidence/relevance/speed/custom), merge strategies (first/best/consensus/union)
 - **`ToolResultCache`** — thread-safe LRU + TTL for cross-query tool result sharing
-- **`effgen.domains`** module — `Domain` base class, `KeywordExpander` (WordNet/template/LLM expansion); 5 built-in domains: `TechDomain`, `ScienceDomain`, `FinanceDomain`, `HealthDomain`, `LegalDomain`
+- **`teffgen.domains`** module — `Domain` base class, `KeywordExpander` (WordNet/template/LLM expansion); 5 built-in domains: `TechDomain`, `ScienceDomain`, `FinanceDomain`, `HealthDomain`, `LegalDomain`
 
 #### Observability, Tracing & Debugging
 - **OpenTelemetry upgrade** — full OTel SDK with Resource, BatchSpanProcessor, configurable exporters (OTLP/Jaeger/Zipkin/console); cross-agent trace propagation; no-op fallback
-- **Structured logging** — `EffGenJSONFormatter`, `StructuredLogger` with agent/tool/model/iteration events; `LogRunContext` with run_id/workflow_id/agent_name/session_id correlation
+- **Structured logging** — `TeffgenJSONFormatter`, `StructuredLogger` with agent/tool/model/iteration events; `LogRunContext` with run_id/workflow_id/agent_name/session_id correlation
 - **Prometheus metrics upgrade** — response_latency/token_usage/tool_execution_time histograms with percentiles; GPU memory gauge; labels support
 - **Grafana dashboard** — 12 panels: latency p50/p95/p99, throughput, error rate, tool breakdown
-- **`effgen.debug`** module — `DebugAgent` wrapper with rich TUI step-through; `Agent.run(debug=True)` captures `DebugTrace` with per-iteration raw_prompt, raw_response, thought, action, observation, tokens, latency; `effgen debug` CLI
+- **`teffgen.debug`** module — `DebugAgent` wrapper with rich TUI step-through; `Agent.run(debug=True)` captures `DebugTrace` with per-iteration raw_prompt, raw_response, thought, action, observation, tokens, latency; `teffgen debug` CLI
 
 #### Model Router & Auto-Selection
 - **`ModelRouter`** — routing by complexity, capabilities, loaded state, model size; `RoutingConfig`, `RoutingDecision`
 - **`estimate_complexity()`** — heuristic keyword analysis (code/math/reasoning/multilingual), query length, structural patterns; < 1ms execution
 - **`MODEL_CAPABILITIES`** — registry with pre-populated profiles for 12 models (Qwen 0.5B-7B, Llama 1B-3B, Phi-3/3.5/4, Mistral 7B, Gemma 2B/9B)
 - **Multi-model agent** — `models` list and `speculative_execution` in AgentConfig; ModelRouter auto-created; `_generate_speculative()` runs on 2 models via `asyncio.wait(FIRST_COMPLETED)`
-- **`ModelPool`** — LRU eviction, GPU memory-based eviction, hot-swap; `effgen models load|unload|status` CLI
+- **`ModelPool`** — LRU eviction, GPU memory-based eviction, hot-swap; `teffgen models load|unload|status` CLI
 
 #### Community Contribution: MLX & MLX-VLM Backends (PR #4, commit e5b54f5)
 - **`MLXEngine`** — MLX (mlx-lm) text generation engine with streaming/batch support for Apple Silicon
 - **`MLXVLMEngine`** — MLX-VLM vision-language engine with image support (30+ architectures)
-- **`effgen.hardware`** module — `platform.py` with Apple Silicon/CUDA/MLX detection helpers and backend recommendation
+- **`teffgen.hardware`** module — `platform.py` with Apple Silicon/CUDA/MLX detection helpers and backend recommendation
 - **Model loader integration** — MLX/MLX-VLM auto-selection on Apple Silicon; `ModelType.MLX` and `ModelType.MLX_VLM`
-- **Optional deps** — `pip install effgen[mlx]` and `pip install effgen[mlx-vlm]` (darwin/arm64 only)
+- **Optional deps** — `pip install teffgen[mlx]` and `pip install teffgen[mlx-vlm]` (darwin/arm64 only)
 - **5 new GUI examples** — `chat_gui_mlx.py`, `agent_viz_mlx.py`, `tool_builder_gui.py`, `tool_tester_gui.py`, `basic_agent_mlx.py` (Gradio-based)
 - **Unit tests** — `test_hardware_platform.py`, `test_mlx_engine.py`, `test_mlx_vlm_engine.py`
 
 #### Persistent Agent State & Checkpointing
 - **`CheckpointManager`** — save/restore full agent state (scratchpad, memory, tool states, iteration count, partial results); filesystem + SQLite backends
-- **Agent checkpoint/resume** — `agent.run("...", checkpoint_interval=3)` for periodic checkpointing; `agent.resume(checkpoint_id="...")` to resume; CLI: `effgen run --checkpoint-dir --checkpoint-interval`, `effgen resume --checkpoint`
-- **`Session`** / `SessionManager` — persistent conversation sessions with UUID management, expiry, cleanup; `Agent(config, session_id="user-123")` auto-loads/persists per turn; CLI: `effgen sessions list|delete|export|cleanup`
+- **Agent checkpoint/resume** — `agent.run("...", checkpoint_interval=3)` for periodic checkpointing; `agent.resume(checkpoint_id="...")` to resume; CLI: `teffgen run --checkpoint-dir --checkpoint-interval`, `teffgen resume --checkpoint`
+- **`Session`** / `SessionManager` — persistent conversation sessions with UUID management, expiry, cleanup; `Agent(config, session_id="user-123")` auto-loads/persists per turn; CLI: `teffgen sessions list|delete|export|cleanup`
 - **`BackgroundTaskRunner`** — priority queue, pause/resume/cancel, threading workers; `Agent.run_background()` / `get_task_status()` / `get_task_result()` / `cancel_task()`
 
 #### Advanced RAG Pipeline
-- **`effgen.rag`** module — complete RAG pipeline
+- **`teffgen.rag`** module — complete RAG pipeline
 - **`DocumentIngester`** — txt/md/json/jsonl/csv/html built-in loaders; pdf/docx/epub optional; SHA-256 deduplication; progress tracking
 - **Advanced chunking** — `SemanticChunker`, `CodeChunker` (py/js/ts/go/rust/java), `TableChunker`, `HierarchicalChunker`
 - **`HybridSearchEngine`** — dense + BM25 + keyword + metadata filter fused via Reciprocal Rank Fusion
@@ -107,12 +166,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All external libraries handled as optional with clear install hints
 
 #### Evaluation, Benchmarking & Regression Testing
-- **`effgen.eval`** module — `AgentEvaluator`, `EvalResult`, `SuiteResults`, `TestCase`, `TestSuite`
+- **`teffgen.eval`** module — `AgentEvaluator`, `EvalResult`, `SuiteResults`, `TestCase`, `TestSuite`
 - **Scoring modes** — `EXACT_MATCH`, `CONTAINS`, `REGEX`, `SEMANTIC_SIMILARITY` (sentence-transformers optional), `LLM_JUDGE`
 - **5 built-in test suites** — `MathSuite` (77 cases), `ToolUseSuite` (93), `ReasoningSuite` (40), `SafetySuite` (40), `ConversationSuite` (20)
 - **`RegressionTracker`** — save/load/compare baselines; severity levels (warning/high/critical); thresholds: >5% accuracy drop, >20% latency increase
 - **`ModelComparison`** — multi-model matrix comparison with recommendations; markdown/JSON export
-- **CLI** — `effgen eval --suite <name>` and `effgen compare --models "a,b,c" --suite <name>`
+- **CLI** — `teffgen eval --suite <name>` and `teffgen compare --models "a,b,c" --suite <name>`
 - **Nightly CI** — eval-regression job compares against stored baselines, opens GitHub issue on failure
 
 #### API Server v2 — Production Gateway
@@ -123,12 +182,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Production middleware** — CORS, request ID injection (X-Request-ID), GZip compression, graceful shutdown
 
 #### SDK, Client Libraries & Embedding API
-- **Python client SDK** — `EffGenClient` with sync + async via httpx; `chat()`, `embed()`, `health()`, `chat_stream_sync()`, `achat()`, `chat_stream()` (async iterator); retries with exponential backoff; 7 typed exception classes
-- **TypeScript/JavaScript client** — `clients/typescript/` with fetch-based `EffGenClient`; chat/embed/health/streaming; works in Node 18+/Deno/Bun/browser
+- **Python client SDK** — `TeffgenClient` with sync + async via httpx; `chat()`, `embed()`, `health()`, `chat_stream_sync()`, `achat()`, `chat_stream()` (async iterator); retries with exponential backoff; 7 typed exception classes
+- **TypeScript/JavaScript client** — `clients/typescript/` with fetch-based `TeffgenClient`; chat/embed/health/streaming; works in Node 18+/Deno/Bun/browser
 - **Local embedding API** — `/v1/embeddings` endpoint (OpenAI-compatible); `SentenceTransformerEmbedder` + `TFIDFEmbedder` fallback; model aliases; `LRUCache` + `SQLiteCache` for embedding caching
 
 #### Performance Optimization & Caching
-- **`effgen.cache`** module — `PromptCache` (LRU + TTL, sha256 fingerprint, thread-safe, hit/miss stats); `ResultCache` (LRU + per-tool TTL, optional semantic similarity via embed_fn + cosine)
+- **`teffgen.cache`** module — `PromptCache` (LRU + TTL, sha256 fingerprint, thread-safe, hit/miss stats); `ResultCache` (LRU + per-tool TTL, optional semantic similarity via embed_fn + cosine)
 - **`TokenBudget`** — smart context window allocation (system 20% / tools 30% / history 40% / response 10%); `smart_truncate()` preserves head+tail; `fit_to_budget()` per-section truncation
 - **`LazyModel`** — defers `.load()` until first generate/count_tokens; idle_timeout-based eviction (default 600s)
 - **GGUF support** — `GGUFEngine` via optional llama-cpp-python; auto-routed by model_loader for `.gguf` files
@@ -224,10 +283,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed license inconsistency: all files now correctly reference Apache-2.0 (was MIT in some files)
-- Fixed `setup.py` entry point mismatch: `effgen-agent` now correctly points to `agent_main` (was `main`)
+- Fixed `setup.py` entry point mismatch: `teffgen-agent` now correctly points to `agent_main` (was `main`)
 - Fixed `setup.py` Development Status: now correctly says Beta (was Alpha)
 - Fixed `setup.py` dependency version mismatches with `pyproject.toml` (duckduckgo-search, cloud-secrets, monitoring groups)
-- Fixed missing `fastapi` and `uvicorn` in `pyproject.toml` dependencies (`effgen serve` now works out of the box with `pip install effgen`)
+- Fixed missing `fastapi` and `uvicorn` in `pyproject.toml` dependencies (`teffgen serve` now works out of the box with `pip install teffgen`)
 - Replaced 5 bare `except:` in `gpu/monitor.py` with specific exception handlers
 - Replaced 15+ `print()` calls with proper logger calls in `docker_sandbox`, `decomposition_engine`, `router`, `complexity_analyzer`, `gpu/utils`
 - Added logging to silent `except Exception:` handlers in execution modules (`docker_sandbox.py`, `sandbox.py`, `code_executor.py`)
@@ -286,7 +345,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Protocols & Streaming
 - **ACP Protocol Complete**: Full JSON Schema validation, server/client modes, async task polling
-- **MCP Client Enhanced**: Auto-reconnection, MCP→effGen tool bridge, resource→context bridge, health monitoring
+- **MCP Client Enhanced**: Auto-reconnection, MCP→tideon.ai tool bridge, resource→context bridge, health monitoring
 - **Real Streaming**: True token streaming via generate_stream() (replaces placeholder)
 - **Streaming Callbacks**: on_thought, on_tool_call, on_observation, on_answer
 - **SSE Streaming**: Server-Sent Events endpoint for real-time API streaming
@@ -295,10 +354,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Infrastructure
 - **CI/CD Pipelines**: GitHub Actions for CI, releases, docs, nightly tests, health checks, PR gates
-- **Health Monitoring**: Website, DNS, SSL checks for effgen.org and docs.effgen.org
+- **Health Monitoring**: Website, DNS, SSL checks for tideon.ai and docs.tideon.ai
 - **Test Suite**: 67 unit tests, 8 benchmarks, integration and e2e tests with MockModel and fixtures
 - **Observability**: OpenTelemetry tracing (no-op fallback), Prometheus metrics
-- **`effgen health` Command**: CLI health checker for all infrastructure
+- **`teffgen health` Command**: CLI health checker for all infrastructure
 - **Code Quality**: Pre-commit hooks (black, isort, flake8, mypy, bandit), CONTRIBUTING.md
 
 #### Developer Experience
@@ -316,7 +375,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `run_async()` is now truly async (previously wrapped sync in executor)
 - Memory system uses proper ShortTermMemory/LongTermMemory classes (previously plain list)
 - ACP `validate_request()` now does full JSON Schema validation (previously only checked required fields)
-- User-Agent strings now use dynamic version from `effgen.__version__`
+- User-Agent strings now use dynamic version from `teffgen.__version__`
 - Development status upgraded from Alpha to Beta
 
 ### Fixed
@@ -343,7 +402,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **Model Loader**: Improved small model detection for tensor parallel size selection
-- **Version Management**: Consolidated `__version__` to single source in main `effgen/__init__.py`
+- **Version Management**: Consolidated `__version__` to single source in main `teffgen/__init__.py`
 
 ### Compatibility
 - Tested with multiple model families:
@@ -465,9 +524,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `all`: All optional dependencies combined
 
 ### Entry Points
-- `effgen`: Main CLI entry point
-- `effgen-agent`: Agent-specific commands
-- `effgen-web`: Web agent interface
+- `teffgen`: Main CLI entry point
+- `teffgen-agent`: Agent-specific commands
+- `teffgen-web`: Web agent interface
 
 ---
 
@@ -488,26 +547,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Links
 
-- **GitHub**: https://github.com/ctrl-gaurav/effGen
-- **PyPI**: https://pypi.org/project/effgen/
-- **Documentation**: https://effgen.org/docs/
-- **Issues**: https://github.com/ctrl-gaurav/effGen/issues
+- **GitHub**: https://github.com/tideon-ai/teffgen
+- **PyPI**: https://pypi.org/project/teffgen/
+- **Documentation**: https://tideon.ai/docs/
+- **Issues**: https://github.com/tideon-ai/teffgen/issues
 
 ---
 
 ## Contributors
 
-Thank you to all contributors who helped make effGen possible!
+Thank you to all contributors who helped make tideon.ai possible!
 
 - Gaurav Srivastava (@ctrl-gaurav) - Creator and maintainer
 
 ---
 
-[Unreleased]: https://github.com/ctrl-gaurav/effGen/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.3...v0.2.0
-[0.1.3]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.2...v0.1.3
-[0.1.2]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.1...v0.1.2
-[0.1.1]: https://github.com/ctrl-gaurav/effGen/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/ctrl-gaurav/effGen/compare/v0.0.2...v0.1.0
-[0.0.2]: https://github.com/ctrl-gaurav/effGen/compare/v0.0.1...v0.0.2
-[0.0.1]: https://github.com/ctrl-gaurav/effGen/releases/tag/v0.0.1
+[Unreleased]: https://github.com/tideon-ai/teffgen/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/tideon-ai/teffgen/compare/v0.1.3...v0.2.0
+[0.1.3]: https://github.com/tideon-ai/teffgen/compare/v0.1.2...v0.1.3
+[0.1.2]: https://github.com/tideon-ai/teffgen/compare/v0.1.1...v0.1.2
+[0.1.1]: https://github.com/tideon-ai/teffgen/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/tideon-ai/teffgen/compare/v0.0.2...v0.1.0
+[0.0.2]: https://github.com/tideon-ai/teffgen/compare/v0.0.1...v0.0.2
+[0.0.1]: https://github.com/tideon-ai/teffgen/releases/tag/v0.0.1

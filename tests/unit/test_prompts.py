@@ -1,7 +1,7 @@
 """Unit tests for prompt engineering modules."""
 
-from effgen.prompts.agent_system_prompt import AgentSystemPromptBuilder
-from effgen.prompts.tool_prompt_generator import ToolPromptGenerator
+from teffgen.prompts.agent_system_prompt import AgentSystemPromptBuilder
+from teffgen.prompts.tool_prompt_generator import ToolPromptGenerator
 
 
 class TestToolPromptGenerator:

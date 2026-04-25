@@ -1,4 +1,4 @@
-{% set name = "effgen" %}
+{% set name = "teffgen" %}
 {% set setup_data = load_setup_py_data() %}
 {% set version = setup_data.get("version", "0.0.0") %}
 
@@ -14,8 +14,8 @@ build:
   noarch: python
   script: {{ PYTHON }} -m pip install . --no-deps -vv
   entry_points:
-    - effgen = effgen.cli:main
-    - effgen-agent = effgen.cli:agent_main
+    - teffgen = teffgen.cli:main
+    - teffgen-agent = teffgen.cli:agent_main
 
 requirements:
   host:
@@ -34,14 +34,14 @@ requirements:
 
 test:
   imports:
-    - effgen
-    - effgen.core.agent
-    - effgen.tools
-    - effgen.presets
+    - teffgen
+    - teffgen.core.agent
+    - teffgen.tools
+    - teffgen.presets
 
 about:
-  home: https://effgen.org
+  home: https://tideon.ai
   license: Apache-2.0
   license_file: LICENSE
   summary: Agentic AI framework optimized for Small Language Models
-  dev_url: https://github.com/ctrl-gaurav/effGen
+  dev_url: https://github.com/tideon-ai/teffgen

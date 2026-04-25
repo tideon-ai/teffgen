@@ -1,1 +1,1 @@
-# OpenAI adapter examples for effGen
+# OpenAI adapter examples for tideon.ai

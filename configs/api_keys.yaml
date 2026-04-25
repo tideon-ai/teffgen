@@ -75,7 +75,7 @@ databases:
   postgres:
     host: ${POSTGRES_HOST:localhost}
     port: ${POSTGRES_PORT:5432}
-    database: ${POSTGRES_DB:effgen}
+    database: ${POSTGRES_DB:teffgen}
     user: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
     # Optional: SSL mode
@@ -83,7 +83,7 @@ databases:
 
   mongodb:
     uri: ${MONGODB_URI:mongodb://localhost:27017}
-    database: ${MONGODB_DB:effgen}
+    database: ${MONGODB_DB:teffgen}
     # Optional: Authentication
     username: ${MONGODB_USER}
     password: ${MONGODB_PASSWORD}
@@ -99,7 +99,7 @@ vector_stores:
   pinecone:
     api_key: ${PINECONE_API_KEY}
     environment: ${PINECONE_ENVIRONMENT:us-west1-gcp}
-    index_name: ${PINECONE_INDEX:effgen}
+    index_name: ${PINECONE_INDEX:teffgen}
 
   weaviate:
     url: ${WEAVIATE_URL:http://localhost:8080}
@@ -143,7 +143,7 @@ secret_managers:
   aws_secrets:
     enabled: ${USE_AWS_SECRETS:false}
     region: ${AWS_SECRETS_REGION:us-east-1}
-    secret_prefix: ${AWS_SECRETS_PREFIX:effgen/}
+    secret_prefix: ${AWS_SECRETS_PREFIX:teffgen/}
 
   # HashiCorp Vault
   vault:
@@ -151,7 +151,7 @@ secret_managers:
     url: ${VAULT_ADDR:http://localhost:8200}
     token: ${VAULT_TOKEN}
     mount_point: ${VAULT_MOUNT_POINT:secret}
-    secret_path: ${VAULT_SECRET_PATH:effgen/}
+    secret_path: ${VAULT_SECRET_PATH:teffgen/}
 
   # Azure Key Vault
   azure_keyvault:
@@ -167,7 +167,7 @@ observability:
   opentelemetry:
     endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
     api_key: ${OTEL_API_KEY}
-    service_name: ${OTEL_SERVICE_NAME:effgen}
+    service_name: ${OTEL_SERVICE_NAME:teffgen}
 
   # Sentry Error Tracking
   sentry:

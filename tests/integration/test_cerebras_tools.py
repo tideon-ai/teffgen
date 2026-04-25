@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 from dotenv import load_dotenv
 
-load_dotenv(Path.home() / ".effgen" / ".env", override=False)
+load_dotenv(Path.home() / ".teffgen" / ".env", override=False)
 
 
 def _has_key() -> bool:
@@ -17,7 +17,7 @@ def _has_key() -> bool:
 
 @pytest.mark.integration
 @pytest.mark.api
-@pytest.mark.skipif(not _has_key(), reason="SKIPPED: CEREBRAS_API_KEY not in ~/.effgen/.env")
+@pytest.mark.skipif(not _has_key(), reason="SKIPPED: CEREBRAS_API_KEY not in ~/.teffgen/.env")
 class TestCerebrasNativeTools:
     TOOLS = [
         {
@@ -40,7 +40,7 @@ class TestCerebrasNativeTools:
     ]
 
     def test_llama_native_tools_returns_tool_call(self):
-        from effgen.models.cerebras_adapter import CerebrasAdapter
+        from teffgen.models.cerebras_adapter import CerebrasAdapter
 
         adapter = CerebrasAdapter("llama3.1-8b", enable_rate_limiting=False)
         adapter.load()
@@ -57,7 +57,7 @@ class TestCerebrasNativeTools:
             adapter.unload()
 
     def test_qwen_native_tools_returns_tool_call(self):
-        from effgen.models.cerebras_adapter import CerebrasAdapter
+        from teffgen.models.cerebras_adapter import CerebrasAdapter
 
         adapter = CerebrasAdapter(
             "qwen-3-235b-a22b-instruct-2507", enable_rate_limiting=False
@@ -73,7 +73,7 @@ class TestCerebrasNativeTools:
             adapter.unload()
 
     def test_unsupported_model_raises_not_implemented(self):
-        from effgen.models.cerebras_adapter import CerebrasAdapter
+        from teffgen.models.cerebras_adapter import CerebrasAdapter
 
         adapter = CerebrasAdapter("zai-glm-4.7", enable_rate_limiting=False)
         adapter._client = object()  # bypass load() check
@@ -82,7 +82,7 @@ class TestCerebrasNativeTools:
             adapter.generate_with_tools("test", tools=self.TOOLS)
 
     def test_supports_tool_calling_flag(self):
-        from effgen.models.cerebras_adapter import CerebrasAdapter
+        from teffgen.models.cerebras_adapter import CerebrasAdapter
 
         assert CerebrasAdapter("llama3.1-8b").supports_tool_calling() is True
         assert CerebrasAdapter("qwen-3-235b-a22b-instruct-2507").supports_tool_calling() is True
@@ -91,13 +91,13 @@ class TestCerebrasNativeTools:
 
 @pytest.mark.integration
 @pytest.mark.api
-@pytest.mark.skipif(not _has_key(), reason="SKIPPED: CEREBRAS_API_KEY not in ~/.effgen/.env")
+@pytest.mark.skipif(not _has_key(), reason="SKIPPED: CEREBRAS_API_KEY not in ~/.teffgen/.env")
 class TestCerebrasAgentWithTools:
     def test_agent_math_task_llama(self):
         """Agent with Calculator on a multi-step math task using llama3.1-8b."""
-        from effgen.core.agent import Agent, AgentConfig
-        from effgen.models.cerebras_adapter import CerebrasAdapter
-        from effgen.tools.builtin.calculator import Calculator
+        from teffgen.core.agent import Agent, AgentConfig
+        from teffgen.models.cerebras_adapter import CerebrasAdapter
+        from teffgen.tools.builtin.calculator import Calculator
 
         adapter = CerebrasAdapter("llama3.1-8b", enable_rate_limiting=False)
         adapter.load()
@@ -121,9 +121,9 @@ class TestCerebrasAgentWithTools:
 
     def test_agent_math_task_qwen(self):
         """Agent with Calculator on a multi-step task using qwen-3-235b."""
-        from effgen.core.agent import Agent, AgentConfig
-        from effgen.models.cerebras_adapter import CerebrasAdapter
-        from effgen.tools.builtin.calculator import Calculator
+        from teffgen.core.agent import Agent, AgentConfig
+        from teffgen.models.cerebras_adapter import CerebrasAdapter
+        from teffgen.tools.builtin.calculator import Calculator
 
         adapter = CerebrasAdapter(
             "qwen-3-235b-a22b-instruct-2507", enable_rate_limiting=False

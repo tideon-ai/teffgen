@@ -1,6 +1,6 @@
 """Unit tests for the Agent class."""
 
-from effgen.core.agent import Agent, AgentConfig, AgentMode, AgentResponse
+from teffgen.core.agent import Agent, AgentConfig, AgentMode, AgentResponse
 
 
 class TestAgentConfig:

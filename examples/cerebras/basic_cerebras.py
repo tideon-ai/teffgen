@@ -2,8 +2,8 @@
 Basic Cerebras example — direct adapter usage.
 
 Prerequisites:
-    pip install "effgen[cerebras]"
-    export CEREBRAS_API_KEY="your-key"   # or place in ~/.effgen/.env
+    pip install "teffgen[cerebras]"
+    export CEREBRAS_API_KEY="your-key"   # or place in ~/.teffgen/.env
 
 What this demonstrates:
   - Loading CerebrasAdapter
@@ -17,13 +17,13 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path.home() / ".effgen" / ".env", override=False)
+load_dotenv(Path.home() / ".teffgen" / ".env", override=False)
 
 if not os.getenv("CEREBRAS_API_KEY"):
-    raise SystemExit("Set CEREBRAS_API_KEY in ~/.effgen/.env or the environment.")
+    raise SystemExit("Set CEREBRAS_API_KEY in ~/.teffgen/.env or the environment.")
 
-from effgen.models.base import GenerationConfig  # noqa: E402
-from effgen.models.cerebras_adapter import CerebrasAdapter  # noqa: E402
+from teffgen.models.base import GenerationConfig  # noqa: E402
+from teffgen.models.cerebras_adapter import CerebrasAdapter  # noqa: E402
 
 # -----------------------------------------------------------
 # 1. Load the adapter

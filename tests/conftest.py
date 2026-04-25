@@ -1,5 +1,5 @@
 """
-Shared test fixtures for the effGen test suite.
+Shared test fixtures for the tideon.ai test suite.
 """
 
 import shutil
@@ -10,15 +10,15 @@ from pathlib import Path
 
 import pytest
 
-# Suppress ImportWarning from optional dependencies before importing effgen
+# Suppress ImportWarning from optional dependencies before importing teffgen
 warnings.filterwarnings("ignore", category=ImportWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-# Ensure effgen package is importable
+# Ensure teffgen package is importable
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from effgen.core.agent import Agent, AgentConfig
-from effgen.tools.builtin import Calculator, DateTimeTool, JSONTool, TextProcessingTool
+from teffgen.core.agent import Agent, AgentConfig
+from teffgen.tools.builtin import Calculator, DateTimeTool, JSONTool, TextProcessingTool
 from tests.fixtures.mock_models import MockModel, MockStreamingModel, MockToolCallingModel
 
 # ---------------------------------------------------------------------------
@@ -135,7 +135,7 @@ def multi_tool_agent(mock_model, calculator, datetime_tool, json_tool):
 @pytest.fixture
 def tmp_dir():
     """Create a temporary directory for test files."""
-    d = tempfile.mkdtemp(prefix="effgen_test_")
+    d = tempfile.mkdtemp(prefix="teffgen_test_")
     yield Path(d)
     shutil.rmtree(d, ignore_errors=True)
 

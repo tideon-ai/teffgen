@@ -117,7 +117,7 @@ tools:
     allowed_directories:
       - /workspace
       - /data
-      - /tmp/effgen
+      - /tmp/teffgen
 
     # Restrictions
     max_file_size: 10M
@@ -231,7 +231,7 @@ tools:
 
     # Headers
     default_headers:
-      User-Agent: effGen/1.0
+      User-Agent: tideon.ai/1.0
 
     # Rate limiting
     rate_limit: 60  # requests per minute
@@ -640,7 +640,7 @@ security:
 
   # Audit logging
   audit_log: true
-  audit_log_path: /var/log/effgen/tools_audit.log
+  audit_log_path: /var/log/teffgen/tools_audit.log
 
 # =============================================================================
 # ADVANCED FEATURES
@@ -673,7 +673,7 @@ advanced:
   # Tool marketplace
   marketplace:
     enabled: false
-    registry_url: https://tools.effgen.dev
+    registry_url: https://tools.teffgen.dev
     auto_update: false
 
 # =============================================================================
@@ -689,7 +689,7 @@ debugging:
 
   # Save intermediate results
   save_intermediates: true
-  intermediates_dir: /tmp/effgen/tool_debug
+  intermediates_dir: /tmp/teffgen/tool_debug
 
   # Performance profiling
   profile_tools: false

@@ -1,6 +1,6 @@
 """Tests for ToolFallbackChain."""
 
-from effgen.tools.fallback import ToolFallbackChain
+from teffgen.tools.fallback import ToolFallbackChain
 
 
 class TestToolFallbackChainDefaults:

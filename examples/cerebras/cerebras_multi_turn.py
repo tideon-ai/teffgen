@@ -2,7 +2,7 @@
 Multi-turn conversation with Cerebras using CerebrasAdapter directly.
 
 Prerequisites:
-    pip install "effgen[cerebras]"
+    pip install "teffgen[cerebras]"
     export CEREBRAS_API_KEY="your-key"
 
 What this demonstrates:
@@ -16,14 +16,14 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path.home() / ".effgen" / ".env", override=False)
+load_dotenv(Path.home() / ".teffgen" / ".env", override=False)
 
 if not os.getenv("CEREBRAS_API_KEY"):
-    raise SystemExit("Set CEREBRAS_API_KEY in ~/.effgen/.env or the environment.")
+    raise SystemExit("Set CEREBRAS_API_KEY in ~/.teffgen/.env or the environment.")
 
 from cerebras.cloud.sdk import Cerebras  # noqa: E402
 
-from effgen.models.cerebras_adapter import CerebrasAdapter  # noqa: E402
+from teffgen.models.cerebras_adapter import CerebrasAdapter  # noqa: E402
 
 adapter = CerebrasAdapter(model_name="llama3.1-8b")
 adapter.load()

@@ -16,7 +16,7 @@ import pytest
 # Load env for integration tests
 try:
     from dotenv import load_dotenv
-    load_dotenv(Path.home() / ".effgen" / ".env", override=False)
+    load_dotenv(Path.home() / ".teffgen" / ".env", override=False)
     load_dotenv(Path(__file__).parent.parent.parent / ".env", override=False)
 except ImportError:
     pass
@@ -55,7 +55,7 @@ def _make_mock_response(
 
 @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-unit"})
 def test_cached_tokens_zero_by_default():
-    from effgen.models.openai_adapter import OpenAIAdapter
+    from teffgen.models.openai_adapter import OpenAIAdapter
     adapter = OpenAIAdapter(model_name="gpt-4o-mini")
     adapter._is_loaded = True
     adapter.client = MagicMock()
@@ -68,7 +68,7 @@ def test_cached_tokens_zero_by_default():
 
 @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-unit"})
 def test_cached_tokens_surfaced_when_nonzero():
-    from effgen.models.openai_adapter import OpenAIAdapter
+    from teffgen.models.openai_adapter import OpenAIAdapter
     adapter = OpenAIAdapter(model_name="gpt-4o-mini")
     adapter._is_loaded = True
     adapter.client = MagicMock()
@@ -84,7 +84,7 @@ def test_cached_tokens_surfaced_when_nonzero():
 
 @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-unit"})
 def test_cached_tokens_in_generate_with_system_prompt():
-    from effgen.models.openai_adapter import OpenAIAdapter
+    from teffgen.models.openai_adapter import OpenAIAdapter
     adapter = OpenAIAdapter(model_name="gpt-4o-mini")
     adapter._is_loaded = True
     adapter.client = MagicMock()
@@ -101,7 +101,7 @@ def test_cached_tokens_in_generate_with_system_prompt():
 @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-unit"})
 def test_system_prompt_placed_first_in_messages():
     """Verify system message is at index 0 — prerequisite for prefix caching."""
-    from effgen.models.openai_adapter import OpenAIAdapter
+    from teffgen.models.openai_adapter import OpenAIAdapter
     adapter = OpenAIAdapter(model_name="gpt-4o-mini")
     adapter._is_loaded = True
     adapter.client = MagicMock()
@@ -118,7 +118,7 @@ def test_system_prompt_placed_first_in_messages():
 @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-unit"})
 def test_cached_tokens_handles_missing_details():
     """prompt_tokens_details may be None — must not raise."""
-    from effgen.models.openai_adapter import OpenAIAdapter
+    from teffgen.models.openai_adapter import OpenAIAdapter
     adapter = OpenAIAdapter(model_name="gpt-4o-mini")
     adapter._is_loaded = True
     adapter.client = MagicMock()
@@ -156,7 +156,7 @@ def test_live_cache_hits_on_repeated_calls():
     """
     import warnings
 
-    from effgen.models.openai_adapter import OpenAIAdapter
+    from teffgen.models.openai_adapter import OpenAIAdapter
 
     adapter = OpenAIAdapter(model_name="gpt-5.4-nano")
     adapter.load()

@@ -3,7 +3,7 @@
 
 import pytest
 
-from effgen.presets.registry import (
+from teffgen.presets.registry import (
     PresetConfig,
     create_agent,
     get_preset,

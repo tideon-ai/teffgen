@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from effgen.config.loader import Config, ConfigLoader
+from teffgen.config.loader import Config, ConfigLoader
 
 
 class TestConfig:
@@ -60,10 +60,10 @@ class TestConfigLoader:
             loader.load_config("/nonexistent/path/config.yaml")
 
     def test_env_variable_substitution(self, tmp_dir):
-        os.environ["EFFGEN_TEST_VAR"] = "hello_world"
+        os.environ["TEFFGEN_TEST_VAR"] = "hello_world"
         yaml_file = tmp_dir / "test.yaml"
-        yaml_file.write_text("value: ${EFFGEN_TEST_VAR}\n")
+        yaml_file.write_text("value: ${TEFFGEN_TEST_VAR}\n")
         loader = ConfigLoader()
         config = loader.load_config(str(yaml_file))
         assert config["value"] is not None
-        os.environ.pop("EFFGEN_TEST_VAR", None)
+        os.environ.pop("TEFFGEN_TEST_VAR", None)

@@ -2,7 +2,7 @@
 
 import pytest
 
-from effgen.tools.base_tool import (
+from teffgen.tools.base_tool import (
     BaseTool,
     ParameterSpec,
     ParameterType,

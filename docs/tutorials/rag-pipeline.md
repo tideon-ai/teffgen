@@ -1,14 +1,14 @@
 # RAG Pipeline
 
-effGen v0.2.0 includes a production-grade RAG (Retrieval Augmented Generation) pipeline with document ingestion, advanced chunking, hybrid search, reranking, and source attribution.
+tideon.ai v0.2.0 includes a production-grade RAG (Retrieval Augmented Generation) pipeline with document ingestion, advanced chunking, hybrid search, reranking, and source attribution.
 
 ## Quick Start — RAG Preset
 
 The fastest way to use RAG:
 
 ```python
-from effgen import load_model
-from effgen.presets import create_agent
+from teffgen import load_model
+from teffgen.presets import create_agent
 
 model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization="4bit")
 agent = create_agent("rag", model, knowledge_base="./docs/")
@@ -23,7 +23,7 @@ print(result.citations)  # [Citation(source="architecture.md", ...)]
 ### 1. Document Ingestion
 
 ```python
-from effgen.rag import DocumentIngester
+from teffgen.rag import DocumentIngester
 
 ingester = DocumentIngester()
 chunks = ingester.ingest("./docs/")
@@ -42,7 +42,7 @@ chunks = ingester.ingest(
 ### 2. Advanced Chunking
 
 ```python
-from effgen.rag.chunking import (
+from teffgen.rag.chunking import (
     SemanticChunker,     # Split on semantic boundaries
     CodeChunker,         # Language-aware: functions, classes, blocks
     TableChunker,        # Preserve table structure
@@ -57,7 +57,7 @@ chunks = chunker.chunk(document_text)
 ### 3. Hybrid Search
 
 ```python
-from effgen.rag import HybridSearchEngine
+from teffgen.rag import HybridSearchEngine
 
 engine = HybridSearchEngine(chunks)
 
@@ -76,7 +76,7 @@ results = engine.search(
 ### 4. Reranking
 
 ```python
-from effgen.rag.reranker import LLMReranker, RuleBasedReranker, CrossEncoderReranker
+from teffgen.rag.reranker import LLMReranker, RuleBasedReranker, CrossEncoderReranker
 
 # LLM-based reranking (free, uses the agent's own model)
 reranker = LLMReranker(model)
@@ -94,7 +94,7 @@ reranked = reranker.rerank(results, query="scaling architecture")
 ### 5. Context Building with Citations
 
 ```python
-from effgen.rag import ContextBuilder
+from teffgen.rag import ContextBuilder
 
 builder = ContextBuilder(max_tokens=2048)
 context, citations = builder.build(reranked)
@@ -106,7 +106,7 @@ context, citations = builder.build(reranked)
 ### 6. Source Attribution
 
 ```python
-from effgen.rag.attribution import CitationTracker
+from teffgen.rag.attribution import CitationTracker
 
 tracker = CitationTracker()
 tracker.add_citations(citations)
@@ -123,8 +123,8 @@ used = tracker.extract_used_indices(response_text)
 When using the RAG preset or any agent with RAG tools:
 
 ```python
-result = agent.run("What database does effGen use?")
-print(result.output)       # "effGen uses SQLite for..."
+result = agent.run("What database does tideon.ai use?")
+print(result.output)       # "tideon.ai uses SQLite for..."
 print(result.citations)    # [Citation(source="architecture.md", quote="...")]
 print(result.sources)      # ["architecture.md"] (deduplicated)
 ```

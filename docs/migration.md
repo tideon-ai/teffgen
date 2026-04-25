@@ -56,14 +56,14 @@ result.metadata["parsed_output"]  # Pydantic model (when output_model used)
 
 | Module | Import | Purpose |
 |--------|--------|---------|
-| Guardrails | `from effgen.guardrails import ...` | Safety & validation |
-| RAG | `from effgen.rag import ...` | Retrieval Augmented Generation |
-| Evaluation | `from effgen.eval import ...` | Benchmarking & regression |
-| Domains | `from effgen.domains import ...` | Domain keyword expansion |
-| Cache | `from effgen.cache import ...` | Prompt & result caching |
-| Debug | `from effgen.debug import ...` | Interactive debugging |
-| Hardware | `from effgen.hardware import ...` | Platform detection |
-| Client SDK | `from effgen.client import ...` | API client |
+| Guardrails | `from teffgen.guardrails import ...` | Safety & validation |
+| RAG | `from teffgen.rag import ...` | Retrieval Augmented Generation |
+| Evaluation | `from teffgen.eval import ...` | Benchmarking & regression |
+| Domains | `from teffgen.domains import ...` | Domain keyword expansion |
+| Cache | `from teffgen.cache import ...` | Prompt & result caching |
+| Debug | `from teffgen.debug import ...` | Interactive debugging |
+| Hardware | `from teffgen.hardware import ...` | Platform detection |
+| Client SDK | `from teffgen.client import ...` | API client |
 
 ### New Tools (17 Added)
 
@@ -73,50 +73,50 @@ DevOps: `GitTool`, `DockerTool`, `SystemInfoTool`, `HTTPTool`
 Knowledge: `ArxivTool`, `StackOverflowTool`, `GitHubTool`, `WolframAlphaTool`
 Communication: `EmailDraftTool`, `SlackDraftTool`, `NotificationTool`
 
-All imported from `effgen.tools.builtin`.
+All imported from `teffgen.tools.builtin`.
 
 ### New Optional Dependencies
 
 ```bash
-pip install effgen[rag]       # sentence-transformers, faiss-cpu
-pip install effgen[finance]   # yfinance
-pip install effgen[data]      # matplotlib, plotly
-pip install effgen[eval]      # rouge-score, nltk
-pip install effgen[gguf]      # llama-cpp-python
-pip install effgen[mlx]       # MLX for Apple Silicon
-pip install effgen[mlx-vlm]   # MLX vision-language models
+pip install teffgen[rag]       # sentence-transformers, faiss-cpu
+pip install teffgen[finance]   # yfinance
+pip install teffgen[data]      # matplotlib, plotly
+pip install teffgen[eval]      # rouge-score, nltk
+pip install teffgen[gguf]      # llama-cpp-python
+pip install teffgen[mlx]       # MLX for Apple Silicon
+pip install teffgen[mlx-vlm]   # MLX vision-language models
 ```
 
 ### New CLI Commands
 
 ```bash
 # Workflows
-effgen workflow run pipeline.yaml
-effgen workflow validate pipeline.yaml
+teffgen workflow run pipeline.yaml
+teffgen workflow validate pipeline.yaml
 
 # Batch execution
-effgen batch --input queries.jsonl --output results.jsonl
+teffgen batch --input queries.jsonl --output results.jsonl
 
 # Evaluation
-effgen eval --suite math --model "Qwen/Qwen2.5-3B-Instruct"
-effgen compare --models "model_a,model_b" --suite math
+teffgen eval --suite math --model "Qwen/Qwen2.5-3B-Instruct"
+teffgen compare --models "model_a,model_b" --suite math
 
 # Model management
-effgen models load "Qwen/Qwen2.5-3B-Instruct"
-effgen models status
-effgen models unload "Qwen/Qwen2.5-3B-Instruct"
+teffgen models load "Qwen/Qwen2.5-3B-Instruct"
+teffgen models status
+teffgen models unload "Qwen/Qwen2.5-3B-Instruct"
 
 # Sessions
-effgen sessions list
-effgen sessions delete <id>
-effgen sessions export <id>
+teffgen sessions list
+teffgen sessions delete <id>
+teffgen sessions export <id>
 
 # Debugging
-effgen debug --preset math "What is 2+2?"
+teffgen debug --preset math "What is 2+2?"
 
 # Checkpointing
-effgen run "Long task" --checkpoint-dir ./checkpoints
-effgen resume --checkpoint ./checkpoints/latest.json
+teffgen run "Long task" --checkpoint-dir ./checkpoints
+teffgen resume --checkpoint ./checkpoints/latest.json
 ```
 
 ### API Server v2 Endpoints
@@ -141,7 +141,7 @@ Model aliases map OpenAI model names to local SLMs (e.g., `gpt-3.5-turbo` → `Q
 - **Plugin system**: Distribute tools as installable packages
 - **CLI**: `--preset`, `--explain`, `--completion`, `create-plugin` commands
 - **API server**: WebSocket streaming, API key auth, rate limiting, metrics
-- **Tab completion**: `eval "$(effgen --completion bash)"`
+- **Tab completion**: `eval "$(teffgen --completion bash)"`
 
 ### Breaking Changes
 None. All existing `Agent`, `AgentConfig`, and `load_model` APIs remain unchanged.
@@ -149,24 +149,24 @@ None. All existing `Agent`, `AgentConfig`, and `load_model` APIs remain unchange
 ### New Imports
 ```python
 # Presets (new)
-from effgen.presets import create_agent, list_presets
+from teffgen.presets import create_agent, list_presets
 
 # Plugin system (new)
-from effgen.tools.plugin import ToolPlugin, PluginManager, discover_plugins
+from teffgen.tools.plugin import ToolPlugin, PluginManager, discover_plugins
 ```
 
 ### CLI Changes
 ```bash
 # New commands
-effgen presets                              # List available presets
-effgen run --preset math "What is 2+2?"     # Use preset
-effgen run --explain "..."                  # Show tool reasoning
-effgen create-plugin my_tools               # Generate plugin scaffold
-effgen --completion bash                    # Print completion script
+teffgen presets                              # List available presets
+teffgen run --preset math "What is 2+2?"     # Use preset
+teffgen run --explain "..."                  # Show tool reasoning
+teffgen create-plugin my_tools               # Generate plugin scaffold
+teffgen --completion bash                    # Print completion script
 ```
 
 ### API Server Changes
 - New endpoints: `WS /ws`, `GET /metrics`
-- Auth: Set `EFFGEN_API_KEY` environment variable
-- Rate limiting: Set `EFFGEN_RATE_LIMIT` (default: 60 req/min)
+- Auth: Set `TEFFGEN_API_KEY` environment variable
+- Rate limiting: Set `TEFFGEN_RATE_LIMIT` (default: 60 req/min)
 - `POST /run` now accepts `preset` field

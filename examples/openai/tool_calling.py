@@ -18,11 +18,11 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv(Path.home() / ".effgen" / ".env", override=False)
+load_dotenv(Path.home() / ".teffgen" / ".env", override=False)
 load_dotenv(Path(__file__).parent.parent.parent / ".env", override=False)
 
-from effgen.models.base import GenerationConfig
-from effgen.models.openai_adapter import OpenAIAdapter
+from teffgen.models.base import GenerationConfig
+from teffgen.models.openai_adapter import OpenAIAdapter
 
 # ---------------------------------------------------------------------------
 # Tool definitions (OpenAI function-calling format)

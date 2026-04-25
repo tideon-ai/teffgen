@@ -3,13 +3,13 @@
 ## Standard install
 
 ```bash
-pip install effgen                    # base install (all core features)
-pip install effgen[all]                # everything except flash-attn
-pip install effgen[dev]                # dev tools (pytest, ruff, mypy, pytest-forked)
-pip install effgen[rag]                # sentence-transformers + faiss-cpu
-pip install effgen[vector-db]          # faiss + chromadb + qdrant
-pip install effgen[vllm]               # vLLM backend (NVIDIA GPUs)
-pip install effgen[mlx]                # MLX backend (Apple Silicon)
+pip install teffgen                    # base install (all core features)
+pip install teffgen[all]                # everything except flash-attn
+pip install teffgen[dev]                # dev tools (pytest, ruff, mypy, pytest-forked)
+pip install teffgen[rag]                # sentence-transformers + faiss-cpu
+pip install teffgen[vector-db]          # faiss + chromadb + qdrant
+pip install teffgen[vllm]               # vLLM backend (NVIDIA GPUs)
+pip install teffgen[mlx]                # MLX backend (Apple Silicon)
 ```
 
 > **Why isn't `flash-attn` in `[all]`?**
@@ -17,15 +17,15 @@ pip install effgen[mlx]                # MLX backend (Apple Silicon)
 > but pip's isolated build environment does not have `torch` available at that
 > moment. This is a well-known upstream bug in `flash-attn` — any package that
 > lists `flash-attn` as a dependency will cause `pip install` to fail. To keep
-> `pip install effgen[all]` working for everyone, `flash-attn` is kept out of
+> `pip install teffgen[all]` working for everyone, `flash-attn` is kept out of
 > `[all]` and installed separately (see below).
 
 ## Installing flash-attn (optional, NVIDIA GPUs only)
 
-**Step 1 — install effgen first (gets torch and everything else):**
+**Step 1 — install teffgen first (gets torch and everything else):**
 
 ```bash
-pip install effgen[all]
+pip install teffgen[all]
 ```
 
 **Step 2 — install flash-attn with build isolation disabled:**
@@ -53,25 +53,25 @@ vLLM ships pre-built wheels on PyPI for common
 `(python, torch, cuda)` combinations:
 
 ```bash
-pip install effgen[vllm]
+pip install teffgen[vllm]
 ```
 
 If the resolver cannot find a matching wheel, use vLLM's extra index:
 
 ```bash
-pip install effgen
+pip install teffgen
 pip install vllm --extra-index-url https://download.pytorch.org/whl/cu124
 ```
 
 ## Supported Python versions
 
-`effgen` officially supports Python **3.10, 3.11, 3.12, 3.13**. Python 3.14
+`teffgen` officially supports Python **3.10, 3.11, 3.12, 3.13**. Python 3.14
 is best-effort — several upstream packages (torch, bitsandbytes) do not yet
 ship cp314 wheels.
 
 ## Verifying your install
 
 ```bash
-python -c "import effgen; print(effgen.__version__)"
-python -c "from effgen import Agent; print(Agent)"
+python -c "import teffgen; print(teffgen.__version__)"
+python -c "from teffgen import Agent; print(Agent)"
 ```

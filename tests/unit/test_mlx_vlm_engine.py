@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from effgen.models.base import GenerationResult, ModelType
-from effgen.models.mlx_vlm_engine import MLXVLMEngine
+from teffgen.models.base import GenerationResult, ModelType
+from teffgen.models.mlx_vlm_engine import MLXVLMEngine
 
 
 @pytest.fixture
@@ -58,18 +58,18 @@ class TestMLXVLMEngineInit:
 class TestMLXVLMEngineLoad:
     """Tests for MLXVLMEngine.load()."""
 
-    @patch("effgen.hardware.platform.is_apple_silicon", return_value=False)
+    @patch("teffgen.hardware.platform.is_apple_silicon", return_value=False)
     def test_mlx_vlm_engine_load_not_apple_silicon(self, mock_as, engine):
-        from effgen.hardware.platform import is_apple_silicon
+        from teffgen.hardware.platform import is_apple_silicon
         is_apple_silicon.cache_clear()
         with pytest.raises(RuntimeError, match="MLX-VLM requires Apple Silicon"):
             engine.load()
         is_apple_silicon.cache_clear()
 
-    @patch("effgen.hardware.platform.get_unified_memory_gb", return_value=32.0)
-    @patch("effgen.hardware.platform.is_apple_silicon", return_value=True)
+    @patch("teffgen.hardware.platform.get_unified_memory_gb", return_value=32.0)
+    @patch("teffgen.hardware.platform.is_apple_silicon", return_value=True)
     def test_mlx_vlm_engine_load_success(self, mock_as, mock_mem, engine):
-        from effgen.hardware.platform import is_apple_silicon
+        from teffgen.hardware.platform import is_apple_silicon
         is_apple_silicon.cache_clear()
 
         mock_model = MagicMock()
@@ -99,9 +99,9 @@ class TestMLXVLMEngineLoad:
 
         is_apple_silicon.cache_clear()
 
-    @patch("effgen.hardware.platform.is_apple_silicon", return_value=True)
+    @patch("teffgen.hardware.platform.is_apple_silicon", return_value=True)
     def test_mlx_vlm_engine_load_no_mlx_vlm_installed(self, mock_as, engine):
-        from effgen.hardware.platform import is_apple_silicon
+        from teffgen.hardware.platform import is_apple_silicon
         is_apple_silicon.cache_clear()
         with patch.dict("sys.modules", {"mlx_vlm": None, "mlx_vlm.utils": None}):
             with pytest.raises(RuntimeError, match="mlx-vlm is not installed"):
@@ -116,7 +116,7 @@ class TestMLXVLMEngineGenerate:
         with pytest.raises(RuntimeError, match="Model is not loaded"):
             engine.generate("Describe this image", images=["img.png"])
 
-    @patch("effgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
+    @patch("teffgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
     def test_mlx_vlm_generate_with_images(self, mock_validate, loaded_engine):
         """Generate with images should use vlm_generate pipeline."""
         mock_vlm_gen = MagicMock(return_value="A cat sitting on a table")
@@ -139,7 +139,7 @@ class TestMLXVLMEngineGenerate:
         assert result.metadata["num_images"] == 1
         assert result.metadata["engine"] == "mlx_vlm"
 
-    @patch("effgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
+    @patch("teffgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
     def test_mlx_vlm_generate_text_only(self, mock_validate, loaded_engine):
         """No images should delegate to parent MLXEngine.generate."""
         mock_mlx_generate = MagicMock(return_value="Text-only response")
@@ -153,7 +153,7 @@ class TestMLXVLMEngineGenerate:
         assert result.text == "Text-only response"
         assert result.metadata["engine"] == "mlx"
 
-    @patch("effgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
+    @patch("teffgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
     def test_mlx_vlm_generate_empty_images_delegates(self, mock_validate, loaded_engine):
         """Empty images list should also delegate to parent."""
         mock_mlx_generate = MagicMock(return_value="Fallback text")
@@ -169,7 +169,7 @@ class TestMLXVLMEngineGenerate:
 class TestMLXVLMEngineStream:
     """Tests for MLXVLMEngine.generate_stream()."""
 
-    @patch("effgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
+    @patch("teffgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
     def test_mlx_vlm_generate_stream_with_images(self, mock_validate, loaded_engine):
         """Streaming with images should yield the full response at once."""
         mock_vlm_gen = MagicMock(return_value="Image description output")
@@ -191,7 +191,7 @@ class TestMLXVLMEngineStream:
         assert len(chunks) == 1
         assert chunks[0] == "Image description output"
 
-    @patch("effgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
+    @patch("teffgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
     def test_mlx_vlm_generate_stream_text_only(self, mock_validate, loaded_engine):
         """Text-only streaming should delegate to parent MLXEngine.generate_stream."""
         chunk1 = MagicMock()
@@ -249,7 +249,7 @@ class TestMLXVLMEngineUnload:
 class TestMLXVLMEngineBatch:
     """Tests for MLXVLMEngine.generate_batch() with images."""
 
-    @patch("effgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
+    @patch("teffgen.models.mlx_engine.MLXEngine.validate_prompt", return_value=True)
     def test_mlx_vlm_batch_with_images_list(self, mock_validate, loaded_engine):
         """Batch with per-prompt images should process each independently."""
         mock_vlm_gen = MagicMock(side_effect=["Cat image", "Dog image"])

@@ -327,7 +327,7 @@ def render_steps(steps: list[dict]) -> str:
 # ---------------------------------------------------------------------------
 
 DEFAULT_CODE = textwrap.dedent('''\
-    # === effGen MLX Agent — Editable Code ===
+    # === tideon.ai MLX Agent — Editable Code ===
     # Modify this code and click "Run Code" to execute it.
     # The model is pre-loaded as `model` and `tokenizer`.
     # Available: generate_text(), parse_tool_calls(), TOOL_HANDLERS, TOOL_SCHEMAS
@@ -544,8 +544,8 @@ CODE_SNIPPETS = {
 def build_app(default_model: str):
     import gradio as gr
 
-    with gr.Blocks(title="effGen Agent Visualizer") as app:
-        gr.Markdown("# effGen — Agent Visualizer + Code Editor")
+    with gr.Blocks(title="tideon.ai Agent Visualizer") as app:
+        gr.Markdown("# tideon.ai — Agent Visualizer + Code Editor")
 
         # --- Model bar (shared across tabs) ---
         with gr.Row():

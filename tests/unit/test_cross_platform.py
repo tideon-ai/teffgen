@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from effgen.hardware.platform import (
+from teffgen.hardware.platform import (
     HardwarePlatform,
     detect_platform,
     get_best_local_backend,
@@ -19,7 +19,7 @@ from effgen.hardware.platform import (
     is_mlx_available,
     is_mlx_vlm_available,
 )
-from effgen.models.base import ModelType
+from teffgen.models.base import ModelType
 
 # ---------------------------------------------------------------------------
 # Hardware platform detection
@@ -104,22 +104,22 @@ class TestMLXImportsNonApple:
     """MLX modules can be imported without crashing, even on NVIDIA."""
 
     def test_import_mlx_engine(self):
-        from effgen.models.mlx_engine import MLXEngine
+        from teffgen.models.mlx_engine import MLXEngine
         assert MLXEngine is not None
 
     def test_import_mlx_vlm_engine(self):
-        from effgen.models.mlx_vlm_engine import MLXVLMEngine
+        from teffgen.models.mlx_vlm_engine import MLXVLMEngine
         assert MLXVLMEngine is not None
 
     def test_mlx_engine_instantiation(self):
         """Can create an MLXEngine instance without crashing."""
-        from effgen.models.mlx_engine import MLXEngine
+        from teffgen.models.mlx_engine import MLXEngine
         engine = MLXEngine(model_name="test-model")
         assert engine.model_type == ModelType.MLX
 
     def test_mlx_vlm_engine_instantiation(self):
         """Can create an MLXVLMEngine instance without crashing."""
-        from effgen.models.mlx_vlm_engine import MLXVLMEngine
+        from teffgen.models.mlx_vlm_engine import MLXVLMEngine
         engine = MLXVLMEngine(model_name="test-model")
         assert engine.model_type == ModelType.MLX_VLM
 
@@ -127,7 +127,7 @@ class TestMLXImportsNonApple:
         """Loading MLX model on non-Apple should raise RuntimeError with helpful message."""
         if is_apple_silicon():
             pytest.skip("Running on Apple Silicon")
-        from effgen.models.mlx_engine import MLXEngine
+        from teffgen.models.mlx_engine import MLXEngine
         engine = MLXEngine(model_name="test-model")
         with pytest.raises(RuntimeError, match="Apple Silicon"):
             engine.load()
@@ -136,7 +136,7 @@ class TestMLXImportsNonApple:
         """Loading MLX-VLM model on non-Apple should raise RuntimeError with helpful message."""
         if is_apple_silicon():
             pytest.skip("Running on Apple Silicon")
-        from effgen.models.mlx_vlm_engine import MLXVLMEngine
+        from teffgen.models.mlx_vlm_engine import MLXVLMEngine
         engine = MLXVLMEngine(model_name="test-model")
         with pytest.raises(RuntimeError, match="Apple Silicon"):
             engine.load()
@@ -145,7 +145,7 @@ class TestMLXImportsNonApple:
         """load_model with engine='mlx' on non-Apple should raise RuntimeError."""
         if is_apple_silicon():
             pytest.skip("Running on Apple Silicon")
-        from effgen.models import load_model
+        from teffgen.models import load_model
         with pytest.raises(RuntimeError, match="Apple Silicon"):
             load_model("test-model", engine="mlx")
 
@@ -153,7 +153,7 @@ class TestMLXImportsNonApple:
         """load_model with engine='mlx_vlm' on non-Apple should raise RuntimeError."""
         if is_apple_silicon():
             pytest.skip("Running on Apple Silicon")
-        from effgen.models import load_model
+        from teffgen.models import load_model
         with pytest.raises(RuntimeError, match="Apple Silicon"):
             load_model("test-model", engine="mlx_vlm")
 
@@ -163,15 +163,15 @@ class TestMLXImportsNonApple:
 # ---------------------------------------------------------------------------
 
 class TestModelsWildcardImport:
-    """from effgen.models import * should work on any platform."""
+    """from teffgen.models import * should work on any platform."""
 
     def test_wildcard_import_does_not_crash(self):
-        import effgen.models as m
+        import teffgen.models as m
         for name in m.__all__:
             assert hasattr(m, name), f"{name} in __all__ but not accessible"
 
     def test_all_entries_count(self):
-        import effgen.models as m
+        import teffgen.models as m
         # Should have at least 20 entries (base + engines + adapters + Phase 6)
         assert len(m.__all__) >= 20
 
@@ -184,5 +184,5 @@ class TestConfigValidatorMLX:
     """Config validator should accept 'mlx' and 'mlx_vlm' as engine options."""
 
     def test_validator_imports(self):
-        from effgen.config.validator import ConfigValidator
+        from teffgen.config.validator import ConfigValidator
         assert ConfigValidator is not None

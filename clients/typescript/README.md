@@ -1,6 +1,6 @@
-# effgen-client
+# teffgen-client
 
-Official TypeScript / JavaScript client for the [effGen](https://effgen.org) API server.
+Official TypeScript / JavaScript client for the [tideon.ai](https://tideon.ai) API server.
 
 Works in Node 18+, Deno, Bun, and modern browsers. Uses the built-in
 `fetch` and `ReadableStream` — no extra runtime dependencies.
@@ -8,17 +8,17 @@ Works in Node 18+, Deno, Bun, and modern browsers. Uses the built-in
 ## Install
 
 ```bash
-npm install effgen-client
+npm install teffgen-client
 ```
 
 ## Usage
 
 ```ts
-import { EffGenClient } from "effgen-client";
+import { TeffgenClient } from "teffgen-client";
 
-const client = new EffGenClient({
+const client = new TeffgenClient({
   baseUrl: "http://localhost:8000",
-  apiKey: process.env.EFFGEN_API_KEY,
+  apiKey: process.env.TEFFGEN_API_KEY,
 });
 
 // Simple chat
@@ -41,14 +41,14 @@ console.log(health.ok);
 
 ## Error handling
 
-All errors derive from `EffGenClientError`:
+All errors derive from `TeffgenClientError`:
 
-- `EffGenConnectionError` — network failure
-- `EffGenTimeoutError` — request timed out
-- `EffGenAPIError` — non-2xx response
-  - `EffGenAuthError` — 401 / 403
-  - `EffGenRateLimitError` — 429
-  - `EffGenServerError` — 5xx
+- `TeffgenConnectionError` — network failure
+- `TeffgenTimeoutError` — request timed out
+- `TeffgenAPIError` — non-2xx response
+  - `TeffgenAuthError` — 401 / 403
+  - `TeffgenRateLimitError` — 429
+  - `TeffgenServerError` — 5xx
 
 Connection, timeout, 429, and 5xx errors are retried automatically with
 exponential backoff (configurable via `maxRetries` / `backoffBaseMs`).

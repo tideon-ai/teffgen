@@ -28,14 +28,14 @@ from pathlib import Path
 
 import pytest
 
-from effgen.rag import (
+from teffgen.rag import (
     ContextBuilder,
     DocumentIngester,
     HybridSearchEngine,
     LLMReranker,
     RuleBasedReranker,
 )
-from effgen.rag.attribution import CitationTracker
+from teffgen.rag.attribution import CitationTracker
 
 # -----------------------------------------------------------------------------
 # Fixture: a knowledge base with distinctive content we can ground-truth on
@@ -46,9 +46,9 @@ def knowledge_base(tmp_path_factory) -> Path:
     kb = tmp_path_factory.mktemp("kb")
 
     (kb / "architecture.md").write_text(
-        "# effGen Architecture\n\n"
+        "# tideon.ai Architecture\n\n"
         "## Scaling\n\n"
-        "effGen scales horizontally using stateless agent workers. "
+        "tideon.ai scales horizontally using stateless agent workers. "
         "Each worker can process requests independently. "
         "The sharding key is the session id.\n\n"
         "## Storage\n\n"
@@ -57,13 +57,13 @@ def knowledge_base(tmp_path_factory) -> Path:
     )
     (kb / "tools.md").write_text(
         "# Built-in Tools\n\n"
-        "effGen ships with 14 built-in tools including Calculator, "
+        "tideon.ai ships with 14 built-in tools including Calculator, "
         "WebSearch, PythonREPL, and Retrieval. "
         "All tools extend the BaseTool class."
     )
     (kb / "models.md").write_text(
         "# Supported Models\n\n"
-        "effGen supports Qwen, Llama, Phi, and Gemma models "
+        "tideon.ai supports Qwen, Llama, Phi, and Gemma models "
         "via the Transformers and vLLM backends. "
         "The minimum recommended model size is 1B parameters."
     )
@@ -88,7 +88,7 @@ class TestRagRealModel:
         assert len(chunks) >= 4
 
         engine = HybridSearchEngine(chunks)
-        results = engine.search("How does effGen scale horizontally?", top_k=3)
+        results = engine.search("How does tideon.ai scale horizontally?", top_k=3)
 
         assert len(results) == 3
         assert all(r.relevance_score > 0 for r in results)
@@ -123,7 +123,7 @@ class TestRagRealModel:
         chunks = DocumentIngester(show_progress=False).ingest(knowledge_base)
         engine = HybridSearchEngine(chunks)
         results = engine.search(
-            "What database does effGen use for persistent state?", top_k=3
+            "What database does tideon.ai use for persistent state?", top_k=3
         )
 
         # 2. Build context with citations
@@ -140,11 +140,11 @@ class TestRagRealModel:
             "Answer the question using ONLY the provided context. "
             "Cite sources with [N] markers.\n\n"
             f"Context:\n{built.text}\n\n"
-            "Question: What database does effGen use for persistent state?\n"
+            "Question: What database does tideon.ai use for persistent state?\n"
             "Answer:"
         )
 
-        from effgen.models.base import GenerationConfig
+        from teffgen.models.base import GenerationConfig
 
         cfg = GenerationConfig(max_tokens=150, temperature=0.1)
         out = real_model.generate(prompt, config=cfg)
@@ -164,7 +164,7 @@ class TestRagRealModel:
 
     def test_rag_preset_agent_ingests_and_retrieves(self, knowledge_base, real_model):
         """create_agent('rag', model, knowledge_base=...) wires everything up."""
-        from effgen.presets import create_agent
+        from teffgen.presets import create_agent
 
         agent = create_agent(
             "rag",

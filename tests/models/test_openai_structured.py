@@ -17,7 +17,7 @@ from pydantic import BaseModel
 # Load env for integration tests
 try:
     from dotenv import load_dotenv
-    load_dotenv(Path.home() / ".effgen" / ".env", override=False)
+    load_dotenv(Path.home() / ".teffgen" / ".env", override=False)
     load_dotenv(Path(__file__).parent.parent.parent / ".env", override=False)
 except ImportError:
     pass
@@ -55,8 +55,8 @@ def _make_mock_structured_response(content: str | None = None, refusal: str | No
 
 @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-unit"})
 def test_generate_structured_returns_json_text():
-    from effgen.models.openai_adapter import OpenAIAdapter
-    from effgen.models.openai_schema import to_openai_schema
+    from teffgen.models.openai_adapter import OpenAIAdapter
+    from teffgen.models.openai_schema import to_openai_schema
 
     adapter = OpenAIAdapter(model_name="gpt-4o-mini")
     adapter._is_loaded = True
@@ -82,9 +82,9 @@ def test_generate_structured_returns_json_text():
 
 @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-unit"})
 def test_generate_structured_raises_on_refusal():
-    from effgen.models.errors import ModelRefusalError
-    from effgen.models.openai_adapter import OpenAIAdapter
-    from effgen.models.openai_schema import to_openai_schema
+    from teffgen.models.errors import ModelRefusalError
+    from teffgen.models.openai_adapter import OpenAIAdapter
+    from teffgen.models.openai_schema import to_openai_schema
 
     adapter = OpenAIAdapter(model_name="gpt-4o-mini")
     adapter._is_loaded = True
@@ -106,8 +106,8 @@ def test_generate_structured_raises_on_refusal():
 
 @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-unit"})
 def test_generate_structured_passes_response_format_to_api():
-    from effgen.models.openai_adapter import OpenAIAdapter
-    from effgen.models.openai_schema import to_openai_schema
+    from teffgen.models.openai_adapter import OpenAIAdapter
+    from teffgen.models.openai_schema import to_openai_schema
 
     adapter = OpenAIAdapter(model_name="gpt-4o-mini")
     adapter._is_loaded = True
@@ -127,8 +127,8 @@ def test_generate_structured_passes_response_format_to_api():
 
 @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-unit"})
 def test_generate_structured_with_system_prompt_places_system_first():
-    from effgen.models.openai_adapter import OpenAIAdapter
-    from effgen.models.openai_schema import to_openai_schema
+    from teffgen.models.openai_adapter import OpenAIAdapter
+    from teffgen.models.openai_schema import to_openai_schema
 
     adapter = OpenAIAdapter(model_name="gpt-4o-mini")
     adapter._is_loaded = True
@@ -154,7 +154,7 @@ def test_generate_structured_with_system_prompt_places_system_first():
 
 @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-unit"})
 def test_model_refusal_error_attributes():
-    from effgen.models.errors import ModelRefusalError
+    from teffgen.models.errors import ModelRefusalError
     err = ModelRefusalError("Cannot do that.", model_name="gpt-4o")
     assert err.refusal_message == "Cannot do that."
     assert err.model_name == "gpt-4o"
@@ -164,7 +164,7 @@ def test_model_refusal_error_attributes():
 
 @patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test-unit"})
 def test_model_refusal_error_without_model_name():
-    from effgen.models.errors import ModelRefusalError
+    from teffgen.models.errors import ModelRefusalError
     err = ModelRefusalError("No.")
     assert err.model_name == ""
     assert "No." in str(err)
@@ -182,8 +182,8 @@ LIVE_SKIP = pytest.mark.skipif(
 
 @LIVE_SKIP
 def test_live_structured_output_parses():
-    from effgen.models.openai_adapter import OpenAIAdapter
-    from effgen.models.openai_schema import to_openai_schema
+    from teffgen.models.openai_adapter import OpenAIAdapter
+    from teffgen.models.openai_schema import to_openai_schema
 
     adapter = OpenAIAdapter(model_name="gpt-5.4-nano")
     adapter.load()

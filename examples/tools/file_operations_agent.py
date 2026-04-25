@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-effGen — File Operations Agent (Read/Write/Search)
+tideon.ai — File Operations Agent (Read/Write/Search)
 
 A file management agent with FileOperations, BashTool, and TextProcessingTool.
 Demonstrates reading files, writing files, listing directories, and searching
@@ -28,11 +28,11 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from effgen import load_model
-from effgen.core.agent import Agent, AgentConfig
-from effgen.tools.builtin.bash_tool import BashTool
-from effgen.tools.builtin.file_ops import FileOperations
-from effgen.tools.builtin.text_processing import TextProcessingTool
+from teffgen import load_model
+from teffgen.core.agent import Agent, AgentConfig
+from teffgen.tools.builtin.bash_tool import BashTool
+from teffgen.tools.builtin.file_ops import FileOperations
+from teffgen.tools.builtin.text_processing import TextProcessingTool
 
 FILE_AGENT_SYSTEM_PROMPT = """You are a file management assistant with access to tools for file operations.
 
@@ -147,7 +147,7 @@ def run_test(agent, test_id, description, question, expected_keywords=None,
     }
 
 
-def run_all_tests(agent, model_name="unknown", test_dir="/tmp/effgen_file_ops_test"):
+def run_all_tests(agent, model_name="unknown", test_dir="/tmp/teffgen_file_ops_test"):
     """Run all file operations tests."""
     results = []
 
@@ -155,8 +155,8 @@ def run_all_tests(agent, model_name="unknown", test_dir="/tmp/effgen_file_ops_te
     write_path = os.path.join(test_dir, "test_output.txt")
     results.append(run_test(
         agent, "T1", "Write file",
-        f'Create a file called {write_path} with the content \'Hello from effgen\'',
-        expected_keywords=["hello", "effgen"],
+        f'Create a file called {write_path} with the content \'Hello from teffgen\'',
+        expected_keywords=["hello", "teffgen"],
         expected_tool="file_operations",
         check_fn=lambda out, resp, td: os.path.exists(os.path.join(td, "test_output.txt")) if td else True,
         test_dir=test_dir,
@@ -166,12 +166,12 @@ def run_all_tests(agent, model_name="unknown", test_dir="/tmp/effgen_file_ops_te
     read_path = os.path.join(test_dir, "test_output.txt")
     if not os.path.exists(read_path):
         with open(read_path, "w") as f:
-            f.write("Hello from effgen")
+            f.write("Hello from teffgen")
 
     results.append(run_test(
         agent, "T2", "Read file",
         f'Read the file {read_path}',
-        expected_keywords=["hello", "effgen"],
+        expected_keywords=["hello", "teffgen"],
         expected_tool="file_operations",
         test_dir=test_dir,
     ))
@@ -211,7 +211,7 @@ def run_all_tests(agent, model_name="unknown", test_dir="/tmp/effgen_file_ops_te
     results.append(run_test(
         agent, "T5", "Path handling (absolute path)",
         f'Read the contents of the file at {file_uri_path}',
-        expected_keywords=["hello", "effgen"],
+        expected_keywords=["hello", "teffgen"],
         expected_tool="file_operations",
         test_dir=test_dir,
     ))
@@ -277,7 +277,7 @@ def interactive_mode(agent):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen File Operations Agent Example")
+    parser = argparse.ArgumentParser(description="tideon.ai File Operations Agent Example")
     parser.add_argument(
         "--model",
         default="Qwen/Qwen2.5-3B-Instruct",
@@ -287,8 +287,8 @@ def main():
     parser.add_argument("--test", type=str, help="Run a single test (e.g., T1)")
     parser.add_argument(
         "--test-dir",
-        default="/tmp/effgen_file_ops_test",
-        help="Directory for test files (default: /tmp/effgen_file_ops_test)",
+        default="/tmp/teffgen_file_ops_test",
+        help="Directory for test files (default: /tmp/teffgen_file_ops_test)",
     )
     args = parser.parse_args()
 
@@ -296,7 +296,7 @@ def main():
     os.makedirs(args.test_dir, exist_ok=True)
 
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-    print("effGen — File Operations Agent")
+    print("tideon.ai — File Operations Agent")
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
     print(f"Test directory: {args.test_dir}")

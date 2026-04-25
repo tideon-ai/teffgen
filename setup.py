@@ -1,5 +1,5 @@
 """
-effGen: Framework for building agents with Small Language Models
+tideon.ai: Framework for building agents with Small Language Models
 
 A comprehensive framework that enables Small Language Models to function as
 powerful agentic systems through tool integration, advanced prompt engineering,
@@ -12,7 +12,7 @@ from setuptools import find_packages, setup
 
 # Read version from __init__.py
 version = {}
-with open(os.path.join("effgen", "__init__.py"), encoding="utf-8") as f:
+with open(os.path.join("teffgen", "__init__.py"), encoding="utf-8") as f:
     for line in f:
         if line.startswith("__version__"):
             version["__version__"] = line.split("=")[1].strip().strip('"').strip("'")
@@ -40,20 +40,20 @@ install_requires = read_requirements("requirements.txt")
 dev_requires = read_requirements("requirements-dev.txt")
 
 setup(
-    name="effgen",
+    name="teffgen",
     version=version["__version__"],
     author="Gaurav Srivastava",
     author_email="gks@vt.edu",
     description="A comprehensive framework for building agents with Small Language Models",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/ctrl-gaurav/effGen",
+    url="https://github.com/tideon-ai/teffgen",
     project_urls={
-        "Homepage": "https://effgen.org/",
-        "Documentation": "https://effgen.org/docs/",
-        "Source Code": "https://github.com/ctrl-gaurav/effGen",
-        "Bug Tracker": "https://github.com/ctrl-gaurav/effGen/issues",
-        "Changelog": "https://github.com/ctrl-gaurav/effGen/blob/main/CHANGELOG.md",
+        "Homepage": "https://tideon.ai/",
+        "Documentation": "https://tideon.ai/docs/",
+        "Source Code": "https://github.com/tideon-ai/teffgen",
+        "Bug Tracker": "https://github.com/tideon-ai/teffgen/issues",
+        "Changelog": "https://github.com/tideon-ai/teffgen/blob/main/CHANGELOG.md",
     },
     packages=find_packages(exclude=["tests", "tests.*", "examples", "docs", "scripts"]),
     classifiers=[
@@ -162,14 +162,14 @@ setup(
     },
     entry_points={
         "console_scripts": [
-            "effgen=effgen.cli:main",
-            "effgen-agent=effgen.cli:agent_main",
-            "effgen-web=effgen.cli:web_agent_main",
+            "teffgen=teffgen.cli:main",
+            "teffgen-agent=teffgen.cli:agent_main",
+            "teffgen-web=teffgen.cli:web_agent_main",
         ],
     },
     include_package_data=True,
     package_data={
-        "effgen": [
+        "teffgen": [
             "prompts/templates/*.yaml",
             "prompts/templates/*.json",
             "config/schemas/*.json",

@@ -4,12 +4,12 @@ Real-model integration tests for new domain tools.
 Tests real SLM agents actually *calling* the new domain tools
 (finance, data science, devops, knowledge, communication) on GPU.
 
-Dispatched per-GPU via the EFFGEN_TEST_GROUP env var so the three
+Dispatched per-GPU via the TEFFGEN_TEST_GROUP env var so the three
 groups can run in parallel across GPUs 3, 4, and 5:
 
-    EFFGEN_TEST_GROUP=a CUDA_VISIBLE_DEVICES=3 python -m tests...
-    EFFGEN_TEST_GROUP=b CUDA_VISIBLE_DEVICES=4 python -m tests...
-    EFFGEN_TEST_GROUP=c CUDA_VISIBLE_DEVICES=5 python -m tests...
+    TEFFGEN_TEST_GROUP=a CUDA_VISIBLE_DEVICES=3 python -m tests...
+    TEFFGEN_TEST_GROUP=b CUDA_VISIBLE_DEVICES=4 python -m tests...
+    TEFFGEN_TEST_GROUP=c CUDA_VISIBLE_DEVICES=5 python -m tests...
 
 Group A (GPU 3): finance + communication  (StockPrice, Currency, Crypto,
                  EmailDraft, SlackDraft)
@@ -30,9 +30,9 @@ import traceback
 os.environ.setdefault("TRANSFORMERS_VERBOSITY", "error")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
-from effgen.core.agent import Agent, AgentConfig
-from effgen.models import load_model
-from effgen.tools.builtin import (
+from teffgen.core.agent import Agent, AgentConfig
+from teffgen.models import load_model
+from teffgen.tools.builtin import (
     ArxivTool,
     CryptoTool,
     CurrencyConverterTool,
@@ -189,7 +189,7 @@ def group_b():
     def t_http():
         agent = make_agent("http-agent", [HTTPTool()])
         r = agent.run(
-            "Use the http tool to GET https://api.github.com/repos/ctrl-gaurav/effGen."
+            "Use the http tool to GET https://api.github.com/repos/ctrl-gaurav/tideon.ai."
         )
         assert r.success, f"agent failed: {r}"
 
@@ -226,7 +226,7 @@ def group_c():
     def t_github():
         agent = make_agent("gh-agent", [GitHubTool()])
         r = agent.run(
-            "Use the github tool with query 'effgen', kind 'repositories', max_results 2."
+            "Use the github tool with query 'teffgen', kind 'repositories', max_results 2."
         )
         assert r.success, f"agent failed: {r}"
 
@@ -244,9 +244,9 @@ GROUPS = {"a": group_a, "b": group_b, "c": group_c}
 
 
 def main():
-    group = os.environ.get("EFFGEN_TEST_GROUP", "").lower()
+    group = os.environ.get("TEFFGEN_TEST_GROUP", "").lower()
     if group not in GROUPS:
-        print(f"ERROR: set EFFGEN_TEST_GROUP to one of {list(GROUPS)}", file=sys.stderr)
+        print(f"ERROR: set TEFFGEN_TEST_GROUP to one of {list(GROUPS)}", file=sys.stderr)
         sys.exit(2)
     print(f"[group {group}] starting on CUDA_VISIBLE_DEVICES="
           f"{os.environ.get('CUDA_VISIBLE_DEVICES','?')}", flush=True)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-effGen — Q&A Agent (No Tools)
+tideon.ai — Q&A Agent (No Tools)
 
 A minimal Q&A agent using direct inference — no tools, no ReAct loop.
 The simplest agent path: model loads, prompt goes in, answer comes out.
@@ -34,11 +34,11 @@ import os
 import sys
 import time
 
-# Ensure effgen is importable
+# Ensure teffgen is importable
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from effgen import load_model
-from effgen.presets import create_agent
+from teffgen import load_model
+from teffgen.presets import create_agent
 
 
 def demo_single_qa(agent):
@@ -100,7 +100,7 @@ def interactive_mode(agent):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen Q&A Agent Example")
+    parser = argparse.ArgumentParser(description="tideon.ai Q&A Agent Example")
     parser.add_argument(
         "--model",
         default="Qwen/Qwen2.5-3B-Instruct",
@@ -111,7 +111,7 @@ def main():
     args = parser.parse_args()
 
     gpu = os.environ.get("CUDA_VISIBLE_DEVICES", "not set")
-    print("effGen — Q&A Agent")
+    print("tideon.ai — Q&A Agent")
     print(f"Model: {args.model}")
     print(f"GPU: CUDA_VISIBLE_DEVICES={gpu}")
 

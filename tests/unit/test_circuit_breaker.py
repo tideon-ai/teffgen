@@ -2,7 +2,7 @@
 
 import time
 
-from effgen.utils.circuit_breaker import CircuitBreaker, CircuitState
+from teffgen.utils.circuit_breaker import CircuitBreaker, CircuitState
 
 
 class TestCircuitBreakerClosed:

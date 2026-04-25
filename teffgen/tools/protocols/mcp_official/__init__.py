@@ -1,0 +1,172 @@
+"""
+Official Model Context Protocol (MCP) implementation for tideon.ai.
+
+This module provides standards-compliant MCP server and client implementations
+using the official MCP Python SDK (https://github.com/modelcontextprotocol/python-sdk).
+
+The MCP protocol enables applications to provide context to LLMs in a standardized
+way, separating the concerns of providing context from the actual LLM interaction.
+
+## Key Features
+
+- **Standards-Compliant**: Implements the official MCP specification
+- **FastMCP Integration**: Uses the high-level FastMCP server API
+- **Multiple Transports**: Supports STDIO, HTTP, and SSE transports
+- **Tool Exposure**: Automatically exposes tideon.ai tools as MCP tools
+- **Resource Management**: Support for exposing resources to LLMs
+- **Structured Output**: Supports structured tool outputs with validation
+- **Progress Reporting**: Real-time progress updates for long-running operations
+
+## Installation
+
+The MCP SDK is required for this module:
+    pip install mcp[cli]>=1.0.0
+
+## Server Usage
+
+```python
+from teffgen.tools.registry import ToolRegistry
+from teffgen.tools.protocols.mcp_official import TeffgenMCPServer
+
+# Create registry and register tools
+registry = ToolRegistry()
+registry.discover_builtin_tools()
+
+# Create and run server
+server = TeffgenMCPServer(tools_registry=registry)
+await server.run_stdio()  # For Claude Desktop
+# OR
+await server.run_http()   # For HTTP clients
+```
+
+## Client Usage
+
+```python
+from teffgen.tools.protocols.mcp_official import (
+    TeffgenMCPClient,
+    MCPServerConfig
+)
+
+# Configure server connection
+config = MCPServerConfig(
+    name="my-server",
+    transport="stdio",
+    command="python",
+    args=["server.py"]
+)
+
+# Use client
+async with TeffgenMCPClient(config) as client:
+    # List available tools
+    tools = client.get_tools()
+
+    # Call a tool
+    result = await client.call_tool("calculator", {"operation": "add", "a": 5, "b": 3})
+
+    # Access result
+    if result.isError:
+        print(f"Error: {result.content[0].text}")
+    else:
+        print(f"Result: {result.structuredContent}")
+```
+
+## See Also
+
+- Official MCP Documentation: https://modelcontextprotocol.io
+- MCP Python SDK: https://github.com/modelcontextprotocol/python-sdk
+- MCP Specification: https://spec.modelcontextprotocol.io
+"""
+
+import warnings
+
+# Check if MCP SDK is installed
+try:
+    import mcp
+    MCP_AVAILABLE = True
+except ImportError:
+    MCP_AVAILABLE = False
+    warnings.warn(
+        "MCP SDK not installed. Please install with: pip install mcp[cli]>=1.0.0\n"
+        "MCP features will not be available until the package is installed.",
+        ImportWarning
+    )
+
+# Only import if MCP is available
+if MCP_AVAILABLE:
+    from .client import (
+        MCPServerConfig,
+        TeffgenMCPClient,
+        create_client,
+        create_http_client,
+        create_stdio_client,
+    )
+    from .server import (
+        TeffgenMCPServer,
+        TeffgenMCPServerConfig,
+        create_server,
+        main_http,
+        main_stdio,
+    )
+
+    __all__ = [
+        # Server
+        "TeffgenMCPServer",
+        "TeffgenMCPServerConfig",
+        "create_server",
+        "main_stdio",
+        "main_http",
+        # Client
+        "TeffgenMCPClient",
+        "MCPServerConfig",
+        "create_client",
+        "create_stdio_client",
+        "create_http_client",
+        # Availability flag
+        "MCP_AVAILABLE",
+    ]
+else:
+    # Define placeholder classes that raise helpful errors
+    class _MCPNotAvailable:
+        """Placeholder class when MCP is not installed."""
+        def __init__(self, *args, **kwargs):
+            raise ImportError(
+                "MCP SDK not installed. Please install with: pip install mcp[cli]>=1.0.0"
+            )
+
+    TeffgenMCPServer = _MCPNotAvailable
+    TeffgenMCPServerConfig = _MCPNotAvailable
+    TeffgenMCPClient = _MCPNotAvailable
+    MCPServerConfig = _MCPNotAvailable
+
+    def create_server(*args, **kwargs):
+        raise ImportError("MCP SDK not installed. Please install with: pip install mcp[cli]>=1.0.0")
+
+    def create_client(*args, **kwargs):
+        raise ImportError("MCP SDK not installed. Please install with: pip install mcp[cli]>=1.0.0")
+
+    def create_stdio_client(*args, **kwargs):
+        raise ImportError("MCP SDK not installed. Please install with: pip install mcp[cli]>=1.0.0")
+
+    def create_http_client(*args, **kwargs):
+        raise ImportError("MCP SDK not installed. Please install with: pip install mcp[cli]>=1.0.0")
+
+    def main_stdio(*args, **kwargs):
+        raise ImportError("MCP SDK not installed. Please install with: pip install mcp[cli]>=1.0.0")
+
+    def main_http(*args, **kwargs):
+        raise ImportError("MCP SDK not installed. Please install with: pip install mcp[cli]>=1.0.0")
+
+    __all__ = [
+        "TeffgenMCPServer",
+        "TeffgenMCPServerConfig",
+        "TeffgenMCPClient",
+        "MCPServerConfig",
+        "create_server",
+        "create_client",
+        "create_stdio_client",
+        "create_http_client",
+        "main_stdio",
+        "main_http",
+        "MCP_AVAILABLE",
+    ]
+

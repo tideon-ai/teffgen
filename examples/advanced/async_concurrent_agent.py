@@ -18,9 +18,9 @@ from __future__ import annotations
 import asyncio
 import time
 
-from effgen import Agent, AgentConfig
-from effgen.models import load_model
-from effgen.tools.builtin import Calculator, DateTimeTool
+from teffgen import Agent, AgentConfig
+from teffgen.models import load_model
+from teffgen.tools.builtin import Calculator, DateTimeTool
 
 # ---------------------------------------------------------------------------
 # 1. Agent.run() inside async code  (sync-in-async)
@@ -29,7 +29,7 @@ from effgen.tools.builtin import Calculator, DateTimeTool
 async def sync_agent_in_async():
     """
     Agent.run() is synchronous but safe to call from async code.
-    effGen's internal _run_coroutine_sync() handles the event-loop
+    tideon.ai's internal _run_coroutine_sync() handles the event-loop
     detection so this will NOT crash with "cannot run nested event loop".
     """
     model = load_model("Qwen/Qwen2.5-1.5B-Instruct")

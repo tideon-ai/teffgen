@@ -1,30 +1,30 @@
-"""CLI smoke tests — verify effgen CLI commands work."""
+"""CLI smoke tests — verify teffgen CLI commands work."""
 
 import subprocess
 import sys
 
 
 def _run_cli(*args, timeout=30):
-    """Run effgen CLI command and return CompletedProcess."""
-    cmd = [sys.executable, "-m", "effgen.cli"] + list(args)
+    """Run teffgen CLI command and return CompletedProcess."""
+    cmd = [sys.executable, "-m", "teffgen.cli"] + list(args)
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
 
 
 class TestCLIVersion:
-    """Test effgen --version."""
+    """Test teffgen --version."""
 
     def test_version_exits_zero(self):
         result = _run_cli("--version")
         assert result.returncode == 0
 
-    def test_version_contains_effgen(self):
+    def test_version_contains_teffgen(self):
         result = _run_cli("--version")
         output = result.stdout + result.stderr
-        assert "effGen" in output or "effgen" in output.lower()
+        assert "tideon.ai" in output or "teffgen" in output.lower()
 
 
 class TestCLIHelp:
-    """Test effgen --help."""
+    """Test teffgen --help."""
 
     def test_help_exits_zero(self):
         result = _run_cli("--help")
@@ -33,11 +33,11 @@ class TestCLIHelp:
     def test_help_shows_usage(self):
         result = _run_cli("--help")
         output = result.stdout + result.stderr
-        assert "usage" in output.lower() or "effgen" in output.lower()
+        assert "usage" in output.lower() or "teffgen" in output.lower()
 
 
 class TestCLIPresets:
-    """Test effgen presets command."""
+    """Test teffgen presets command."""
 
     def test_presets_exits_zero(self):
         result = _run_cli("presets")
@@ -51,7 +51,7 @@ class TestCLIPresets:
 
 
 class TestCLIHealth:
-    """Test effgen health command."""
+    """Test teffgen health command."""
 
     def test_health_runs(self):
         """Health command should run (may fail network checks but should not crash)."""

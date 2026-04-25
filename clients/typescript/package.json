@@ -1,7 +1,7 @@
 {
-  "name": "effgen-client",
+  "name": "teffgen-client",
   "version": "0.1.0",
-  "description": "Official TypeScript / JavaScript client for the effGen API",
+  "description": "Official TypeScript / JavaScript client for the tideon.ai API",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -16,7 +16,7 @@
     "test": "echo 'no tests yet'"
   },
   "keywords": [
-    "effgen",
+    "teffgen",
     "llm",
     "agent",
     "ai",
@@ -27,7 +27,7 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ctrl-gaurav/effGen.git",
+    "url": "https://github.com/tideon-ai/teffgen.git",
     "directory": "clients/typescript"
   },
   "engines": {

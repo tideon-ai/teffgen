@@ -2,9 +2,9 @@
 
 import pytest
 
-from effgen import Agent
-from effgen.core.agent import AgentConfig
-from effgen.tools.builtin import Calculator
+from teffgen import Agent
+from teffgen.core.agent import AgentConfig
+from teffgen.tools.builtin import Calculator
 
 
 @pytest.mark.gpu

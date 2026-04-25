@@ -12,15 +12,15 @@ from pathlib import Path
 
 import pytest
 
-from effgen.core.clarification import (
+from teffgen.core.clarification import (
     ClarificationDetector,
     ClarificationRequest,
 )
-from effgen.core.feedback import (
+from teffgen.core.feedback import (
     FeedbackCollector,
     FeedbackType,
 )
-from effgen.core.human_loop import (
+from teffgen.core.human_loop import (
     ApprovalDecision,
     ApprovalManager,
     ApprovalMode,
@@ -395,7 +395,7 @@ class TestAgentConfigApproval:
     """Test that AgentConfig accepts approval fields."""
 
     def test_agent_config_approval_fields(self):
-        from effgen.core.agent import AgentConfig
+        from teffgen.core.agent import AgentConfig
 
         approvals = []
         def my_callback(name, args):
@@ -414,7 +414,7 @@ class TestAgentConfigApproval:
         assert config.approval_timeout == 30.0
 
     def test_agent_config_defaults(self):
-        from effgen.core.agent import AgentConfig
+        from teffgen.core.agent import AgentConfig
         config = AgentConfig(name="test", model="dummy")
         assert config.approval_callback is None
         assert config.approval_mode == "never"
@@ -427,12 +427,12 @@ class TestToolMetadataApproval:
     """Test that ToolMetadata accepts requires_approval."""
 
     def test_requires_approval_default(self):
-        from effgen.tools.base_tool import ToolCategory, ToolMetadata
+        from teffgen.tools.base_tool import ToolCategory, ToolMetadata
         meta = ToolMetadata(name="test", description="test", category=ToolCategory.COMPUTATION)
         assert meta.requires_approval is False
 
     def test_requires_approval_set(self):
-        from effgen.tools.base_tool import ToolCategory, ToolMetadata
+        from teffgen.tools.base_tool import ToolCategory, ToolMetadata
         meta = ToolMetadata(
             name="bash", description="run shell",
             category=ToolCategory.SYSTEM, requires_approval=True,

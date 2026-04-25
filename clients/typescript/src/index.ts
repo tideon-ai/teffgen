@@ -1,5 +1,5 @@
 /**
- * effgen-client — TypeScript/JavaScript client for the effGen API.
+ * teffgen-client — TypeScript/JavaScript client for the tideon.ai API.
  *
  * Fetch-based with streaming support via ReadableStream. Works in Node 18+,
  * Deno, Bun, and modern browsers.
@@ -26,7 +26,7 @@ export interface HealthStatus {
   ok: boolean;
 }
 
-export interface EffGenClientOptions {
+export interface TeffgenClientOptions {
   baseUrl?: string;
   apiKey?: string;
   timeoutMs?: number;
@@ -35,11 +35,11 @@ export interface EffGenClientOptions {
   fetchImpl?: typeof fetch;
 }
 
-export class EffGenClientError extends Error {}
-export class EffGenConnectionError extends EffGenClientError {}
-export class EffGenTimeoutError extends EffGenClientError {}
+export class TeffgenClientError extends Error {}
+export class TeffgenConnectionError extends TeffgenClientError {}
+export class TeffgenTimeoutError extends TeffgenClientError {}
 
-export class EffGenAPIError extends EffGenClientError {
+export class TeffgenAPIError extends TeffgenClientError {
   statusCode?: number;
   payload?: unknown;
   constructor(msg: string, statusCode?: number, payload?: unknown) {
@@ -48,11 +48,11 @@ export class EffGenAPIError extends EffGenClientError {
     this.payload = payload;
   }
 }
-export class EffGenAuthError extends EffGenAPIError {}
-export class EffGenRateLimitError extends EffGenAPIError {}
-export class EffGenServerError extends EffGenAPIError {}
+export class TeffgenAuthError extends TeffgenAPIError {}
+export class TeffgenRateLimitError extends TeffgenAPIError {}
+export class TeffgenServerError extends TeffgenAPIError {}
 
-export class EffGenClient {
+export class TeffgenClient {
   readonly baseUrl: string;
   readonly apiKey?: string;
   readonly timeoutMs: number;
@@ -60,7 +60,7 @@ export class EffGenClient {
   readonly backoffBaseMs: number;
   private readonly fetchImpl: typeof fetch;
 
-  constructor(opts: EffGenClientOptions = {}) {
+  constructor(opts: TeffgenClientOptions = {}) {
     this.baseUrl = (opts.baseUrl ?? "http://localhost:8000").replace(/\/+$/, "");
     this.apiKey = opts.apiKey;
     this.timeoutMs = opts.timeoutMs ?? 60_000;
@@ -100,10 +100,10 @@ export class EffGenClient {
       if (typeof p.error === "string") msg = p.error;
       else if (typeof p.message === "string") msg = p.message;
     }
-    if (status === 401 || status === 403) throw new EffGenAuthError(msg, status, payload);
-    if (status === 429) throw new EffGenRateLimitError(msg, status, payload);
-    if (status >= 500) throw new EffGenServerError(msg, status, payload);
-    throw new EffGenAPIError(msg, status, payload);
+    if (status === 401 || status === 403) throw new TeffgenAuthError(msg, status, payload);
+    if (status === 429) throw new TeffgenRateLimitError(msg, status, payload);
+    if (status >= 500) throw new TeffgenServerError(msg, status, payload);
+    throw new TeffgenAPIError(msg, status, payload);
   }
 
   private async request<T = unknown>(
@@ -136,16 +136,16 @@ export class EffGenClient {
         return payload as T;
       } catch (e: unknown) {
         clearTimeout(timer);
-        if (e instanceof EffGenAPIError) {
-          if (e instanceof EffGenServerError || e instanceof EffGenRateLimitError) {
+        if (e instanceof TeffgenAPIError) {
+          if (e instanceof TeffgenServerError || e instanceof TeffgenRateLimitError) {
             lastErr = e;
           } else {
             throw e;
           }
         } else if ((e as { name?: string })?.name === "AbortError") {
-          lastErr = new EffGenTimeoutError("request timed out");
+          lastErr = new TeffgenTimeoutError("request timed out");
         } else {
-          lastErr = new EffGenConnectionError(String((e as Error)?.message ?? e));
+          lastErr = new TeffgenConnectionError(String((e as Error)?.message ?? e));
         }
         if (attempt < this.maxRetries) {
           await this.sleep(this.backoff(attempt));
@@ -161,7 +161,7 @@ export class EffGenClient {
     opts: { tools?: string[]; model?: string } = {},
   ): Promise<ChatResponse> {
     const body: Record<string, unknown> = {
-      model: opts.model ?? "effgen-default",
+      model: opts.model ?? "teffgen-default",
       messages: [{ role: "user", content: message }],
     };
     if (opts.tools) body.tools = opts.tools;
@@ -178,7 +178,7 @@ export class EffGenClient {
     opts: { model?: string } = {},
   ): AsyncIterableIterator<string> {
     const body = {
-      model: opts.model ?? "effgen-default",
+      model: opts.model ?? "teffgen-default",
       messages: [{ role: "user", content: message }],
       stream: true,
     };
@@ -218,7 +218,7 @@ export class EffGenClient {
       { model, input: texts },
     );
     if (!payload || !Array.isArray(payload.data)) {
-      throw new EffGenAPIError("Malformed embeddings response", undefined, payload);
+      throw new TeffgenAPIError("Malformed embeddings response", undefined, payload);
     }
     return payload.data.map((d) => d.embedding);
   }

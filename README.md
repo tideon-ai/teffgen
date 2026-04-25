@@ -1,29 +1,29 @@
 <div align="center">
 
 <!-- Animated Header -->
-<img src="assets/header.svg" alt="effGen" width="100%"/>
+<img src="assets/header.svg" alt="tideon.ai" width="100%"/>
 
 <br/>
 
 <br/>
 
 <!-- Badges -->
-<a href="https://github.com/ctrl-gaurav/effGen/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/ctrl-gaurav/effGen/ci.yml?branch=main&style=for-the-badge&logo=github&label=CI" alt="CI"/></a>
+<a href="https://github.com/tideon-ai/teffgen/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/ctrl-gaurav/tideon.ai/ci.yml?branch=main&style=for-the-badge&logo=github&label=CI" alt="CI"/></a>
 <a href="https://arxiv.org/abs/2602.00887"><img src="https://img.shields.io/badge/arXiv-2602.00887-b31b1b.svg?style=for-the-badge&logo=arxiv&logoColor=white" alt="arXiv"/></a>
-<a href="https://pypi.org/project/effgen/"><img src="https://img.shields.io/pypi/v/effgen.svg?style=for-the-badge&logo=pypi&logoColor=white&color=3775A9" alt="PyPI"/></a>
+<a href="https://pypi.org/project/teffgen/"><img src="https://img.shields.io/pypi/v/teffgen.svg?style=for-the-badge&logo=pypi&logoColor=white&color=3775A9" alt="PyPI"/></a>
 <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/python-3.10+-blue.svg?style=for-the-badge&logo=python&logoColor=white" alt="Python"/></a>
 <a href="https://opensource.org/licenses/Apache-2.0"><img src="https://img.shields.io/badge/License-Apache_2.0-green.svg?style=for-the-badge" alt="License"/></a>
 
-<a href="https://pepy.tech/project/effgen"><img src="https://img.shields.io/pepy/dt/effgen?style=for-the-badge&logo=pypi&logoColor=white&color=brightgreen&label=Total%20Downloads" alt="Total Downloads"/></a>
-<a href="https://pypi.org/project/effgen/"><img src="https://img.shields.io/pypi/dm/effgen.svg?style=for-the-badge&logo=pypi&logoColor=white&color=orange" alt="Monthly Downloads"/></a>
-<a href="https://github.com/ctrl-gaurav/effGen"><img src="https://img.shields.io/github/stars/ctrl-gaurav/effGen?style=for-the-badge&logo=github&color=yellow" alt="Stars"/></a>
-<a href="https://github.com/ctrl-gaurav/effGen/fork"><img src="https://img.shields.io/github/forks/ctrl-gaurav/effGen?style=for-the-badge&logo=github&color=blue" alt="Forks"/></a>
+<a href="https://pepy.tech/project/teffgen"><img src="https://img.shields.io/pepy/dt/teffgen?style=for-the-badge&logo=pypi&logoColor=white&color=brightgreen&label=Total%20Downloads" alt="Total Downloads"/></a>
+<a href="https://pypi.org/project/teffgen/"><img src="https://img.shields.io/pypi/dm/teffgen.svg?style=for-the-badge&logo=pypi&logoColor=white&color=orange" alt="Monthly Downloads"/></a>
+<a href="https://github.com/tideon-ai/teffgen"><img src="https://img.shields.io/github/stars/ctrl-gaurav/tideon.ai?style=for-the-badge&logo=github&color=yellow" alt="Stars"/></a>
+<a href="https://github.com/tideon-ai/teffgen/fork"><img src="https://img.shields.io/github/forks/ctrl-gaurav/tideon.ai?style=for-the-badge&logo=github&color=blue" alt="Forks"/></a>
 
 <!-- Quick Links -->
 <a href="https://arxiv.org/abs/2602.00887"><img src="https://img.shields.io/badge/📄_Read_Paper-FF6B6B?style=for-the-badge" alt="Paper"/></a>
-<a href="https://effgen.org/"><img src="https://img.shields.io/badge/🌐_Website-4ECDC4?style=for-the-badge" alt="Website"/></a>
-<a href="https://effgen.org/docs/"><img src="https://img.shields.io/badge/📚_Documentation-45B7D1?style=for-the-badge" alt="Docs"/></a>
-<a href="https://pypi.org/project/effgen/"><img src="https://img.shields.io/badge/📦_PyPI-96CEB4?style=for-the-badge" alt="PyPI"/></a>
+<a href="https://tideon.ai/"><img src="https://img.shields.io/badge/🌐_Website-4ECDC4?style=for-the-badge" alt="Website"/></a>
+<a href="https://tideon.ai/docs/"><img src="https://img.shields.io/badge/📚_Documentation-45B7D1?style=for-the-badge" alt="Docs"/></a>
+<a href="https://pypi.org/project/teffgen/"><img src="https://img.shields.io/badge/📦_PyPI-96CEB4?style=for-the-badge" alt="PyPI"/></a>
 
 <!-- Typing Animation -->
 <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=22&pause=1000&color=6C63FF&center=true&vCenter=true&multiline=true&repeat=true&width=600&height=80&lines=Build+AI+Agents+with+Small+Language+Models;Fast+%E2%80%A2+Efficient+%E2%80%A2+Powerful" alt="Typing SVG" />
@@ -37,25 +37,25 @@
 | | Date | Update |
 |:---:|:---|:---|
 | 🚀 | **9 Apr 2026** | **v0.2.0 Released**: Major release — native tool calling, guardrails, multi-agent orchestration, RAG pipeline, 31 tools, eval framework, production API server, MLX Apple Silicon support, Python & TypeScript SDKs. [See changelog](CHANGELOG.md#020---2026-04-09) |
-| 🍎 | **8 Apr 2026** | **MLX & Apple Silicon support merged** (PR #4): Native Metal GPU acceleration via MLX & MLX-VLM backends, hardware detection, 5 Gradio GUI examples. `pip install effgen[mlx]` |
+| 🍎 | **8 Apr 2026** | **MLX & Apple Silicon support merged** (PR #4): Native Metal GPU acceleration via MLX & MLX-VLM backends, hardware detection, 5 Gradio GUI examples. `pip install teffgen[mlx]` |
 | 🔧 | **25 Mar 2026** | **v0.1.3 Released**: Verification hardening — smarter loop detection, "skip the tool" prompting, model-aware token counting, sub-agent depth limits, circuit breaker persistence. [See changelog](CHANGELOG.md#013---2026-03-25) |
 | 🔧 | **12 Mar 2026** | **v0.1.2 Released**: Test-driven hardening — 10 example agents, 19 bug fixes, cross-model compatibility matrix (11 models, 73% pass rate). [See changelog](CHANGELOG.md#012---2026-03-12) |
 | 🔒 | **6 Mar 2026** | **v0.1.1 Released**: Stabilization — fixed license/metadata consistency, improved error handling, added 6 examples, expanded test suite. [See changelog](CHANGELOG.md#011---2026-03-06) |
 | 🎉 | **1 Mar 2026** | **v0.1.0 Released**: Major feature release — 14 built-in tools, agent presets, plugin system, real streaming, memory integration, ACP/MCP protocols, CI/CD, and comprehensive test suite. [See changelog](CHANGELOG.md#010---2026-03-01) |
 | 🔧 | **3 Feb 2026** | **v0.0.2 Released**: vLLM backend fixes with automatic chat template support, GPU memory control, improved OOM error handling, and multi-model family compatibility |
-| 📄 | **2 Feb 2026** | Preprint available: [EffGen: Enabling Small Language Models as Capable Autonomous Agents](https://arxiv.org/abs/2602.00887) |
-| 🚀 | **31 Jan 2026** | Initial release of effGen framework **(v0.0.1)** |
+| 📄 | **2 Feb 2026** | Preprint available: [tideon.ai: Enabling Small Language Models as Capable Autonomous Agents](https://arxiv.org/abs/2602.00887) |
+| 🚀 | **31 Jan 2026** | Initial release of tideon.ai framework **(v0.0.1)** |
 
 ---
 
-## 🤔 What is effGen?
+## 🤔 What is tideon.ai?
 
-**effGen** transforms Small Language Models into powerful AI agents. While most frameworks require massive LLMs, effGen is **optimized from the ground up** for efficient, smaller models — delivering fast, capable agents without the compute overhead.
+**tideon.ai** transforms Small Language Models into powerful AI agents. While most frameworks require massive LLMs, tideon.ai is **optimized from the ground up** for efficient, smaller models — delivering fast, capable agents without the compute overhead.
 
 ```python
-from effgen import Agent, load_model
-from effgen.core.agent import AgentConfig
-from effgen.tools.builtin import Calculator, PythonREPL
+from teffgen import Agent, load_model
+from teffgen.core.agent import AgentConfig
+from teffgen.tools.builtin import Calculator, PythonREPL
 
 # Load a small but mighty model
 model = load_model("Qwen/Qwen2.5-1.5B-Instruct", quantization="4bit")
@@ -82,37 +82,37 @@ print(f"Answer: {result.output}")
 ### 📦 From PyPI (Recommended)
 
 ```bash
-pip install effgen
+pip install teffgen
 ```
 
 ### 🍎 Apple Silicon (MLX — Recommended for Mac)
 
 ```bash
-pip install effgen[mlx]          # Text models on Apple Silicon
-pip install effgen[mlx-vlm]      # Vision-Language models on Apple Silicon
+pip install teffgen[mlx]          # Text models on Apple Silicon
+pip install teffgen[mlx-vlm]      # Vision-Language models on Apple Silicon
 ```
 
 ### 🚀 With vLLM for Faster Inference
 
 ```bash
-pip install effgen[vllm]
+pip install teffgen[vllm]
 ```
 
 ### 🎁 Everything in one shot
 
 ```bash
-pip install effgen[all]    # installs vLLM + RAG + vector-DB + search + cloud-secrets + monitoring + …
+pip install teffgen[all]    # installs vLLM + RAG + vector-DB + search + cloud-secrets + monitoring + …
 ```
 
 ### ⚡ Optional: flash-attn (NVIDIA GPUs only — 2 steps)
 
 > `flash-attn` is **not** in `[all]` on purpose: its own `setup.py` imports
 > `torch` before pip's isolated build environment has torch installed (a
-> well-known upstream bug), so bundling it would break `pip install effgen[all]`
+> well-known upstream bug), so bundling it would break `pip install teffgen[all]`
 > for everyone. Install it in two steps instead:
 
 ```bash
-pip install effgen[all]                       # step 1: gets torch + the rest
+pip install teffgen[all]                       # step 1: gets torch + the rest
 pip install flash-attn --no-build-isolation   # step 2: reuses the torch from step 1
 ```
 
@@ -121,8 +121,8 @@ See [docs/installation.md](docs/installation.md) for the full guide.
 ### 🔧 From Source
 
 ```bash
-git clone https://github.com/ctrl-gaurav/effGen.git
-cd effGen
+git clone https://github.com/tideon-ai/teffgen.git
+cd tideon.ai
 
 # Quick install
 ./install.sh
@@ -142,30 +142,30 @@ pip install -e .
 
 ```bash
 # Run a task
-effgen run "What is the capital of France?"
+teffgen run "What is the capital of France?"
 
 # Interactive chat
-effgen chat
+teffgen chat
 
 # Start API server
-effgen serve --port 8000
+teffgen serve --port 8000
 
 # List available presets
-effgen presets
+teffgen presets
 
 # Check infrastructure health
-effgen health
+teffgen health
 
 # Interactive wizard
-effgen
+teffgen
 ```
 
 ### 🐍 Python API
 
 ```python
-from effgen import Agent, load_model
-from effgen.core.agent import AgentConfig
-from effgen.tools.builtin import Calculator
+from teffgen import Agent, load_model
+from teffgen.core.agent import AgentConfig
+from teffgen.tools.builtin import Calculator
 
 # Load model
 model = load_model("Qwen/Qwen2.5-1.5B-Instruct", quantization="4bit")
@@ -187,9 +187,9 @@ print(result.output)
 ### 🍎 Apple Silicon (MLX)
 
 ```python
-from effgen import Agent, load_model
-from effgen.core.agent import AgentConfig
-from effgen.tools.builtin import Calculator
+from teffgen import Agent, load_model
+from teffgen.core.agent import AgentConfig
+from teffgen.tools.builtin import Calculator
 
 # Load MLX model — native Metal GPU, unified memory, no CPU-GPU transfer
 model = load_model("LiquidAI/LFM2.5-1.2B-Instruct-MLX-8bit", engine="mlx")
@@ -281,7 +281,7 @@ Production API<br/>
 
 4. **Production API Server** — OpenAI-compatible `/v1/chat/completions`, request queuing, agent pooling, multi-tenancy, API keys. Drop-in OpenAI replacement with local SLMs.
 
-5. **Apple Silicon Native** — MLX & MLX-VLM backends for M1/M2/M3/M4. Metal GPU acceleration, unified memory. `pip install effgen[mlx]`.
+5. **Apple Silicon Native** — MLX & MLX-VLM backends for M1/M2/M3/M4. Metal GPU acceleration, unified memory. `pip install teffgen[mlx]`.
 
 **Also new:** 31 built-in tools (was 14), multi-agent DAG workflows, model router with speculative execution, checkpointing & sessions, eval framework (270 test cases), OpenTelemetry tracing, Python & TypeScript SDKs, GGUF/AWQ/GPTQ quantization, continuous batching.
 
@@ -294,8 +294,8 @@ Production API<br/>
 Get started instantly with ready-to-use agent configurations:
 
 ```python
-from effgen import load_model
-from effgen.presets import create_agent
+from teffgen import load_model
+from teffgen.presets import create_agent
 
 model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization="4bit")
 
@@ -310,8 +310,8 @@ minimal_agent = create_agent("minimal", model)   # Direct inference, no tools
 
 ```bash
 # CLI preset support
-effgen run --preset math "What is sqrt(144)?"
-effgen run --preset research "Tell me about quantum computing"
+teffgen run --preset math "What is sqrt(144)?"
+teffgen run --preset research "Tell me about quantum computing"
 ```
 
 ---
@@ -487,9 +487,9 @@ python examples/web_retrieval/retrieval_agent.py   # RAG-based retrieval
 ### Multi-Tool Agent
 
 ```python
-from effgen import Agent, load_model
-from effgen.core.agent import AgentConfig
-from effgen.tools.builtin import Calculator, WebSearch, PythonREPL
+from teffgen import Agent, load_model
+from teffgen.core.agent import AgentConfig
+from teffgen.tools.builtin import Calculator, WebSearch, PythonREPL
 
 model = load_model("Qwen/Qwen2.5-3B-Instruct")
 
@@ -507,9 +507,9 @@ result = agent.run("Search for the population of Tokyo and calculate what percen
 ### Streaming
 
 ```python
-from effgen import Agent, load_model
-from effgen.core.agent import AgentConfig
-from effgen.tools.builtin import Calculator
+from teffgen import Agent, load_model
+from teffgen.core.agent import AgentConfig
+from teffgen.tools.builtin import Calculator
 
 model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization="4bit")
 agent = Agent(config=AgentConfig(
@@ -537,7 +537,7 @@ result = agent.run("What's my name and what am I working on?")
 ### Retrieval Agent (RAG)
 
 ```python
-from effgen.tools.builtin import Retrieval
+from teffgen.tools.builtin import Retrieval
 
 retrieval_tool = Retrieval(knowledge_base_path="./docs")
 config = AgentConfig(name="qa_agent", model=model, tools=[retrieval_tool])
@@ -551,7 +551,7 @@ result = agent.run("What does the documentation say about configuration?")
 
 ## 🤖 Multi-Model Support
 
-effGen supports **7 inference backends** and is tested across 11+ model families:
+tideon.ai supports **7 inference backends** and is tested across 11+ model families:
 
 | Backend | Platform | Best For |
 |---------|----------|----------|
@@ -615,11 +615,11 @@ Rate Limiting<br/>
 
 ## 📖 Citation
 
-If you use **effGen** in your research, please cite our paper:
+If you use **tideon.ai** in your research, please cite our paper:
 
 ```bibtex
-@software{srivastava2026effgen,
-      title={effGen: Enabling Small Language Models as Capable Autonomous Agents},
+@software{srivastava2026teffgen,
+      title={tideon.ai: Enabling Small Language Models as Capable Autonomous Agents},
       author={Gaurav Srivastava and Aafiya Hussain and Chi Wang and Yingyan Celine Lin and Xuan Wang},
       year={2026},
       eprint={2602.00887},
@@ -636,10 +636,10 @@ If you use **effGen** in your research, please cite our paper:
 <div align="center">
 
 <a href="https://arxiv.org/abs/2602.00887"><img src="https://img.shields.io/badge/📄_Paper-arXiv:2602.00887-b31b1b?style=for-the-badge" alt="Paper"/></a>
-<a href="https://effgen.org/"><img src="https://img.shields.io/badge/🌐_Website-effgen.org-4ECDC4?style=for-the-badge" alt="Website"/></a>
-<a href="https://effgen.org/docs/"><img src="https://img.shields.io/badge/📚_Docs-effgen.org/docs-45B7D1?style=for-the-badge" alt="Docs"/></a>
-<a href="https://pypi.org/project/effgen/"><img src="https://img.shields.io/badge/📦_PyPI-pypi.org/project/effgen-3775A9?style=for-the-badge" alt="PyPI"/></a>
-<a href="https://github.com/ctrl-gaurav/effGen/issues"><img src="https://img.shields.io/badge/🐛_Issues-GitHub-red?style=for-the-badge" alt="Issues"/></a>
+<a href="https://tideon.ai/"><img src="https://img.shields.io/badge/🌐_Website-tideon.ai-4ECDC4?style=for-the-badge" alt="Website"/></a>
+<a href="https://tideon.ai/docs/"><img src="https://img.shields.io/badge/📚_Docs-tideon.ai/docs-45B7D1?style=for-the-badge" alt="Docs"/></a>
+<a href="https://pypi.org/project/teffgen/"><img src="https://img.shields.io/badge/📦_PyPI-pypi.org/project/teffgen-3775A9?style=for-the-badge" alt="PyPI"/></a>
+<a href="https://github.com/tideon-ai/teffgen/issues"><img src="https://img.shields.io/badge/🐛_Issues-GitHub-red?style=for-the-badge" alt="Issues"/></a>
 
 </div>
 
@@ -653,14 +653,14 @@ Apache License 2.0 — see [LICENSE](LICENSE) for details.
 
 <div align="center">
 
-<a href="https://effgen.org/docs/"><img src="https://img.shields.io/badge/🚀_Get_Started-FF6B6B?style=for-the-badge" alt="Get Started"/></a>
+<a href="https://tideon.ai/docs/"><img src="https://img.shields.io/badge/🚀_Get_Started-FF6B6B?style=for-the-badge" alt="Get Started"/></a>
 <a href="examples/"><img src="https://img.shields.io/badge/📚_Examples-4ECDC4?style=for-the-badge" alt="Examples"/></a>
 <a href="https://arxiv.org/abs/2602.00887"><img src="https://img.shields.io/badge/📄_Paper-45B7D1?style=for-the-badge" alt="Paper"/></a>
-<a href="https://github.com/ctrl-gaurav/effGen"><img src="https://img.shields.io/badge/⭐_Star_on_GitHub-yellow?style=for-the-badge" alt="GitHub"/></a>
+<a href="https://github.com/tideon-ai/teffgen"><img src="https://img.shields.io/badge/⭐_Star_on_GitHub-yellow?style=for-the-badge" alt="GitHub"/></a>
 
 **Made with ❤️ for the AI community**
 
 <!-- Footer Wave -->
-<img src="assets/footer.svg" alt="effGen footer" width="100%"/>
+<img src="assets/footer.svg" alt="tideon.ai footer" width="100%"/>
 
 </div>

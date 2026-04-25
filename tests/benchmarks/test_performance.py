@@ -1,11 +1,11 @@
-"""Performance benchmarks for effGen."""
+"""Performance benchmarks for tideon.ai."""
 
 import time
 
 import pytest
 
-from effgen.core.agent import Agent, AgentConfig
-from effgen.tools.builtin import Calculator, DateTimeTool, JSONTool, TextProcessingTool
+from teffgen.core.agent import Agent, AgentConfig
+from teffgen.tools.builtin import Calculator, DateTimeTool, JSONTool, TextProcessingTool
 from tests.fixtures.mock_models import MockModel
 
 
@@ -126,7 +126,7 @@ class TestMemoryPerformance:
 
     def test_short_term_memory_add(self):
         """Adding messages should be fast."""
-        from effgen.memory.short_term import MessageRole, ShortTermMemory
+        from teffgen.memory.short_term import MessageRole, ShortTermMemory
         mem = ShortTermMemory(max_tokens=8192, max_messages=1000)
         start = time.perf_counter()
         for i in range(1000):

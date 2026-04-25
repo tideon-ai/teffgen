@@ -1,6 +1,6 @@
-effGen Framework Overview
+tideon.ai Framework Overview
 
-effGen is an open-source framework for building agentic AI systems with Small Language Models (SLMs).
+tideon.ai is an open-source framework for building agentic AI systems with Small Language Models (SLMs).
 It supports models from 1B to 7B parameters and provides tools, memory, and protocol support.
 
 Key Features:

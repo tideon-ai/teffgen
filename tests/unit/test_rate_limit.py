@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from effgen.models._rate_limit import RateLimitCoordinator, RateLimitExceeded
+from teffgen.models._rate_limit import RateLimitCoordinator, RateLimitExceeded
 
 
 def _make_coordinator(rpm: int = 30, tpm: int = 60_000) -> RateLimitCoordinator:
@@ -88,8 +88,8 @@ async def test_throttle_increments_counter():
     async def fake_sleep(seconds):
         current[0] += seconds + 0.001  # advance past the window boundary
 
-    with patch("effgen.models._rate_limit.time.monotonic", side_effect=fake_monotonic), \
-         patch("effgen.models._rate_limit.asyncio.sleep", side_effect=fake_sleep):
+    with patch("teffgen.models._rate_limit.time.monotonic", side_effect=fake_monotonic), \
+         patch("teffgen.models._rate_limit.asyncio.sleep", side_effect=fake_sleep):
         await coord.acquire(0)
 
     assert coord.total_throttled >= 1
@@ -120,8 +120,8 @@ async def test_40_req_burst_against_30_rpm_throttles():
     async def fake_sleep(seconds):
         current[0] += seconds + 0.001
 
-    with patch("effgen.models._rate_limit.time.monotonic", side_effect=fake_monotonic), \
-         patch("effgen.models._rate_limit.asyncio.sleep", side_effect=fake_sleep):
+    with patch("teffgen.models._rate_limit.time.monotonic", side_effect=fake_monotonic), \
+         patch("teffgen.models._rate_limit.asyncio.sleep", side_effect=fake_sleep):
         await asyncio.gather(*[one_request() for _ in range(10)])
 
     assert coord.total_throttled >= 1

@@ -7,7 +7,7 @@ without GPU or real model inference.
 
 from collections.abc import Iterator
 
-from effgen.models.base import BaseModel, GenerationConfig, GenerationResult, ModelType, TokenCount
+from teffgen.models.base import BaseModel, GenerationConfig, GenerationResult, ModelType, TokenCount
 
 
 class MockModel(BaseModel):

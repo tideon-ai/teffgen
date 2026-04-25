@@ -5,8 +5,8 @@ Create an agent that writes, executes, and debugs code.
 ## Quick Way
 
 ```python
-from effgen.presets import create_agent
-from effgen import load_model
+from teffgen.presets import create_agent
+from teffgen import load_model
 
 model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization="4bit")
 agent = create_agent("coding", model)
@@ -18,8 +18,8 @@ print(result.output)
 ## Custom Configuration
 
 ```python
-from effgen import Agent, AgentConfig, load_model
-from effgen.tools.builtin import CodeExecutor, PythonREPL, FileOperations, BashTool
+from teffgen import Agent, AgentConfig, load_model
+from teffgen.tools.builtin import CodeExecutor, PythonREPL, FileOperations, BashTool
 
 model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization="4bit")
 

@@ -38,7 +38,7 @@ def real_model():
     except ImportError:
         pytest.skip("PyTorch not available")
 
-    from effgen import load_model
+    from teffgen import load_model
 
     model = load_model("Qwen/Qwen2.5-3B-Instruct")
     yield model

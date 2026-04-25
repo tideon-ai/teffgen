@@ -469,13 +469,13 @@
 </g>
 
 <!-- ═══════════════════════════════════════════════════════════
-     LAYER 7  ─  TITLE  "effGen"
+     LAYER 7  ─  TITLE  "tideon.ai"
      ═══════════════════════════════════════════════════════════ -->
 <!-- deep bloom behind text -->
 <text x="640" y="216" text-anchor="middle"
       font-family="'Segoe UI',Inter,'Helvetica Neue',Arial,sans-serif"
       font-size="160" font-weight="800" letter-spacing="-2"
-      fill="#6C63FF" opacity=".45" filter="url(#bloom)">effGen</text>
+      fill="#6C63FF" opacity=".45" filter="url(#bloom)">tideon.ai</text>
 
 <!-- "eff" — white-to-lavender vertical gradient -->
 <text x="618" y="216" text-anchor="end"

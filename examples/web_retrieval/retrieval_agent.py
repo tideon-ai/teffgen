@@ -15,9 +15,9 @@ The Retrieval tool:
 import logging
 from pathlib import Path
 
-from effgen import Agent, load_model
-from effgen.core.agent import AgentConfig
-from effgen.tools.builtin import Calculator, Retrieval
+from teffgen import Agent, load_model
+from teffgen.core.agent import AgentConfig
+from teffgen.tools.builtin import Calculator, Retrieval
 
 # ============================================================================
 # CONFIGURATION: Set to True for detailed logging, False for minimal logging

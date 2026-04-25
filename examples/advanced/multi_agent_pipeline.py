@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-effGen — Multi-Agent Pipeline (Orchestration)
+tideon.ai — Multi-Agent Pipeline (Orchestration)
 
 Demonstrates two multi-agent patterns:
   Option A: Manual Pipeline — 3+ agents wired sequentially (A → B → C)
@@ -37,15 +37,15 @@ import traceback
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from effgen import load_model
-from effgen.core.agent import Agent, AgentConfig
-from effgen.core.execution_tracker import ExecutionTracker
-from effgen.core.router import RoutingStrategy, SubAgentRouter
-from effgen.core.sub_agent_manager import SubAgentManager
-from effgen.core.task import SubTask, TaskStatus
-from effgen.presets import create_agent
-from effgen.tools.builtin.calculator import Calculator
-from effgen.tools.builtin.python_repl import PythonREPL
+from teffgen import load_model
+from teffgen.core.agent import Agent, AgentConfig
+from teffgen.core.execution_tracker import ExecutionTracker
+from teffgen.core.router import RoutingStrategy, SubAgentRouter
+from teffgen.core.sub_agent_manager import SubAgentManager
+from teffgen.core.task import SubTask, TaskStatus
+from teffgen.presets import create_agent
+from teffgen.tools.builtin.calculator import Calculator
+from teffgen.tools.builtin.python_repl import PythonREPL
 
 # ANSI colors
 BLUE = "\033[94m"
@@ -303,7 +303,7 @@ def test_sub_agent_execution(model, strategy="sequential"):
 
             print(f"  {GREEN}[{agent_id}]{RESET} Done in {execution_time:.1f}s: {resp.output[:80]}...")
 
-            from effgen.core.sub_agent_manager import SubAgentResult
+            from teffgen.core.sub_agent_manager import SubAgentResult
             return SubAgentResult(
                 subtask_id=subtask.id,
                 agent_id=agent_id,
@@ -319,7 +319,7 @@ def test_sub_agent_execution(model, strategy="sequential"):
             subtask.error = str(e)
             print(f"  {RED}[{agent_id}]{RESET} Failed: {e}")
 
-            from effgen.core.sub_agent_manager import SubAgentResult
+            from teffgen.core.sub_agent_manager import SubAgentResult
             return SubAgentResult(
                 subtask_id=subtask.id,
                 agent_id=agent_id,
@@ -445,7 +445,7 @@ def test_error_handling(model):
             subtask.status = TaskStatus.FAILED
             subtask.error = "Intentional failure for testing"
             print(f"  {RED}[{agent_id}]{RESET} INTENTIONAL FAILURE")
-            from effgen.core.sub_agent_manager import SubAgentResult
+            from teffgen.core.sub_agent_manager import SubAgentResult
             return SubAgentResult(
                 subtask_id=subtask.id,
                 agent_id=agent_id,
@@ -470,7 +470,7 @@ def test_error_handling(model):
             subtask.status = TaskStatus.COMPLETED
             subtask.result = {"output": resp.output, "tokens_used": resp.tokens_used, "tool_calls": resp.tool_calls}
             print(f"  {GREEN}[{agent_id}]{RESET} Done: {resp.output[:60]}...")
-            from effgen.core.sub_agent_manager import SubAgentResult
+            from teffgen.core.sub_agent_manager import SubAgentResult
             return SubAgentResult(
                 subtask_id=subtask.id,
                 agent_id=agent_id,
@@ -483,7 +483,7 @@ def test_error_handling(model):
         except Exception as e:
             execution_time = time.time() - start_time
             subtask.status = TaskStatus.FAILED
-            from effgen.core.sub_agent_manager import SubAgentResult
+            from teffgen.core.sub_agent_manager import SubAgentResult
             return SubAgentResult(
                 subtask_id=subtask.id, agent_id=agent_id, success=False,
                 error=str(e), execution_time=execution_time,
@@ -761,7 +761,7 @@ def test_hard_sub_agents(model):
             subtask.status = TaskStatus.COMPLETED
             subtask.result = {"output": resp.output, "tokens_used": resp.tokens_used, "tool_calls": resp.tool_calls}
             print(f"  {GREEN}[{agent_id}]{RESET} Done in {execution_time:.1f}s: {resp.output[:80]}...")
-            from effgen.core.sub_agent_manager import SubAgentResult
+            from teffgen.core.sub_agent_manager import SubAgentResult
             return SubAgentResult(
                 subtask_id=subtask.id, agent_id=agent_id, success=resp.success,
                 result=subtask.result, execution_time=execution_time,
@@ -770,7 +770,7 @@ def test_hard_sub_agents(model):
         except Exception as e:
             execution_time = time.time() - start_time
             subtask.status = TaskStatus.FAILED
-            from effgen.core.sub_agent_manager import SubAgentResult
+            from teffgen.core.sub_agent_manager import SubAgentResult
             return SubAgentResult(
                 subtask_id=subtask.id, agent_id=agent_id, success=False,
                 error=str(e), execution_time=execution_time,
@@ -878,7 +878,7 @@ def run_regression(model, phases=None):
 # ── Main ─────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description="effGen Multi-Agent Pipeline Example")
+    parser = argparse.ArgumentParser(description="tideon.ai Multi-Agent Pipeline Example")
     parser.add_argument("--model", default="Qwen/Qwen2.5-3B-Instruct")
     parser.add_argument("--test", help="Run specific test (T1..T9, regression)")
     parser.add_argument("--skip-regression", action="store_true")
@@ -886,7 +886,7 @@ def main():
                         help="Topic for manual pipeline question generation")
     args = parser.parse_args()
 
-    print(f"\n{BOLD}effGen — Multi-Agent Pipeline{RESET}")
+    print(f"\n{BOLD}tideon.ai — Multi-Agent Pipeline{RESET}")
     print(f"Model: {args.model}")
     print(f"GPU: {os.environ.get('CUDA_VISIBLE_DEVICES', 'auto')}")
 

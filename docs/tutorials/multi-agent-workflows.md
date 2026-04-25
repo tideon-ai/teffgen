@@ -1,11 +1,11 @@
 # Multi-Agent Workflows
 
-effGen v0.2.0 provides advanced multi-agent orchestration with a message bus, DAG-based workflows, shared state, and agent lifecycle management.
+tideon.ai v0.2.0 provides advanced multi-agent orchestration with a message bus, DAG-based workflows, shared state, and agent lifecycle management.
 
 ## MessageBus — Agent Communication
 
 ```python
-from effgen.core.message_bus import MessageBus, AgentMessage, MessageType
+from teffgen.core.message_bus import MessageBus, AgentMessage, MessageType
 
 bus = MessageBus()
 
@@ -35,7 +35,7 @@ Define complex workflows as directed acyclic graphs:
 ### Python API
 
 ```python
-from effgen.core.workflow import WorkflowDAG, WorkflowNode
+from teffgen.core.workflow import WorkflowDAG, WorkflowNode
 
 dag = WorkflowDAG()
 dag.add_node(WorkflowNode(id="research", agent=research_agent, task="Find papers on topic"))
@@ -72,8 +72,8 @@ nodes:
 
 ```bash
 # CLI
-effgen workflow validate workflow.yaml
-effgen workflow run workflow.yaml
+teffgen workflow validate workflow.yaml
+teffgen workflow run workflow.yaml
 ```
 
 ### Conditional Branching
@@ -90,7 +90,7 @@ dag.add_edge("classify", "handle_normal", condition=lambda result: "urgent" not 
 Thread-safe key-value store shared across agents in a workflow:
 
 ```python
-from effgen.core.shared_state import SharedState
+from teffgen.core.shared_state import SharedState
 
 state = SharedState()
 
@@ -109,7 +109,7 @@ state.restore(snapshot)  # Rollback
 ## Agent Lifecycle Management
 
 ```python
-from effgen.core.lifecycle import AgentRegistry, AgentPool
+from teffgen.core.lifecycle import AgentRegistry, AgentPool
 
 # Registry — track all agents
 registry = AgentRegistry()
@@ -132,9 +132,9 @@ registry.cancel("agent-id")  # Cancel specific agent
 
 ```bash
 # Workflow operations
-effgen workflow run pipeline.yaml --model "Qwen/Qwen2.5-3B-Instruct"
-effgen workflow validate pipeline.yaml
+teffgen workflow run pipeline.yaml --model "Qwen/Qwen2.5-3B-Instruct"
+teffgen workflow validate pipeline.yaml
 
 # Batch execution
-effgen batch --input queries.jsonl --output results.jsonl --concurrency 5 --preset research
+teffgen batch --input queries.jsonl --output results.jsonl --concurrency 5 --preset research
 ```

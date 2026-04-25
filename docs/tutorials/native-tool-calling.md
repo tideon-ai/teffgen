@@ -1,6 +1,6 @@
 # Native Tool Calling
 
-effGen v0.2.0 supports native function calling for models that have built-in tool-use capabilities (Qwen, Llama, Mistral, and others). This bypasses text-based ReAct parsing for faster, more reliable tool execution.
+tideon.ai v0.2.0 supports native function calling for models that have built-in tool-use capabilities (Qwen, Llama, Mistral, and others). This bypasses text-based ReAct parsing for faster, more reliable tool execution.
 
 ## Tool Calling Modes
 
@@ -14,9 +14,9 @@ effGen v0.2.0 supports native function calling for models that have built-in too
 ## Basic Usage
 
 ```python
-from effgen import Agent, load_model
-from effgen.core.agent import AgentConfig
-from effgen.tools.builtin import Calculator
+from teffgen import Agent, load_model
+from teffgen.core.agent import AgentConfig
+from teffgen.tools.builtin import Calculator
 
 model = load_model("Qwen/Qwen2.5-3B-Instruct")
 

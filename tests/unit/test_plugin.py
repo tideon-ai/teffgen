@@ -7,8 +7,8 @@ from unittest.mock import patch
 
 import pytest
 
-from effgen.tools.plugin import PluginManager, ToolPlugin
-from effgen.tools.registry import get_registry
+from teffgen.tools.plugin import PluginManager, ToolPlugin
+from teffgen.tools.registry import get_registry
 
 
 @pytest.fixture(autouse=True)
@@ -64,7 +64,7 @@ class TestPluginManagerDiscovery:
 
     def test_discover_user_dir_no_dir(self):
         mgr = PluginManager()
-        with patch("effgen.tools.plugin.Path.home", return_value=Path("/nonexistent")):
+        with patch("teffgen.tools.plugin.Path.home", return_value=Path("/nonexistent")):
             result = mgr.discover_user_dir()
         assert result == []
 
@@ -76,7 +76,7 @@ class TestPluginManagerDiscovery:
 
     def test_discover_env_dir_nonexistent(self):
         mgr = PluginManager()
-        with patch.dict(os.environ, {"EFFGEN_PLUGINS_DIR": "/nonexistent/path"}):
+        with patch.dict(os.environ, {"TEFFGEN_PLUGINS_DIR": "/nonexistent/path"}):
             result = mgr.discover_env_dir()
         assert result == []
 
@@ -91,7 +91,7 @@ class TestPluginManagerLoadFromDirectory:
     def test_load_from_directory_with_plugin(self, tmp_path):
         """Create a temp plugin file and verify it's discovered."""
         plugin_code = '''
-from effgen.tools.plugin import ToolPlugin
+from teffgen.tools.plugin import ToolPlugin
 
 class TempPlugin(ToolPlugin):
     name = "temp_plugin"

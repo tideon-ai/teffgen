@@ -1,8 +1,8 @@
-# effGen Release Notes
+# tideon.ai Release Notes
 
 ## v0.2.0 — April 9, 2026
 
-**effGen v0.2.0** is a major release that transforms the framework into a production-grade agentic AI platform. 15 development phases deliver powerful new capabilities — all optimized for Small Language Models.
+**tideon.ai v0.2.0** is a major release that transforms the framework into a production-grade agentic AI platform. 15 development phases deliver powerful new capabilities — all optimized for Small Language Models.
 
 ### Top 5 Features
 
@@ -14,7 +14,7 @@
 
 4. **Production API Server** — OpenAI-compatible `/v1/chat/completions` endpoint, request queuing with priority, agent pooling, multi-tenancy with API key management, CORS, GZip, graceful shutdown. Drop-in replacement for OpenAI API with local SLMs.
 
-5. **Apple Silicon Native (MLX)** — Community-contributed MLX and MLX-VLM backends for Apple Silicon. Native Metal GPU acceleration with unified memory. `pip install effgen[mlx]` — no CUDA required.
+5. **Apple Silicon Native (MLX)** — Community-contributed MLX and MLX-VLM backends for Apple Silicon. Native Metal GPU acceleration with unified memory. `pip install teffgen[mlx]` — no CUDA required.
 
 ### What's New
 
@@ -22,11 +22,11 @@
 - **Multi-agent orchestration** — MessageBus pub/sub, DAG-based workflows (YAML), shared state, agent lifecycle management with pools and registries
 - **Model router** — automatic model selection based on query complexity; multi-model agents with speculative execution; model pool with LRU eviction
 - **Checkpointing & sessions** — save/restore agent state mid-task; persistent conversation sessions across processes; background task runner with pause/resume/cancel
-- **Evaluation framework** — 5 built-in test suites (270 test cases), regression tracking, model comparison matrix; `effgen eval` and `effgen compare` CLI
+- **Evaluation framework** — 5 built-in test suites (270 test cases), regression tracking, model comparison matrix; `teffgen eval` and `teffgen compare` CLI
 - **Observability** — full OpenTelemetry tracing, structured JSON logging with correlation IDs, Prometheus metrics with percentiles, Grafana dashboard template, interactive debug mode
 - **Human-in-the-loop** — approval workflows for dangerous tools, clarification requests, feedback collection
 - **Performance** — prompt caching (LRU + TTL), result caching with semantic similarity, token budget management, lazy model loading, GGUF/AWQ/GPTQ quantization, continuous batching, speculative decoding hints
-- **Python & TypeScript SDKs** — `EffGenClient` with sync/async, streaming, retries; TypeScript client for Node/Deno/Bun/browser
+- **Python & TypeScript SDKs** — `TeffgenClient` with sync/async, streaming, retries; TypeScript client for Node/Deno/Bun/browser
 - **Local embedding API** — `/v1/embeddings` endpoint with sentence-transformers + TF-IDF fallback, LRU + SQLite caching
 - **Domain keyword expansion** — 5 built-in domains (Tech/Science/Finance/Health/Legal) with WordNet/template/LLM-based expansion
 
@@ -35,19 +35,19 @@
 No breaking API changes. All existing `Agent`, `AgentConfig`, `load_model`, and tool APIs work without modification. New features are opt-in. See the [migration guide](docs/migration.md) for details.
 
 ```bash
-pip install --upgrade effgen==0.2.0
+pip install --upgrade teffgen==0.2.0
 ```
 
 ### New Optional Dependencies
 
 ```bash
-pip install effgen[rag]       # RAG pipeline (sentence-transformers, faiss-cpu)
-pip install effgen[finance]   # Finance tools (yfinance)
-pip install effgen[data]      # Data science tools (matplotlib, plotly)
-pip install effgen[eval]      # Evaluation extras (rouge-score, nltk)
-pip install effgen[gguf]      # GGUF model support (llama-cpp-python)
-pip install effgen[mlx]       # Apple Silicon MLX support
-pip install effgen[mlx-vlm]   # Apple Silicon vision-language models
+pip install teffgen[rag]       # RAG pipeline (sentence-transformers, faiss-cpu)
+pip install teffgen[finance]   # Finance tools (yfinance)
+pip install teffgen[data]      # Data science tools (matplotlib, plotly)
+pip install teffgen[eval]      # Evaluation extras (rouge-score, nltk)
+pip install teffgen[gguf]      # GGUF model support (llama-cpp-python)
+pip install teffgen[mlx]       # Apple Silicon MLX support
+pip install teffgen[mlx-vlm]   # Apple Silicon vision-language models
 ```
 
 ---
@@ -149,11 +149,11 @@ v0.1.1 is a stabilization release that fixes metadata inconsistencies, improves 
 
 ---
 
-# effGen v0.1.0 Release Notes
+# tideon.ai v0.1.0 Release Notes
 
 **Release Date:** March 1, 2026
 
-effGen v0.1.0 is the first feature-complete release, upgrading the framework from Alpha to Beta status. This release transforms effGen into a full-featured agentic AI framework optimized for Small Language Models (1B-7B parameters).
+tideon.ai v0.1.0 is the first feature-complete release, upgrading the framework from Alpha to Beta status. This release transforms tideon.ai into a full-featured agentic AI framework optimized for Small Language Models (1B-7B parameters).
 
 ## Highlights
 
@@ -162,7 +162,7 @@ effGen v0.1.0 is the first feature-complete release, upgrading the framework fro
 - **Real Token Streaming** — True streaming via `generate_stream()` with callbacks for thoughts, tool calls, observations, and answers
 - **Memory System** — ShortTermMemory, LongTermMemory, and VectorMemoryStore integrated into the Agent lifecycle
 - **Agent Presets** — One-line agent creation with `create_agent("math", model)` for math, research, coding, general, and minimal configurations
-- **Plugin System** — Extend effGen with custom tools via entry points or directory-based discovery
+- **Plugin System** — Extend tideon.ai with custom tools via entry points or directory-based discovery
 - **CLI Enhancements** — Rich progress display, `--preset`, `--explain`, `--verbose` flags, tab completion for bash/zsh/fish, and persistent chat history
 - **API Server** — WebSocket streaming, API key authentication, rate limiting, and OpenAPI documentation
 - **CI/CD & Testing** — 6 GitHub Actions workflows, 67 unit tests, health monitoring, OpenTelemetry tracing, and Prometheus metrics
@@ -187,5 +187,5 @@ effGen v0.1.0 is the first feature-complete release, upgrading the framework fro
 No breaking API changes. Existing `Agent(config=AgentConfig(...))` and `load_model()` calls work without modification. New features are opt-in.
 
 ```bash
-pip install --upgrade effgen
+pip install --upgrade teffgen
 ```
