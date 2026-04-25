@@ -761,9 +761,19 @@ class TransformersEngine(BatchModel):
     def unload(self) -> None:
         """
         Unload the model and free memory.
+
+        Removes any accelerate device-dispatch hooks before deleting the
+        model — leftover hooks can corrupt the CUDA forward state of
+        subsequently-loaded models in the same process (observed as
+        intermittent C-level aborts inside Qwen2 RMSNorm under pytest).
         """
         if self.model is not None:
             logger.info(f"Unloading model '{self.model_name}'...")
+            try:
+                from accelerate.hooks import remove_hook_from_module
+                remove_hook_from_module(self.model, recurse=True)
+            except Exception:
+                pass
             del self.model
             self.model = None
 
@@ -776,7 +786,15 @@ class TransformersEngine(BatchModel):
         gc.collect()
 
         if torch.cuda.is_available():
+            try:
+                torch.cuda.synchronize()
+            except Exception:
+                pass
             torch.cuda.empty_cache()
+            try:
+                torch.cuda.ipc_collect()
+            except Exception:
+                pass
 
         self._is_loaded = False
         logger.info(f"Model '{self.model_name}' unloaded successfully")

@@ -72,26 +72,28 @@ def _load_and_yield(gpu_id, quantization=None):
         pass
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="class")
 def real_model(gpu_id):
-    """Module-scoped fixture that loads a real model once per test module.
+    """Class-scoped fixture that loads a real model once per test class.
 
-    Module scope (not session) prevents bitsandbytes 4-bit CUDA state from
-    accumulating across test modules, which causes TextIteratorStreamer to
-    deadlock in the streaming tests.
+    Class scope isolates accelerate's device-dispatch hook state between test
+    classes so a prior test's forward pass cannot corrupt Qwen2 RMSNorm on a
+    subsequent class — an upstream torch/accelerate issue that otherwise
+    manifests as a C-level abort. Loaded in fp16 (no bitsandbytes 4-bit).
     """
     if gpu_id is None:
         pytest.skip("No GPU available")
-    yield from _load_and_yield(gpu_id, quantization="4bit")
+    yield from _load_and_yield(gpu_id, quantization=None)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="class")
 def streaming_model(gpu_id):
-    """Module-scoped fixture for streaming tests — loads WITHOUT 4-bit quantization.
+    """Class-scoped fixture for streaming tests — loaded without 4-bit quant.
 
     bitsandbytes 4-bit kernels leave CUDA stream state that causes
     TextIteratorStreamer.text_queue.get() to block indefinitely.  Loading
-    the model in fp16 / bf16 avoids those kernels entirely.
+    the model in fp16 / bf16 avoids those kernels entirely. Class scope
+    (not module / session) prevents cross-class state bleed.
     """
     if gpu_id is None:
         pytest.skip("No GPU available")

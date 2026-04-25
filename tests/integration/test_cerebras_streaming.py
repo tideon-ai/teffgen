@@ -37,10 +37,22 @@ class TestCerebrasStreaming:
 
         adapter = CerebrasAdapter("qwen-3-235b-a22b-instruct-2507", enable_rate_limiting=False)
         adapter.load()
+        last_exc: Exception | None = None
         try:
-            chunks = list(adapter.generate_stream("Say hello briefly."))
-            assert len(chunks) >= 1
-            assert "".join(chunks).strip()
+            for attempt in range(3):
+                try:
+                    chunks = list(adapter.generate_stream("Say hello briefly."))
+                    assert len(chunks) >= 1
+                    assert "".join(chunks).strip()
+                    return
+                except RuntimeError as exc:
+                    msg = str(exc)
+                    if "429" in msg or "queue_exceeded" in msg or "too_many_requests" in msg:
+                        last_exc = exc
+                        time.sleep(5 * (attempt + 1))
+                        continue
+                    raise
+            pytest.skip(f"Cerebras transiently overloaded: {last_exc}")
         finally:
             adapter.unload()
 

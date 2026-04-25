@@ -87,10 +87,12 @@ from effgen.models._rate_limit import RateLimitCoordinator, RateLimitExceeded  #
 from effgen.models.cerebras_models import available_models as cerebras_available_models
 from effgen.models.cerebras_models import free_tier_models as cerebras_free_tier_models
 from effgen.models.cerebras_models import model_info as cerebras_model_info
+from effgen.models.errors import ModelRefusalError
 from effgen.models.openai_models import available_models as openai_available_models
 from effgen.models.openai_models import chat_models as openai_chat_models
 from effgen.models.openai_models import model_info as openai_model_info
 from effgen.models.openai_models import reasoning_models as openai_reasoning_models  # noqa: I001
+from effgen.models.openai_schema import to_openai_schema
 
 # Preset imports
 from effgen.presets import create_agent, list_presets
@@ -179,6 +181,8 @@ __all__ = [
     "GenerationResult",
     "RateLimitCoordinator",
     "RateLimitExceeded",
+    "ModelRefusalError",
+    "to_openai_schema",
     # Cerebras helpers
     "cerebras_available_models",
     "cerebras_free_tier_models",

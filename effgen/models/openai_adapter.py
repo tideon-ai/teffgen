@@ -9,6 +9,8 @@ Supports:
 - Streaming responses
 - Automatic retries with exponential backoff
 - Cost tracking via CostTracker
+- OpenAI automatic prompt caching (cached_input_tokens surfaced)
+- Structured outputs v2 (strict JSON schema + ModelRefusalError)
 """
 
 from __future__ import annotations
@@ -25,6 +27,7 @@ from effgen.models.base import (
     ModelType,
     TokenCount,
 )
+from effgen.models.errors import ModelRefusalError
 from effgen.models.openai_models import (
     OPENAI_MODELS,
     VALID_REASONING_EFFORTS,
@@ -71,6 +74,12 @@ class OpenAIAdapter(FunctionCallingModel):
         timeout: int = 60,
         **kwargs,
     ):
+        if model_name not in OPENAI_MODELS:
+            logger.warning(
+                f"Model '{model_name}' is not in the OpenAI registry. "
+                f"Using conservative defaults (context=128k, pricing fallback). "
+                f"Call OpenAIAdapter.list_models() for registered ids."
+            )
         context = get_context_length(model_name)
         super().__init__(
             model_name=model_name,
@@ -379,6 +388,171 @@ class OpenAIAdapter(FunctionCallingModel):
         except Exception as e:
             logger.error(f"OpenAI streaming failed: {e}")
             raise RuntimeError(f"Streaming generation failed: {e}") from e
+
+    def generate_structured(
+        self,
+        prompt: str,
+        response_format: dict[str, Any],
+        system_prompt: str | None = None,
+        config: GenerationConfig | None = None,
+        **kwargs,
+    ) -> GenerationResult:
+        """Generate a response constrained to a JSON Schema (structured outputs v2).
+
+        Args:
+            prompt: User prompt.
+            response_format: OpenAI ``response_format`` dict.  Pass the output of
+                ``to_openai_schema`` wrapped in the expected envelope, e.g.::
+
+                    from effgen.models.openai_schema import to_openai_schema
+                    rf = {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "Answer",
+                            "schema": to_openai_schema(Answer),
+                            "strict": True,
+                        },
+                    }
+
+            system_prompt: Optional system message prepended to the conversation.
+                When supplied the system prompt is placed first in the message list
+                so OpenAI can cache it automatically (prefix caching).
+            config: Generation configuration.
+            **kwargs: Extra params forwarded to the API.
+
+        Returns:
+            GenerationResult where ``text`` contains the raw JSON string.
+
+        Raises:
+            ModelRefusalError: If the model returns a ``refusal`` instead of content.
+            RuntimeError: For network / API errors.
+        """
+        if not self._is_loaded:
+            raise RuntimeError("Client not initialized. Call load() first.")
+        self.validate_prompt(prompt)
+        if config is None:
+            config = GenerationConfig()
+
+        messages: list[dict[str, Any]] = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.extend(self._create_messages(prompt))
+
+        request_params = self._build_request_params(messages, config)
+        request_params["response_format"] = response_format
+        request_params.update(kwargs)
+
+        try:
+            response = self.client.chat.completions.create(**request_params)
+        except Exception as e:
+            logger.error(f"OpenAI structured call failed: {e}")
+            raise RuntimeError(f"Structured generation failed: {e}") from e
+
+        choice = response.choices[0]
+        message = choice.message
+
+        # Check for model refusal (structured outputs may return refusal instead of content)
+        refusal = getattr(message, "refusal", None)
+        if refusal:
+            raise ModelRefusalError(refusal_message=refusal, model_name=self.model_name)
+
+        generated_text = message.content or ""
+        finish_reason = choice.finish_reason
+
+        usage = response.usage
+        prompt_tokens = usage.prompt_tokens
+        completion_tokens = usage.completion_tokens
+        total_tokens = usage.total_tokens
+        cached_tokens = 0
+        if hasattr(usage, "prompt_tokens_details") and usage.prompt_tokens_details:
+            cached_tokens = getattr(usage.prompt_tokens_details, "cached_tokens", 0) or 0
+
+        cost = self._record_cost(prompt_tokens, completion_tokens, total_tokens, cached_tokens)
+
+        return GenerationResult(
+            text=generated_text,
+            tokens_used=completion_tokens,
+            finish_reason=finish_reason,
+            model_name=self.model_name,
+            metadata={
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": total_tokens,
+                "cached_input_tokens": cached_tokens,
+                "cost": cost,
+                "total_cost": self.total_cost,
+            },
+        )
+
+    def generate_with_system_prompt(
+        self,
+        prompt: str,
+        system_prompt: str,
+        config: GenerationConfig | None = None,
+        **kwargs,
+    ) -> GenerationResult:
+        """Generate with an explicit system prompt prepended first (for stable caching).
+
+        Placing a long, stable system prompt at position 0 in the message list
+        lets OpenAI cache the prefix automatically.  This is the recommended
+        pattern for agents that reuse the same instructions across many turns.
+
+        Args:
+            prompt: User message.
+            system_prompt: System instructions, placed first so caching is reliable.
+            config: Generation configuration.
+            **kwargs: Extra params forwarded to the API.
+
+        Returns:
+            GenerationResult with ``metadata["cached_input_tokens"]`` populated.
+        """
+        if not self._is_loaded:
+            raise RuntimeError("Client not initialized. Call load() first.")
+        self.validate_prompt(prompt)
+        if config is None:
+            config = GenerationConfig()
+
+        messages: list[dict[str, Any]] = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt},
+        ]
+        request_params = self._build_request_params(messages, config)
+        request_params.update(kwargs)
+
+        try:
+            response = self.client.chat.completions.create(**request_params)
+        except Exception as e:
+            logger.error(f"OpenAI API call with system prompt failed: {e}")
+            raise RuntimeError(f"Generation with system prompt failed: {e}") from e
+
+        choice = response.choices[0]
+        generated_text = choice.message.content or ""
+        finish_reason = choice.finish_reason
+
+        usage = response.usage
+        prompt_tokens = usage.prompt_tokens
+        completion_tokens = usage.completion_tokens
+        total_tokens = usage.total_tokens
+        cached_tokens = 0
+        if hasattr(usage, "prompt_tokens_details") and usage.prompt_tokens_details:
+            cached_tokens = getattr(usage.prompt_tokens_details, "cached_tokens", 0) or 0
+
+        cost = self._record_cost(prompt_tokens, completion_tokens, total_tokens, cached_tokens)
+
+        return GenerationResult(
+            text=generated_text,
+            tokens_used=completion_tokens,
+            finish_reason=finish_reason,
+            model_name=self.model_name,
+            metadata={
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": total_tokens,
+                "cached_input_tokens": cached_tokens,
+                "cost": cost,
+                "total_cost": self.total_cost,
+            },
+        )
 
     def generate_with_tools(
         self,

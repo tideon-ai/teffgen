@@ -131,6 +131,9 @@ class AgentConfig:
     approval_timeout: float = 0.0  # seconds; 0 = wait forever
     clarification_callback: Callable[[str, list[str]], int] | None = None
     input_callback: Callable[[str], str] | None = None
+    # Prompt caching: keep the system prompt at a fixed position so OpenAI
+    # can cache the prefix automatically across sequential calls.
+    stable_system_prompt: bool = True
 
 
 @dataclass

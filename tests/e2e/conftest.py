@@ -21,13 +21,14 @@ def _cuda_cleanup():
         pass
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="class")
 def real_model():
-    """Module-scoped real model for e2e tests.
+    """Class-scoped real model for e2e tests.
 
-    Module scope (not session) prevents bitsandbytes 4-bit CUDA state from
-    leaking across test modules, which historically caused downstream
-    integration streaming tests to deadlock in the same pytest session.
+    Class scope (not module / session) isolates CUDA state between test
+    classes so bitsandbytes / accelerate dispatch hooks cannot leak RMSNorm
+    corruption into the next class's forward passes — a pre-existing
+    upstream issue that showed up as sporadic full-suite failures.
     """
     try:
         import torch
@@ -39,7 +40,7 @@ def real_model():
 
     from effgen import load_model
 
-    model = load_model("Qwen/Qwen2.5-3B-Instruct", quantization="4bit")
+    model = load_model("Qwen/Qwen2.5-3B-Instruct")
     yield model
     try:
         model.unload()

@@ -43,10 +43,12 @@ from effgen.models.capabilities import (
     register_model_capability,
 )
 from effgen.models.cerebras_adapter import CerebrasAdapter
+from effgen.models.errors import ModelRefusalError
 from effgen.models.gemini_adapter import GeminiAdapter
 from effgen.models.lazy import LazyModel
 from effgen.models.model_loader import ModelLoader, load_model
 from effgen.models.openai_adapter import OpenAIAdapter
+from effgen.models.openai_schema import to_openai_schema
 from effgen.models.pool import ModelPool, PoolConfig
 from effgen.models.router import (
     ComplexityEstimate,
@@ -120,4 +122,10 @@ __all__ = [
 
     "LazyModel",
     "ContinuousBatcher",
+
+    # Errors
+    "ModelRefusalError",
+
+    # Schema helpers
+    "to_openai_schema",
 ]
