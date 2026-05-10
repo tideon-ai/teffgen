@@ -1,0 +1,65 @@
+# syntax=docker/dockerfile:1.6
+#
+# tideon.ai — SDK image (no HTTP server; runs your Python script)
+#
+# Two intended uses:
+#  (1) Base image: `FROM tideon-ai/teffgen-sdk:0.2.0` in your downstream Dockerfile.
+#  (2) Worker: deploy directly with WORKER_CMD set to your script entry point.
+#      Railway "Worker" services don't need a port — set this image as the
+#      service's source and define the WORKER_CMD env var.
+#
+# Installs CPU-only torch to keep the image under 2 GB.
+#
+# Build:   docker build -f Dockerfile.sdk -t tideon-ai/teffgen-sdk:0.2.0 .
+# Run:     docker run -e WORKER_CMD="python my_app/agent.py" \
+#              -e CEREBRAS_API_KEY=... tideon-ai/teffgen-sdk:0.2.0
+# Override: docker run --rm tideon-ai/teffgen-sdk:0.2.0 python -c "import teffgen; print(teffgen.__version__)"
+
+# ---- builder ----
+FROM python:3.11-slim AS builder
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        build-essential git \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+COPY pyproject.toml setup.py requirements.txt README.md ./
+COPY teffgen ./teffgen
+RUN pip wheel --wheel-dir=/wheels .
+
+# ---- runtime ----
+FROM python:3.11-slim
+
+LABEL org.opencontainers.image.title="tideon.ai-sdk" \
+      org.opencontainers.image.description="tideon.ai (teffgen) SDK base / worker image" \
+      org.opencontainers.image.version="0.2.0" \
+      org.opencontainers.image.source="https://github.com/tideon-ai/teffgen"
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_EXTRA_INDEX_URL=https://download.pytorch.org/whl/cpu
+
+RUN useradd -m -u 1000 teffgen
+
+WORKDIR /app
+COPY --from=builder /wheels /wheels
+RUN pip install /wheels/*.whl && rm -rf /wheels
+
+USER teffgen
+
+# WORKER_CMD: Set to the command your worker should run.
+# Empty by default so a misconfigured deploy fails loudly with a usage hint.
+ENV WORKER_CMD=""
+
+# CMD only (no ENTRYPOINT) so `docker run image <other-cmd>` cleanly overrides.
+CMD ["sh", "-c", "if [ -n \"$WORKER_CMD\" ]; then exec sh -c \"$WORKER_CMD\"; else \
+      echo 'tideon.ai SDK image — set WORKER_CMD env var to your entry point.'; \
+      echo 'Example: WORKER_CMD=\"python my_app/agent.py\"'; \
+      echo 'Or use as a base: FROM tideon-ai/teffgen-sdk:0.2.0'; \
+      exit 64; fi"]

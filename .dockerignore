@@ -1,0 +1,55 @@
+# VCS / dev
+.git
+.gitignore
+.github
+.pre-commit-config.yaml
+
+# Python build / cache
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.eggs
+build
+dist
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.tox
+
+# Virtualenvs
+.venv
+venv
+env
+
+# Coverage / test artifacts
+htmlcov
+coverage.xml
+.coverage
+.coverage.*
+
+# IDE
+.idea
+.vscode
+*.swp
+
+# Local config / secrets
+.env
+.env.*
+*.local
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# Docs / examples — not needed in runtime image
+docs
+examples
+tests
+clients/typescript
+conda-recipe
+
+# Demo output
+/tmp

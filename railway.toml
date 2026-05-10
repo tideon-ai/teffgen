@@ -1,0 +1,37 @@
+# Railway deployment config — API service (default).
+# To deploy the SDK worker instead, add a second service in the same project,
+# point its Source / Settings to dockerfilePath = "Dockerfile.sdk", drop the
+# healthcheckPath, and set WORKER_CMD as a service variable.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+# Only rebuild when source / packaging files change. Doc/test changes skip the rebuild.
+watchPatterns = [
+    "teffgen/**",
+    "pyproject.toml",
+    "setup.py",
+    "requirements.txt",
+    "Dockerfile",
+    "Dockerfile.sdk",
+]
+
+[deploy]
+# Railway injects $PORT at runtime. The Dockerfile CMD already binds to it,
+# but specifying startCommand here makes it visible in the Railway dashboard.
+startCommand = "/bin/sh -c 'exec teffgen serve --host 0.0.0.0 --port ${PORT:-8000}'"
+
+# Health check Railway uses to flip a deploy to "live".
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+
+# Restart policy
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# Set these in Railway dashboard → Variables (do NOT commit secrets):
+#   TEFFGEN_API_KEY     — bearer token clients must send
+#   TEFFGEN_RATE_LIMIT  — requests/min per IP (default 60)
+#   OPENAI_API_KEY      — only if using OpenAI adapter
+#   CEREBRAS_API_KEY    — only if using Cerebras adapter
+#   ANTHROPIC_API_KEY   — only if using Anthropic adapter
