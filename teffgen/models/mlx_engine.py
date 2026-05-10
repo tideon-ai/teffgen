@@ -294,6 +294,7 @@ class MLXEngine(BatchModel):
             raise RuntimeError("Model is not loaded. Call load() first.")
 
         from mlx_lm import generate as mlx_generate
+        from mlx_lm.sample_utils import make_logits_processors, make_sampler
 
         if config is None:
             config = GenerationConfig()
@@ -309,15 +310,20 @@ class MLXEngine(BatchModel):
         self.validate_prompt(formatted_prompt)
 
         try:
-            # Build MLX generation kwargs
+            # mlx-lm >= 0.20 takes sampler/logits_processors objects, not
+            # inline temp/top_p/repetition_penalty kwargs.
+            sampler = make_sampler(
+                temp=config.temperature or 0.0,
+                top_p=config.top_p or 0.0,
+            )
+            logits_processors = make_logits_processors(
+                repetition_penalty=config.repetition_penalty,
+            )
             gen_kwargs: dict[str, Any] = {
                 "max_tokens": config.max_tokens or 512,
-                "temp": config.temperature,
-                "top_p": config.top_p,
-                "repetition_penalty": config.repetition_penalty,
+                "sampler": sampler,
+                "logits_processors": logits_processors,
             }
-            if config.seed is not None:
-                gen_kwargs["seed"] = config.seed
 
             generated_text = mlx_generate(
                 self.model,
@@ -387,6 +393,7 @@ class MLXEngine(BatchModel):
             raise RuntimeError("Model is not loaded. Call load() first.")
 
         from mlx_lm import stream_generate
+        from mlx_lm.sample_utils import make_logits_processors, make_sampler
 
         if config is None:
             config = GenerationConfig()
@@ -402,14 +409,18 @@ class MLXEngine(BatchModel):
         self.validate_prompt(formatted_prompt)
 
         try:
+            sampler = make_sampler(
+                temp=config.temperature or 0.0,
+                top_p=config.top_p or 0.0,
+            )
+            logits_processors = make_logits_processors(
+                repetition_penalty=config.repetition_penalty,
+            )
             gen_kwargs: dict[str, Any] = {
                 "max_tokens": config.max_tokens or 512,
-                "temp": config.temperature,
-                "top_p": config.top_p,
-                "repetition_penalty": config.repetition_penalty,
+                "sampler": sampler,
+                "logits_processors": logits_processors,
             }
-            if config.seed is not None:
-                gen_kwargs["seed"] = config.seed
 
             for response in stream_generate(
                 self.model,
